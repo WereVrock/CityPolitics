@@ -13,9 +13,11 @@ import main.parameters.GameParameters;
  */
 public class VotingEngine {
 
-    private static final double INDECISIVE_THRESHOLD = GameParameters.VOTE_INDECISIVE_THRESHOLD;
-    private static final int    SEATS_NEEDED         = 27;
-    private static final Random RANDOM               = new Random();
+    private static final double INDECISIVE_THRESHOLD     = GameParameters.VOTE_INDECISIVE_THRESHOLD;
+    private static final double OPINION_NEUTRAL          = GameParameters.VOTE_OPINION_NEUTRAL;
+    private static final double OPINION_MAX_CONTRIBUTION = GameParameters.VOTE_OPINION_MAX_CONTRIBUTION;
+    private static final int    SEATS_NEEDED             = 27;
+    private static final Random RANDOM                   = new Random();
 
     public VoteResult process(List<PoliticalParty> parties,
                               List<VoteCondition>  conditions,
@@ -39,7 +41,7 @@ public class VotingEngine {
         return new VoteResult(scores, totalYes, totalNo, totalAbstain, SEATS_NEEDED);
     }
 
-    private double calculateScore(PoliticalParty party,
+private double calculateScore(PoliticalParty party,
                                   List<VoteCondition> conditions,
                                   ResourcePool resources,
                                   StatBlock stats) {
@@ -52,10 +54,12 @@ public class VotingEngine {
                 score += condition.getWeight() * viewMultiplier;
             }
         }
+        double opinionDeviation = (party.getPlayerOpinion() - OPINION_NEUTRAL) / OPINION_NEUTRAL;
+        score += opinionDeviation * OPINION_MAX_CONTRIBUTION;
         return score;
     }
 
-    private boolean conditionMet(VoteCondition condition,
+private boolean conditionMet(VoteCondition condition,
                                  ResourcePool resources,
                                  StatBlock stats) {
         double value = resolveVariable(condition.getVariable(), resources, stats);
