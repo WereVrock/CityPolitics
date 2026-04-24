@@ -19,6 +19,16 @@ public class StatBlock {
         this.happiness  = GameParameters.STARTING_HAPPINESS;
     }
 
+    public void reset() {
+        this.corruption = GameParameters.STARTING_CORRUPTION;
+        this.happiness  = GameParameters.STARTING_HAPPINESS;
+    }
+
+  
+
+    public void setCorruption(int v) { this.corruption = clamp(v); }
+    public void setHappiness(int v)  { this.happiness  = clamp(v); }
+
     // ─── Corruption ──────────────────────────────────────────────────────────
 
     public int getCorruption() { return corruption; }

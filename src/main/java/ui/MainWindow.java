@@ -18,7 +18,8 @@ public class MainWindow extends JFrame {
     private final ResourcePanel resourcePanel;
     private final PopPanel      popPanel;
     private final ActionsPanel  actionsPanel;
-    private final EventLogPanel eventLogPanel;
+    private final EventLogPanel  eventLogPanel;
+    private final SaveLoadDialog saveLoadDialog;
 
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
@@ -35,8 +36,9 @@ public class MainWindow extends JFrame {
         calendarPanel  = new CalendarPanel(gameState);
         resourcePanel  = new ResourcePanel(gameState);
         popPanel       = new PopPanel(gameState);
-        actionsPanel   = new ActionsPanel(gameState, this::handleActionResult);
-        eventLogPanel  = new EventLogPanel();
+        actionsPanel     = new ActionsPanel(gameState, this::handleActionResult);
+        eventLogPanel    = new EventLogPanel();
+        saveLoadDialog   = new SaveLoadDialog(this, gameState, eventLogPanel::appendLine);
 
         // Left sidebar: resources + pops
         JPanel leftSidebar = new JPanel(new BorderLayout());
@@ -48,8 +50,13 @@ public class MainWindow extends JFrame {
         // Center: actions + end turn
         JPanel centerPanel = new JPanel(new BorderLayout());
         centerPanel.setBackground(UITheme.BG_DARK);
+        JPanel southStack = new JPanel(new BorderLayout());
+        southStack.setBackground(UITheme.BG_DARK);
+        southStack.add(buildSaveLoadBar(),   BorderLayout.NORTH);
+        southStack.add(buildEndTurnButton(), BorderLayout.SOUTH);
+
         centerPanel.add(actionsPanel, BorderLayout.CENTER);
-        centerPanel.add(buildEndTurnButton(), BorderLayout.SOUTH);
+        centerPanel.add(southStack,   BorderLayout.SOUTH);
 
         add(calendarPanel, BorderLayout.NORTH);
         add(leftSidebar,   BorderLayout.WEST);
@@ -59,6 +66,36 @@ public class MainWindow extends JFrame {
         refreshAll();
         eventLogPanel.appendLine("=== FrostVeil begins. " + gameState.getCalendar().getDisplayString() + " ===");
         eventLogPanel.appendLine("The realm awaits your guidance. The Frost Giants stir in the north.");
+    }
+
+private JPanel buildSaveLoadBar() {
+        JButton newBtn  = buildBarButton("NEW");
+        JButton saveBtn = buildBarButton("SAVE");
+        JButton loadBtn = buildBarButton("LOAD");
+
+        newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> { refreshAll(); resetLogs(); }));
+        saveBtn.addActionListener(e -> saveLoadDialog.save());
+        loadBtn.addActionListener(e -> saveLoadDialog.load(this::refreshAll));
+
+        JPanel bar = new JPanel(new GridLayout(1, 3, 6, 0));
+        bar.setBackground(UITheme.BG_DARK);
+        bar.setBorder(new EmptyBorder(0, 12, 4, 12));
+        bar.add(newBtn);
+        bar.add(saveBtn);
+        bar.add(loadBtn);
+        return bar;
+    }
+
+private JButton buildBarButton(String label) {
+        JButton btn = new JButton(label);
+        btn.setFont(UITheme.FONT_BUTTON);
+        btn.setForeground(UITheme.TEXT_SECONDARY);
+        btn.setBackground(UITheme.BG_PANEL);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(0, 28));
+        return btn;
     }
 
     private JPanel buildEndTurnButton() {
@@ -98,6 +135,12 @@ public class MainWindow extends JFrame {
     private void handleActionResult(ActionResult result) {
         eventLogPanel.appendLine((result.isSuccess() ? "✓ " : "✗ ") + result.getMessage());
         refreshAll();
+    }
+
+    public void resetLogs() {
+        eventLogPanel.clear();
+        eventLogPanel.appendLine("=== New game started. " + gameState.getCalendar().getDisplayString() + " ===");
+        eventLogPanel.appendLine("The realm awaits your guidance. The Frost Giants stir in the north.");
     }
 
     private void refreshAll() {

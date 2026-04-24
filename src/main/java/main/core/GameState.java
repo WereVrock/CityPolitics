@@ -28,6 +28,24 @@ public class GameState {
         this.turnProcessor  = new TurnProcessor();
     }
 
+    /**
+     * Resets all subsystems to their initial state without replacing references.
+     * Safe to call while the UI still holds references to the old objects.
+     */
+    public void reset() {
+        calendar.reset();
+        resources.reset();
+        stats.reset();
+        popManager.reset();
+        actionRegistry.resetAllActions();
+    }
+
+    /**
+     * Resets all subsystems to their initial state without replacing references.
+     * Safe to call while the UI still holds references to the old objects.
+     */
+   
+
     public GameCalendar   getCalendar()       { return calendar; }
     public ResourcePool   getResources()      { return resources; }
     public StatBlock      getStats()          { return stats; }

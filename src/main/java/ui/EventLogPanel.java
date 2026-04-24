@@ -44,6 +44,10 @@ public class EventLogPanel extends JPanel {
         add(scroll,  BorderLayout.CENTER);
     }
 
+    public void clear() {
+        logArea.setText("");
+    }
+
     public void appendLine(String line) {
         logArea.append(line + "\n");
         logArea.setCaretPosition(logArea.getDocument().getLength());

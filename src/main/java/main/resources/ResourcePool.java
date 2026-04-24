@@ -19,6 +19,20 @@ public class ResourcePool {
         this.influence = GameParameters.STARTING_INFLUENCE;
     }
 
+    public void reset() {
+        this.food      = GameParameters.STARTING_FOOD;
+        this.money     = GameParameters.STARTING_MONEY;
+        this.manpower  = GameParameters.STARTING_MANPOWER;
+        this.influence = GameParameters.STARTING_INFLUENCE;
+    }
+
+   
+
+    public void setFood(int v)      { this.food      = Math.max(0, v); }
+    public void setMoney(int v)     { this.money     = Math.max(0, v); }
+    public void setManpower(int v)  { this.manpower  = Math.max(0, v); }
+    public void setInfluence(int v) { this.influence = Math.max(0, v); }
+
     // ─── Food ────────────────────────────────────────────────────────────────
 
     public int getFood()              { return food; }

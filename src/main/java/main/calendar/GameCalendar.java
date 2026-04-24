@@ -62,6 +62,18 @@ public class GameCalendar {
     public Period getPeriod()           { return period; }
     public int getTotalTurnsElapsed()   { return totalTurnsElapsed; }
 
+    public void reset() {
+        this.year              = GameParameters.START_YEAR;
+        this.period            = Period.THAW;
+        this.totalTurnsElapsed = 0;
+    }
+
+    
+
+    public void setYear(int year)                        { this.year = year; }
+    public void setPeriod(Period period)                 { this.period = period; }
+    public void setTotalTurnsElapsed(int turns)          { this.totalTurnsElapsed = turns; }
+
     public String getDisplayString() {
         return period.getDisplayName() + ", Year " + year + " A.S.";
     }

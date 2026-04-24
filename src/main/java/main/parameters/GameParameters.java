@@ -98,7 +98,7 @@ public final class GameParameters {
     // =========================================================
     // ACTION: ACCEPT BRIBES (max 2/turn)
     // =========================================================
-    public static final int ACCEPT_BRIBE_INFLUENCE_COST     = 10;
+    public static final int ACCEPT_BRIBE_INFLUENCE_COST     = 20;
     public static final int ACCEPT_BRIBE_MONEY_GAINED       = 60;
     public static final int ACCEPT_BRIBE_CORRUPTION_GAIN    = 8;
     public static final int ACCEPT_BRIBE_MAX_USES           = 2;
@@ -106,8 +106,8 @@ public final class GameParameters {
     // =========================================================
     // ACTION: BRIBE (max 2/turn)
     // =========================================================
-    public static final int BRIBE_MONEY_COST                = 50;
-    public static final int BRIBE_INFLUENCE_GAINED          = 20;
+    public static final int BRIBE_MONEY_COST                = 70;
+    public static final int BRIBE_INFLUENCE_GAINED          = 15;
     public static final int BRIBE_CORRUPTION_GAIN           = 5;
     public static final int BRIBE_MAX_USES                  = 2;
 

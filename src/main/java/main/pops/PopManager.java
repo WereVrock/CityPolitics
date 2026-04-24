@@ -54,6 +54,14 @@ public class PopManager {
 
     // ─── Access ───────────────────────────────────────────────────────────────
 
+    public void reset() {
+        for (Pop pop : pops) {
+            pop.setCount(pop.getType().getStartingCount());
+        }
+    }
+
+    
+
     public List<Pop> getPops() {
         return Collections.unmodifiableList(pops);
     }
