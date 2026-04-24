@@ -13,13 +13,19 @@ import java.util.List;
  */
 public class MainWindow extends JFrame {
 
-    private final GameState     gameState;
-    private final CalendarPanel calendarPanel;
-    private final ResourcePanel resourcePanel;
-    private final PopPanel      popPanel;
-    private final ActionsPanel  actionsPanel;
-    private final EventLogPanel  eventLogPanel;
-    private final SaveLoadDialog saveLoadDialog;
+    private final GameState              gameState;
+    private final CalendarPanel          calendarPanel;
+    private final ResourcePanel          resourcePanel;
+    private final PopPanel               popPanel;
+    private final ActionsPanel           actionsPanel;
+    private final EventLogPanel          eventLogPanel;
+    private final SaveLoadDialog         saveLoadDialog;
+    private final PartiesOverviewPanel   partiesOverviewPanel;
+    private final VoteSessionPanel       voteSessionPanel;
+
+    private final JPanel centerPanel;
+    private  JButton endTurnBtn;
+    private  JButton partiesBtn;
 
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
@@ -33,30 +39,36 @@ public class MainWindow extends JFrame {
         getContentPane().setBackground(UITheme.BG_DARK);
         setLayout(new BorderLayout());
 
-        calendarPanel  = new CalendarPanel(gameState);
-        resourcePanel  = new ResourcePanel(gameState);
-        popPanel       = new PopPanel(gameState);
-        actionsPanel     = new ActionsPanel(gameState, this::handleActionResult);
-        eventLogPanel    = new EventLogPanel();
-        saveLoadDialog   = new SaveLoadDialog(this, gameState, eventLogPanel::appendLine);
+        calendarPanel        = new CalendarPanel(gameState);
+        resourcePanel        = new ResourcePanel(gameState);
+        popPanel             = new PopPanel(gameState);
+        actionsPanel         = new ActionsPanel(gameState, this::handleActionResult);
+        eventLogPanel        = new EventLogPanel();
+        saveLoadDialog       = new SaveLoadDialog(this, gameState, eventLogPanel::appendLine);
+        partiesOverviewPanel = new PartiesOverviewPanel(gameState, this::showMainView);
+        voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteFinalized, this::swapCenter);
 
-        // Left sidebar: resources + pops
+        // Left sidebar
         JPanel leftSidebar = new JPanel(new BorderLayout());
         leftSidebar.setBackground(UITheme.BG_PANEL);
         leftSidebar.setPreferredSize(new Dimension(230, 0));
         leftSidebar.add(resourcePanel, BorderLayout.CENTER);
         leftSidebar.add(popPanel,      BorderLayout.SOUTH);
 
-        // Center: actions + end turn
-        JPanel centerPanel = new JPanel(new BorderLayout());
+        // Center panel (swappable)
+        centerPanel = new JPanel(new BorderLayout());
         centerPanel.setBackground(UITheme.BG_DARK);
+
+        JPanel actionsWrapper = new JPanel(new BorderLayout());
+        actionsWrapper.setBackground(UITheme.BG_DARK);
         JPanel southStack = new JPanel(new BorderLayout());
         southStack.setBackground(UITheme.BG_DARK);
-        southStack.add(buildSaveLoadBar(),   BorderLayout.NORTH);
-        southStack.add(buildEndTurnButton(), BorderLayout.SOUTH);
+        southStack.add(buildSaveLoadBar(), BorderLayout.NORTH);
+        southStack.add(buildBottomBar(),   BorderLayout.SOUTH);
+        actionsWrapper.add(actionsPanel, BorderLayout.CENTER);
+        actionsWrapper.add(southStack,   BorderLayout.SOUTH);
 
-        centerPanel.add(actionsPanel, BorderLayout.CENTER);
-        centerPanel.add(southStack,   BorderLayout.SOUTH);
+        centerPanel.add(actionsWrapper, BorderLayout.CENTER);
 
         add(calendarPanel, BorderLayout.NORTH);
         add(leftSidebar,   BorderLayout.WEST);
@@ -98,8 +110,8 @@ private JButton buildBarButton(String label) {
         return btn;
     }
 
-    private JPanel buildEndTurnButton() {
-        JButton endTurnBtn = new JButton("END TURN  ▶");
+    private JPanel buildBottomBar() {
+        endTurnBtn = new JButton("END TURN  ▶");
         endTurnBtn.setFont(new Font("Serif", Font.BOLD, 15));
         endTurnBtn.setForeground(UITheme.ACCENT_FROST);
         endTurnBtn.setBackground(new Color(25, 45, 65));
@@ -109,11 +121,66 @@ private JButton buildBarButton(String label) {
         endTurnBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         endTurnBtn.addActionListener(e -> endTurn());
 
-        JPanel wrapper = new JPanel(new BorderLayout());
+        partiesBtn = new JButton("PARTIES");
+        partiesBtn.setFont(UITheme.FONT_BUTTON);
+        partiesBtn.setForeground(UITheme.TEXT_SECONDARY);
+        partiesBtn.setBackground(UITheme.BUTTON_BG);
+        partiesBtn.setBorderPainted(false);
+        partiesBtn.setFocusPainted(false);
+        partiesBtn.setPreferredSize(new Dimension(90, 48));
+        partiesBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        partiesBtn.addActionListener(e -> showPartiesView());
+
+        JPanel wrapper = new JPanel(new BorderLayout(6, 0));
         wrapper.setBackground(UITheme.BG_DARK);
         wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
+        wrapper.add(partiesBtn, BorderLayout.WEST);
         wrapper.add(endTurnBtn, BorderLayout.CENTER);
         return wrapper;
+    }
+
+    private void swapCenter(JPanel panel) {
+        centerPanel.removeAll();
+        centerPanel.add(panel, BorderLayout.CENTER);
+        centerPanel.revalidate();
+        centerPanel.repaint();
+    }
+
+    private void showMainView() {
+        JPanel actionsWrapper = new JPanel(new BorderLayout());
+        actionsWrapper.setBackground(UITheme.BG_DARK);
+        JPanel southStack = new JPanel(new BorderLayout());
+        southStack.setBackground(UITheme.BG_DARK);
+        southStack.add(buildSaveLoadBar(), BorderLayout.NORTH);
+        southStack.add(buildBottomBar(),   BorderLayout.SOUTH);
+        actionsWrapper.add(actionsPanel, BorderLayout.CENTER);
+        actionsWrapper.add(southStack,   BorderLayout.SOUTH);
+        swapCenter(actionsWrapper);
+        refreshAll();
+    }
+
+    private void showPartiesView() {
+        partiesOverviewPanel.refresh();
+        swapCenter(partiesOverviewPanel);
+    }
+
+    private void showVoteSession() {
+        voteSessionPanel.refresh();
+        swapCenter(voteSessionPanel);
+    }
+
+    private void onVoteFinalized() {
+        eventLogPanel.appendLine("✓ Vote finalized.");
+        showMainView();
+        refreshAll();
+        updateEndTurnState();
+    }
+
+    private void updateEndTurnState() {
+        boolean blocked = gameState.hasActiveSession();
+        endTurnBtn.setEnabled(!blocked);
+        endTurnBtn.setBackground(blocked ? UITheme.BUTTON_DISABLED : new Color(25, 45, 65));
+        endTurnBtn.setText(blocked ? "VOTE PENDING  ⚠" : "END TURN  ▶");
     }
 
     private void endTurn() {
@@ -134,11 +201,18 @@ private JButton buildBarButton(String label) {
     }
 
     private void handleActionResult(ActionResult result) {
-        eventLogPanel.appendLine((result.isSuccess() ? "✓ " : "✗ ") + result.getMessage());
-        if (result.hasVote()) {
-            VoteResultPanel.show(this, "", result.getVoteResult());
+        if (result.isPending()) {
+            eventLogPanel.appendLine("⚑ " + result.getMessage());
+            showVoteSession();
+            updateEndTurnState();
+            return;
         }
+        eventLogPanel.appendLine((result.isSuccess() ? "✓ " : "✗ ") + result.getMessage());
         refreshAll();
+    }
+
+    private void refreshEndTurn() {
+        updateEndTurnState();
     }
 
     public void resetLogs() {

@@ -13,4 +13,7 @@ public interface FormalAction extends PlayerAction {
 
     /** Conditions used by VotingEngine to score party votes. */
     List<VoteCondition> getVoteConditions();
+
+    /** Called only when the vote passes. Applies the action's actual effect. */
+    ActionResult applyEffect(main.resources.ResourcePool resources, main.resources.StatBlock stats);
 }

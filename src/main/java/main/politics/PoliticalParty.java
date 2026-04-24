@@ -16,19 +16,26 @@ public class PoliticalParty {
 
     private final String name;
     private final int    seats;
+    private final String leaderName;
+    private final String personality;
     private final Map<PolitcalView, ViewStrength> views;
     private final List<Pop> memberPops;
 
     private int playerOpinion; // 0-100
     private int publicOpinion; // 0-100
     private int power;         // 0-100
+    private int favour;        // starts 0; negative = player owes them
 
-    public PoliticalParty(String name, int seats, int playerOpinion, int publicOpinion, int power) {
+    public PoliticalParty(String name, int seats, int playerOpinion, int publicOpinion, int power,
+                          String leaderName, String personality) {
         this.name          = name;
         this.seats         = seats;
         this.playerOpinion = playerOpinion;
         this.publicOpinion = publicOpinion;
         this.power         = power;
+        this.leaderName    = leaderName;
+        this.personality   = personality;
+        this.favour        = 0;
         this.views         = new EnumMap<>(PolitcalView.class);
         this.memberPops    = new ArrayList<>();
     }
@@ -67,11 +74,15 @@ public class PoliticalParty {
 
     public String getName()          { return name; }
     public int    getSeats()         { return seats; }
+    public String getLeaderName()    { return leaderName; }
+    public String getPersonality()   { return personality; }
     public int    getPlayerOpinion() { return playerOpinion; }
     public int    getPublicOpinion() { return publicOpinion; }
     public int    getPower()         { return power; }
+    public int    getFavour()        { return favour; }
 
     public void setPlayerOpinion(int v) { playerOpinion = Math.max(0, Math.min(100, v)); }
     public void setPublicOpinion(int v) { publicOpinion = Math.max(0, Math.min(100, v)); }
     public void setPower(int v)         { power         = Math.max(0, Math.min(100, v)); }
+    public void setFavour(int v)        { favour        = v; }
 }

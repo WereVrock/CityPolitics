@@ -55,7 +55,7 @@ public class RoyalLevyAction extends AbstractFormalAction {
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
     @Override
-    protected ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
+    public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
         resources.addMoney(GameParameters.LEVY_MONEY_GAINED);
         stats.reduceHappiness(GameParameters.LEVY_HAPPINESS_COST);
         return ActionResult.ok("Royal Levy collected. +" + GameParameters.LEVY_MONEY_GAINED

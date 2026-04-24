@@ -128,11 +128,20 @@ public final class GameParameters {
     public static final int LEVY_HAPPINESS_COST             = 8;
 
     // =========================================================
-    // PASSIVE PER-TURN EFFECTS
+    // VOTING
     // =========================================================
-    public static final double VOTE_INDECISIVE_THRESHOLD     = 0.1;
+    public static final double VOTE_INDECISIVE_THRESHOLD     = 0.3;
+    public static final double VOTE_DEAL_LOCK_THRESHOLD      = 2.0;
     public static final double VOTE_OPINION_NEUTRAL          = 50.0;
     public static final double VOTE_OPINION_MAX_CONTRIBUTION = 1.0;
+    public static final int    SEATS_NEEDED                  = 27;
+    public static final double DEAL_MONEY_FACTOR             = 8.0;
+    public static final double DEAL_INFLUENCE_FACTOR         = 4.0;
+    public static final double DEAL_HAPPINESS_FACTOR         = 1.5;
+
+    // =========================================================
+    // PASSIVE PER-TURN EFFECTS
+    // =========================================================
     public static final int HAPPINESS_DECAY_PER_TURN        = 2;
     public static final int CORRUPTION_DECAY_PER_TURN       = 1;
 

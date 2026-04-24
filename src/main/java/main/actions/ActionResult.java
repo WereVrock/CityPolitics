@@ -7,7 +7,7 @@ import main.politics.VoteResult;
  */
 public class ActionResult {
 
-    public enum Kind { OK, FAIL, VOTE_PASSED, VOTE_FAILED }
+    public enum Kind { OK, FAIL, VOTE_PASSED, VOTE_FAILED, VOTE_PENDING }
 
     private final Kind       kind;
     private final String     message;
@@ -35,7 +35,12 @@ public class ActionResult {
         return new ActionResult(Kind.VOTE_FAILED, message, vote);
     }
 
+    public static ActionResult votePending(String message) {
+        return new ActionResult(Kind.VOTE_PENDING, message, null);
+    }
+
     public boolean    isSuccess()   { return kind == Kind.OK || kind == Kind.VOTE_PASSED; }
+    public boolean    isPending()   { return kind == Kind.VOTE_PENDING; }
     public boolean    hasVote()     { return voteResult != null; }
     public Kind       getKind()     { return kind; }
     public String     getMessage()  { return message; }

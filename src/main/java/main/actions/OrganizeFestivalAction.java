@@ -54,7 +54,7 @@ public class OrganizeFestivalAction extends AbstractFormalAction {
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
     @Override
-    protected ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
+    public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
         int moneyCost = CostCalculator.apply(GameParameters.FESTIVAL_MONEY_COST, stats.getCorruption());
         if (!resources.spendMoney(moneyCost)) {
             return ActionResult.fail("Not enough money after vote. Need " + moneyCost + ".");
