@@ -9,6 +9,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
+import main.parameters.GameParameters;
 
 /**
  * Displays current resources and stats.
@@ -54,6 +55,11 @@ public class ResourcePanel extends JPanel {
         add(makeResourceRow(foodLabel, foodDeltaLabel));
         add(makeResourceRow(moneyLabel, moneyDeltaLabel));
         add(makeResourceRow(manpowerLabel, new JLabel()));
+        foodLabel.setToolTipText("Food consumed each turn by your population. Runs out → starvation.");
+        moneyLabel.setToolTipText("Money generated each turn. All costs scale with corruption.");
+        manpowerLabel.setToolTipText("Military strength contributed by your population.");
+        influenceLabel.setToolTipText("Political capital generated each turn. Used for formal actions.");
+
         add(makeResourceRow(influenceLabel, influenceDeltaLabel));
 
         add(Box.createVerticalStrut(16));
@@ -62,6 +68,9 @@ public class ResourcePanel extends JPanel {
 
         corruptionLabel = makeStatLabel("Corruption", UITheme.TEXT_RED);
         happinessLabel  = makeStatLabel("Happiness",  UITheme.TEXT_GREEN);
+
+        corruptionLabel.setToolTipText("Raises all action costs. Reduces effective happiness.");
+        happinessLabel.setToolTipText("Effective happiness = base − (corruption × 0.3). Decays each turn.");
 
         add(corruptionLabel);
         add(Box.createVerticalStrut(4));
@@ -110,10 +119,15 @@ public class ResourcePanel extends JPanel {
         return row;
     }
 
-    public void refresh() {
-        ResourcePool res     = gameState.getResources();
-        StatBlock    stats   = gameState.getStats();
-        PopManager   pops    = gameState.getPopManager();
+public void refresh() {
+        ResourcePool res   = gameState.getResources();
+        StatBlock    stats = gameState.getStats();
+        PopManager   pops  = gameState.getPopManager();
+
+        int corruption     = stats.getCorruption();
+        int baseHappiness  = stats.getHappiness();
+        int effectiveHappy = (int) Math.max(0,
+            baseHappiness - corruption * GameParameters.CORRUPTION_HAPPINESS_MALUS);
 
         foodLabel.setText("Food:      " + res.getFood());
         moneyLabel.setText("Money:     " + res.getMoney());
@@ -124,7 +138,9 @@ public class ResourcePanel extends JPanel {
         moneyDeltaLabel.setText("+" + pops.getTotalMoneyGeneration() + "/turn");
         influenceDeltaLabel.setText("+" + pops.getTotalInfluenceGeneration() + "/turn");
 
-        corruptionLabel.setText("Corruption: " + stats.getCorruption() + " / 100");
-        happinessLabel.setText("Happiness:  " + stats.getHappiness()  + " / 100");
+        corruptionLabel.setText("Corruption: " + corruption + " / 100");
+        happinessLabel.setText("Happiness:  " + effectiveHappy
+            + " / 100  (base " + baseHappiness + ")");
     }
+
 }

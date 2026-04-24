@@ -40,7 +40,7 @@ public class PopPanel extends JPanel {
         add(popListPanel, BorderLayout.CENTER);
     }
 
-    public void refresh() {
+public void refresh() {
         popListPanel.removeAll();
         List<Pop> pops = new ArrayList<>(gameState.getPopManager().getPops());
         for (Pop pop : pops) {
@@ -48,9 +48,22 @@ public class PopPanel extends JPanel {
             label.setFont(UITheme.FONT_BODY);
             label.setForeground(UITheme.TEXT_PRIMARY);
             label.setBorder(new EmptyBorder(2, 0, 2, 0));
+
+            String tooltip = "<html>"
+                + "<b>" + pop.getType().getDisplayName() + "s</b><br>"
+                + "Count: " + pop.getCount() + "<br>"
+                + "View: " + pop.getAffiliation().getDisplayName() + "<br>"
+                + "Food/turn: " + pop.getFoodConsumption() + "<br>"
+                + "Money/turn: " + pop.getMoneyGeneration() + "<br>"
+                + "Influence/turn: " + pop.getInfluenceGeneration() + "<br>"
+                + "Manpower: " + pop.getManpowerContribution()
+                + "</html>";
+            label.setToolTipText(tooltip);
+
             popListPanel.add(label);
         }
         popListPanel.revalidate();
         popListPanel.repaint();
     }
+
 }

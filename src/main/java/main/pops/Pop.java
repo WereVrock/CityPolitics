@@ -1,6 +1,6 @@
 package main.pops;
 
-import main.politics.PoliticalAffiliation;
+import main.politics.PolitcalView;
 
 /**
  * A single population group: a race with a count and a political affiliation.
@@ -10,11 +10,11 @@ public class Pop {
 
     private final PopType type;
     private int count;
-    private PoliticalAffiliation affiliation;
+    private PolitcalView affiliation;
 
-    public Pop(PopType type, PoliticalAffiliation affiliation) {
+    public Pop(PopType type, PolitcalView affiliation) {
         if (!type.getEligibleAffiliations().contains(affiliation)
-                && affiliation != PoliticalAffiliation.NONE) {
+                && affiliation != PolitcalView.NONE) {
             throw new IllegalArgumentException(
                 type.getDisplayName() + " cannot belong to " + affiliation.getDisplayName()
             );
@@ -46,10 +46,10 @@ public class Pop {
 
     public PopType getType()                          { return type; }
     public int getCount()                             { return count; }
-    public PoliticalAffiliation getAffiliation()      { return affiliation; }
+    public PolitcalView getAffiliation()      { return affiliation; }
 
     public void setCount(int count)                   { this.count = Math.max(0, count); }
-    public void setAffiliation(PoliticalAffiliation a){ this.affiliation = a; }
+    public void setAffiliation(PolitcalView a){ this.affiliation = a; }
 
     @Override
     public String toString() {

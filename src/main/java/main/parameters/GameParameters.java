@@ -1,17 +1,6 @@
 package main.parameters;
 
-/**
- * Central balance sheet for FrostVeil.
- * All tunable constants live here. Never hardcode these elsewhere.
- *
- * Lore note: Years are counted A.S. — After the Sundering,
- * the cataclysm that shattered the Eternal Concord and freed
- * the Frost Giants from their glacial prison. They are expected
- * to return at Year 200 to finish what the Sundering started.
- */
 public final class GameParameters {
-
-   
 
     private GameParameters() {}
 
@@ -47,26 +36,21 @@ public final class GameParameters {
     // =========================================================
     // POP STATS — per individual, per turn
     // =========================================================
-
-    // Humans — balanced generalists
     public static final double HUMAN_FOOD_CONSUMPTION       = 1.0;
     public static final double HUMAN_MONEY_GENERATION       = 1.2;
     public static final double HUMAN_INFLUENCE_GENERATION   = 0.8;
     public static final double HUMAN_MANPOWER_CONTRIBUTION  = 1.0;
 
-    // Dwarves — wealthy miners, poor politicians
     public static final double DWARF_FOOD_CONSUMPTION       = 1.2;
     public static final double DWARF_MONEY_GENERATION       = 2.0;
     public static final double DWARF_INFLUENCE_GENERATION   = 0.4;
     public static final double DWARF_MANPOWER_CONTRIBUTION  = 1.3;
 
-    // Orcs — heavy eaters, strong fighters, low economy
     public static final double ORC_FOOD_CONSUMPTION         = 1.8;
     public static final double ORC_MONEY_GENERATION         = 0.6;
     public static final double ORC_INFLUENCE_GENERATION     = 0.3;
     public static final double ORC_MANPOWER_CONTRIBUTION    = 2.0;
 
-    // Elves — frugal, politically powerful, fragile
     public static final double ELF_FOOD_CONSUMPTION         = 0.6;
     public static final double ELF_MONEY_GENERATION         = 0.9;
     public static final double ELF_INFLUENCE_GENERATION     = 2.5;
@@ -75,15 +59,10 @@ public final class GameParameters {
     // =========================================================
     // POLITICAL AFFILIATIONS — base membership fractions
     // =========================================================
-    // Human Supremacists: humans only
     public static final double HUMAN_SUP_HUMAN_FRACTION     = 0.35;
-
-    // Environmentalists: elves + some humans, no dwarves
     public static final double ENVIRON_ELF_FRACTION         = 0.60;
     public static final double ENVIRON_HUMAN_FRACTION       = 0.10;
     public static final double ENVIRON_ORC_FRACTION         = 0.10;
-
-    // Warmongerers: orcs heavily, some humans/dwarves
     public static final double WARMONGER_ORC_FRACTION       = 0.50;
     public static final double WARMONGER_HUMAN_FRACTION     = 0.10;
     public static final double WARMONGER_DWARF_FRACTION     = 0.15;
@@ -98,7 +77,7 @@ public final class GameParameters {
     // =========================================================
     // ACTION: ACCEPT BRIBES (max 2/turn)
     // =========================================================
-    public static final int ACCEPT_BRIBE_INFLUENCE_COST     = 20;
+    public static final int ACCEPT_BRIBE_INFLUENCE_COST     = 10;
     public static final int ACCEPT_BRIBE_MONEY_GAINED       = 60;
     public static final int ACCEPT_BRIBE_CORRUPTION_GAIN    = 8;
     public static final int ACCEPT_BRIBE_MAX_USES           = 2;
@@ -106,8 +85,8 @@ public final class GameParameters {
     // =========================================================
     // ACTION: BRIBE (max 2/turn)
     // =========================================================
-    public static final int BRIBE_MONEY_COST                = 70;
-    public static final int BRIBE_INFLUENCE_GAINED          = 15;
+    public static final int BRIBE_MONEY_COST                = 50;
+    public static final int BRIBE_INFLUENCE_GAINED          = 20;
     public static final int BRIBE_CORRUPTION_GAIN           = 5;
     public static final int BRIBE_MAX_USES                  = 2;
 
@@ -127,10 +106,37 @@ public final class GameParameters {
     public static final int FIGHT_CORRUPTION_MAX_USES       = 1;
 
     // =========================================================
+    // ACTION: ORGANIZE FESTIVAL (formal, max 1/turn)
+    // =========================================================
+    public static final int FESTIVAL_MONEY_COST             = 120;
+    public static final int FESTIVAL_INFLUENCE_COST         = 20;
+    public static final int FESTIVAL_HAPPINESS_BOOST        = 30;
+    public static final int FESTIVAL_DURATION_TURNS         = 5;
+
+    // =========================================================
+    // ACTION: CRACKDOWN ON CORRUPTION (formal, max 1/turn)
+    // =========================================================
+    public static final int CRACKDOWN_MONEY_COST            = 100;
+    public static final int CRACKDOWN_INFLUENCE_COST        = 30;
+    public static final int CRACKDOWN_CORRUPTION_REDUCTION  = 25;
+
+    // =========================================================
+    // ACTION: ROYAL LEVY (formal, max 1/turn)
+    // =========================================================
+    public static final int LEVY_INFLUENCE_COST             = 15;
+    public static final int LEVY_MONEY_GAINED               = 150;
+    public static final int LEVY_HAPPINESS_COST             = 8;
+
+    // =========================================================
     // PASSIVE PER-TURN EFFECTS
     // =========================================================
     public static final int HAPPINESS_DECAY_PER_TURN        = 2;
     public static final int CORRUPTION_DECAY_PER_TURN       = 1;
+
+    // =========================================================
+    // CORRUPTION HAPPINESS MALUS
+    // =========================================================
+    public static final double CORRUPTION_HAPPINESS_MALUS   = 0.3;
 
     // =========================================================
     // STAT CLAMPS

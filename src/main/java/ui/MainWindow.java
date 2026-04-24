@@ -122,7 +122,8 @@ private JButton buildBarButton(String label) {
             gameState.getStats(),
             gameState.getPopManager(),
             gameState.getCalendar(),
-            gameState.getActionRegistry()
+            gameState.getActionRegistry(),
+            gameState.getEffectManager()
         );
         eventLogPanel.appendLines(log);
         refreshAll();
@@ -134,6 +135,9 @@ private JButton buildBarButton(String label) {
 
     private void handleActionResult(ActionResult result) {
         eventLogPanel.appendLine((result.isSuccess() ? "✓ " : "✗ ") + result.getMessage());
+        if (result.hasVote()) {
+            VoteResultPanel.show(this, "", result.getVoteResult());
+        }
         refreshAll();
     }
 

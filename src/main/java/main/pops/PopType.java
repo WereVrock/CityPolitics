@@ -1,7 +1,7 @@
 package main.pops;
 
 import main.parameters.GameParameters;
-import main.politics.PoliticalAffiliation;
+import main.politics.PolitcalView;
 
 import java.util.List;
 
@@ -17,10 +17,9 @@ public enum PopType {
         GameParameters.HUMAN_MONEY_GENERATION,
         GameParameters.HUMAN_INFLUENCE_GENERATION,
         GameParameters.HUMAN_MANPOWER_CONTRIBUTION,
-        List.of(
-            PoliticalAffiliation.HUMAN_SUPREMACISTS,
-            PoliticalAffiliation.ENVIRONMENTALISTS,
-            PoliticalAffiliation.WAR_MONGERERS
+        List.of(PolitcalView.HUMAN_SUPREMACIST,
+            PolitcalView.ENVIRONMENTALIST,
+            PolitcalView.WARMONGERING
         )
     ),
 
@@ -31,8 +30,7 @@ public enum PopType {
         GameParameters.DWARF_MONEY_GENERATION,
         GameParameters.DWARF_INFLUENCE_GENERATION,
         GameParameters.DWARF_MANPOWER_CONTRIBUTION,
-        List.of(
-            PoliticalAffiliation.WAR_MONGERERS
+        List.of(PolitcalView.WARMONGERING
         )
     ),
 
@@ -43,9 +41,8 @@ public enum PopType {
         GameParameters.ORC_MONEY_GENERATION,
         GameParameters.ORC_INFLUENCE_GENERATION,
         GameParameters.ORC_MANPOWER_CONTRIBUTION,
-        List.of(
-            PoliticalAffiliation.WAR_MONGERERS,
-            PoliticalAffiliation.ENVIRONMENTALISTS
+        List.of(PolitcalView. WARMONGERING,
+            PolitcalView. ENVIRONMENTALIST
         )
     ),
 
@@ -56,8 +53,7 @@ public enum PopType {
         GameParameters.ELF_MONEY_GENERATION,
         GameParameters.ELF_INFLUENCE_GENERATION,
         GameParameters.ELF_MANPOWER_CONTRIBUTION,
-        List.of(
-            PoliticalAffiliation.ENVIRONMENTALISTS
+        List.of(PolitcalView. ENVIRONMENTALIST
         )
     );
 
@@ -67,7 +63,7 @@ public enum PopType {
     private final double moneyGenerationPerUnit;
     private final double influenceGenerationPerUnit;
     private final double manpowerContributionPerUnit;
-    private final List<PoliticalAffiliation> eligibleAffiliations;
+    private final List<PolitcalView> eligibleAffiliations;
 
     PopType(
             String displayName,
@@ -76,7 +72,7 @@ public enum PopType {
             double moneyGenerationPerUnit,
             double influenceGenerationPerUnit,
             double manpowerContributionPerUnit,
-            List<PoliticalAffiliation> eligibleAffiliations) {
+            List<PolitcalView> eligibleAffiliations) {
         this.displayName                 = displayName;
         this.startingCount               = startingCount;
         this.foodConsumptionPerUnit      = foodConsumptionPerUnit;
@@ -92,5 +88,5 @@ public enum PopType {
     public double getMoneyGenerationPerUnit()               { return moneyGenerationPerUnit; }
     public double getInfluenceGenerationPerUnit()           { return influenceGenerationPerUnit; }
     public double getManpowerContributionPerUnit()          { return manpowerContributionPerUnit; }
-    public List<PoliticalAffiliation> getEligibleAffiliations() { return eligibleAffiliations; }
+    public List<PolitcalView> getEligibleAffiliations() { return eligibleAffiliations; }
 }

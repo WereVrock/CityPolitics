@@ -2,7 +2,7 @@ package main.save;
 
 import main.calendar.GameCalendar;
 import main.pops.PopType;
-import main.politics.PoliticalAffiliation;
+import main.politics.PolitcalView;
 
 import java.util.List;
 

@@ -6,7 +6,7 @@ import main.calendar.GameCalendar;
 import main.core.GameState;
 import main.pops.Pop;
 import main.pops.PopType;
-import main.politics.PoliticalAffiliation;
+import main.politics.PolitcalView;
 import main.resources.ResourcePool;
 import main.resources.StatBlock;
 
@@ -152,7 +152,7 @@ public class SaveManager {
     private static void applyPops(SaveData data, GameState gameState) {
         for (SaveData.PopEntry entry : data.pops) {
             PopType              type        = PopType.valueOf(entry.popType);
-            PoliticalAffiliation affiliation = PoliticalAffiliation.valueOf(entry.affiliation);
+            PolitcalView affiliation = PolitcalView.valueOf(entry.affiliation);
             Pop pop = gameState.getPopManager().getPopByType(type);
             if (pop != null) {
                 pop.setCount(entry.count);

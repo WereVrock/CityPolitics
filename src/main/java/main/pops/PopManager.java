@@ -1,6 +1,6 @@
 package main.pops;
 
-import main.politics.PoliticalAffiliation;
+import main.politics.PolitcalView;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,10 +14,10 @@ public class PopManager {
     private final List<Pop> pops = new ArrayList<>();
 
     public PopManager() {
-        pops.add(new Pop(PopType.HUMAN, PoliticalAffiliation.HUMAN_SUPREMACISTS));
-        pops.add(new Pop(PopType.DWARF, PoliticalAffiliation.WAR_MONGERERS));
-        pops.add(new Pop(PopType.ORC,   PoliticalAffiliation.WAR_MONGERERS));
-        pops.add(new Pop(PopType.ELF,   PoliticalAffiliation.ENVIRONMENTALISTS));
+        pops.add(new Pop(PopType.HUMAN, PolitcalView.HUMAN_SUPREMACIST));
+        pops.add(new Pop(PopType.DWARF, PolitcalView.WARMONGERING));
+        pops.add(new Pop(PopType.ORC,   PolitcalView.WARMONGERING));
+        pops.add(new Pop(PopType.ELF,   PolitcalView.ENVIRONMENTALIST));
     }
 
     // ─── Aggregate totals ────────────────────────────────────────────────────
