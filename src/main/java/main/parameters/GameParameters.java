@@ -130,6 +130,7 @@ public final class GameParameters {
     // =========================================================
     // PASSIVE PER-TURN EFFECTS
     // =========================================================
+    public static final double VOTE_INDECISIVE_THRESHOLD     = 0.1;
     public static final int HAPPINESS_DECAY_PER_TURN        = 2;
     public static final int CORRUPTION_DECAY_PER_TURN       = 1;
 

@@ -6,13 +6,14 @@ import main.resources.StatBlock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import main.parameters.GameParameters;
 
 /**
  * Calculates vote scores for all parties and resolves seat splits.
  */
 public class VotingEngine {
 
-    private static final double INDECISIVE_THRESHOLD = 0.3;
+    private static final double INDECISIVE_THRESHOLD = GameParameters.VOTE_INDECISIVE_THRESHOLD;
     private static final int    SEATS_NEEDED         = 27;
     private static final Random RANDOM               = new Random();
 
