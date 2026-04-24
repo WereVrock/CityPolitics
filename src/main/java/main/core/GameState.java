@@ -7,6 +7,7 @@ import main.pops.PopManager;
 import main.politics.PartyManager;
 import main.politics.VoteSessionManager;
 import main.politics.VotingSession;
+import java.util.List;
 import main.resources.ResourcePool;
 import main.resources.StatBlock;
 
@@ -20,8 +21,8 @@ public class GameState {
     private final TurnProcessor  turnProcessor;
     private final EffectManager  effectManager;
     private final PartyManager       partyManager;
-    private final VoteSessionManager voteSessionManager;
-    private       VotingSession      activeSession;
+    private final VoteSessionManager    voteSessionManager;
+    private final List<VotingSession>   pendingSessions = new java.util.ArrayList<>();
 
     public GameState() {
         this.calendar       = new GameCalendar();
@@ -43,7 +44,7 @@ public class GameState {
         effectManager.reset();
         partyManager.reset();
         actionRegistry.resetAllActions();
-        activeSession = null;
+        pendingSessions.clear();
     }
 
     public GameCalendar   getCalendar()       { return calendar; }
@@ -53,9 +54,10 @@ public class GameState {
     public ActionRegistry getActionRegistry() { return actionRegistry; }
     public TurnProcessor  getTurnProcessor()  { return turnProcessor; }
     public EffectManager  getEffectManager()  { return effectManager; }
-    public PartyManager        getPartyManager()        { return partyManager; }
-    public VoteSessionManager  getVoteSessionManager()  { return voteSessionManager; }
-    public VotingSession       getActiveSession()        { return activeSession; }
-    public void                setActiveSession(VotingSession s) { activeSession = s; }
-    public boolean             hasActiveSession()        { return activeSession != null; }
+    public PartyManager        getPartyManager()         { return partyManager; }
+    public VoteSessionManager  getVoteSessionManager()   { return voteSessionManager; }
+    public VotingSession       getActiveSession()         { return pendingSessions.isEmpty() ? null : pendingSessions.get(0); }
+    public void                addSession(VotingSession s){ pendingSessions.add(s); }
+    public void                clearActiveSession()       { if (!pendingSessions.isEmpty()) pendingSessions.remove(0); }
+    public boolean             hasActiveSession()         { return !pendingSessions.isEmpty(); }
 }

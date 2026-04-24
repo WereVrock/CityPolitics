@@ -4,11 +4,11 @@ import main.core.GameState;
 import main.politics.DealOffer;
 import main.politics.PoliticalParty;
 import main.politics.VotingSession;
-import main.parameters.GameParameters;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import main.politics.PartyDialogueGenerator;
 
 /**
  * Shows the party leader portrait, in-character dialogue, and deal offer.
@@ -116,6 +116,7 @@ public class PartyNegotiationPanel extends JPanel {
         dialogue.setEditable(false);
         dialogue.setLineWrap(true);
         dialogue.setWrapStyleWord(true);
+        dialogue.setMinimumSize(new Dimension(200, 80));
         dialogue.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
             new EmptyBorder(8, 10, 8, 10)
@@ -130,56 +131,11 @@ public class PartyNegotiationPanel extends JPanel {
     }
 
     private String buildDialogue() {
-        VotingSession session = gameState.getActiveSession();
-        boolean canDeal       = session.canDeal(party);
-        boolean isOracles     = party == gameState.getPartyManager().getOracles();
-        double  score         = session.getScore(party);
-        boolean alreadyDealt  = session.hasDealt(party);
-
-        if (isOracles) {
-            return "\"The stars spoke of your coming long before you drew breath, child. "
-                 + "Where you lead, we shall follow. The Arch Oracle has seen it.\"";
-        }
-        if (alreadyDealt) {
-            return "\"We have already reached our understanding. "
-                 + "You have our support. Do not make us regret it.\"";
-        }
-        if (!canDeal) {
-            if (score > 0) {
-                return "\"" + party.getLeaderName().split(" ")[0]
-                    + " needs no convincing on this matter. "
-                    + "Our vote is already given. There is nothing to discuss.\"";
-            } else {
-                return "\"Do not waste my time. "
-                    + "We are firmly against this and no sum of gold or honeyed words will move us. "
-                    + "Take your proposal back to whatever shadow it came from.\"";
-            }
-        }
-
-        DealOffer offer = new DealOffer(party, score);
-        return "\"" + buildDemandLine(offer) + "\"";
-    }
-
-    private String buildDemandLine(DealOffer offer) {
-        String name = party.getLeaderName().split(" ")[0];
-        String actionName = gameState.getActiveSession().getAction().getName();
-        StringBuilder sb = new StringBuilder();
-        sb.append("You want our support for ").append(actionName).append(", do you. ");
-
-        if (offer.getMoneyCost() > 0 && offer.getInfluenceCost() > 0) {
-            sb.append(name).append(" is not cheap. ")
-              .append(offer.getMoneyCost()).append(" gold and ")
-              .append(offer.getInfluenceCost()).append(" influence — that is our price. ");
-        } else if (offer.getMoneyCost() > 0) {
-            sb.append("We want ").append(offer.getMoneyCost()).append(" gold. Simple as that. ");
-        } else {
-            sb.append("Show us ").append(offer.getInfluenceCost()).append(" influence worth of respect. ");
-        }
-        if (offer.getHappinessMalus() > 0) {
-            sb.append("And you will owe the people a debt too — they will feel this. ");
-        }
-        sb.append("Agree, and you have our seats.");
-        return sb.toString();
+        return PartyDialogueGenerator.generate(
+            party,
+            gameState.getActiveSession(),
+            gameState.getPartyManager().getOracles()
+        );
     }
 
     private JPanel buildActionPanel() {

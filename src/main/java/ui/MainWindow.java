@@ -7,6 +7,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Top-level JFrame. Assembles all panels and wires the End Turn button.
@@ -23,9 +24,10 @@ public class MainWindow extends JFrame {
     private final PartiesOverviewPanel   partiesOverviewPanel;
     private final VoteSessionPanel       voteSessionPanel;
 
-    private final JPanel centerPanel;
+    private final JPanel  centerPanel;
     private  JButton endTurnBtn;
     private  JButton partiesBtn;
+    private  JButton openVoteBtn;
 
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
@@ -131,10 +133,27 @@ private JButton buildBarButton(String label) {
         partiesBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         partiesBtn.addActionListener(e -> showPartiesView());
 
+        openVoteBtn = new JButton("⚑ OPEN VOTE");
+        openVoteBtn.setFont(UITheme.FONT_BUTTON);
+        openVoteBtn.setForeground(UITheme.TEXT_GOLD);
+        openVoteBtn.setBackground(new Color(60, 40, 20));
+        openVoteBtn.setBorderPainted(false);
+        openVoteBtn.setFocusPainted(false);
+        openVoteBtn.setPreferredSize(new Dimension(110, 48));
+        openVoteBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        openVoteBtn.setVisible(false);
+        openVoteBtn.addActionListener(e -> showVoteSession());
+
         JPanel wrapper = new JPanel(new BorderLayout(6, 0));
         wrapper.setBackground(UITheme.BG_DARK);
         wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
-        wrapper.add(partiesBtn, BorderLayout.WEST);
+
+        JPanel leftBtns = new JPanel(new BorderLayout(4, 0));
+        leftBtns.setBackground(UITheme.BG_DARK);
+        leftBtns.add(partiesBtn,  BorderLayout.WEST);
+        leftBtns.add(openVoteBtn, BorderLayout.EAST);
+
+        wrapper.add(leftBtns,   BorderLayout.WEST);
         wrapper.add(endTurnBtn, BorderLayout.CENTER);
         return wrapper;
     }
@@ -170,7 +189,11 @@ private JButton buildBarButton(String label) {
     }
 
     private void onVoteFinalized() {
-        eventLogPanel.appendLine("✓ Vote finalized.");
+        if (gameState.hasActiveSession()) {
+            eventLogPanel.appendLine("↩ Returned to main view. Vote session still pending.");
+        } else {
+            eventLogPanel.appendLine("✓ Vote finalized.");
+        }
         showMainView();
         refreshAll();
         updateEndTurnState();
@@ -181,6 +204,8 @@ private JButton buildBarButton(String label) {
         endTurnBtn.setEnabled(!blocked);
         endTurnBtn.setBackground(blocked ? UITheme.BUTTON_DISABLED : new Color(25, 45, 65));
         endTurnBtn.setText(blocked ? "VOTE PENDING  ⚠" : "END TURN  ▶");
+        partiesBtn.setVisible(!blocked);
+        openVoteBtn.setVisible(blocked);
     }
 
     private void endTurn() {

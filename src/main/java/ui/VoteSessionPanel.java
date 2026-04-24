@@ -1,6 +1,5 @@
 package ui;
 
-import main.actions.ActionResult;
 import main.core.GameState;
 import main.politics.PoliticalParty;
 import main.politics.VoteResult;
@@ -9,11 +8,9 @@ import main.politics.VotingSession.PartyVoteIntent;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
 import java.awt.*;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import main.parameters.GameParameters;
 
 /**
  * Main vote session screen. Shows parties, their expected votes,
@@ -71,8 +68,22 @@ public class VoteSessionPanel extends JPanel {
         finalizeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         finalizeBtn.addActionListener(e -> finalizeVote());
 
+        JButton backBtn = new JButton("← RETURN TO MAIN");
+        backBtn.setFont(UITheme.FONT_BUTTON);
+        backBtn.setForeground(UITheme.TEXT_SECONDARY);
+        backBtn.setBackground(UITheme.BUTTON_BG);
+        backBtn.setBorderPainted(false);
+        backBtn.setFocusPainted(false);
+        backBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        backBtn.addActionListener(e -> onFinalized.run());
+
+        JPanel btnRow = new JPanel(new BorderLayout(6, 0));
+        btnRow.setBackground(UITheme.BG_DARK);
+        btnRow.add(backBtn,     BorderLayout.WEST);
+        btnRow.add(finalizeBtn, BorderLayout.CENTER);
+
         south.add(outcomeLabel, BorderLayout.CENTER);
-        south.add(finalizeBtn,  BorderLayout.SOUTH);
+        south.add(btnRow,       BorderLayout.SOUTH);
         add(south, BorderLayout.SOUTH);
 
         refresh();
@@ -267,23 +278,36 @@ public class VoteSessionPanel extends JPanel {
     }
 
     private void updateOutcomeLabel(VotingSession session) {
-        int yes = 1; // player seat
-        int no  = 0;
-        if (session.getPlayerIntent() == PartyVoteIntent.NO) { yes = 0; no = 1; }
-        else if (session.getPlayerIntent() == PartyVoteIntent.ABSTAIN) { yes = 0; }
+        int yes     = 0;
+        int no      = 0;
+        int unknown = 0;
+
+        // player seat
+        switch (session.getPlayerIntent()) {
+            case YES     -> yes++;
+            case NO      -> no++;
+            case ABSTAIN -> {}
+            case UNKNOWN -> unknown++;
+        }
 
         for (PoliticalParty p : session.getParties()) {
             PartyVoteIntent intent = session.getIntent(p);
-            if (intent == PartyVoteIntent.YES)     yes += p.getSeats();
-            else if (intent == PartyVoteIntent.NO) no  += p.getSeats();
+            switch (intent) {
+                case YES     -> yes     += p.getSeats();
+                case NO      -> no      += p.getSeats();
+                case UNKNOWN -> unknown += p.getSeats();
+                case ABSTAIN -> {}
+            }
         }
 
-        int needed = gameState.getPartyManager().getParties()
-            .stream().mapToInt(PoliticalParty::getSeats).sum() / 2 + 1;
-
-        String projection = yes >= needed ? "Expected: PASS ✓" : "Expected: FAIL ✗";
-        Color  color      = yes >= needed ? UITheme.TEXT_GREEN : UITheme.TEXT_RED;
-        outcomeLabel.setText(projection + "   (projected YES: " + yes + " / needed: " + needed + ")");
+        int needed = GameParameters.SEATS_NEEDED;
+        String status = yes >= needed ? "PASS ✓" : yes + unknown < needed ? "FAIL ✗" : "UNCERTAIN";
+        Color  color  = yes >= needed ? UITheme.TEXT_GREEN
+                      : yes + unknown < needed ? UITheme.TEXT_RED
+                      : UITheme.TEXT_GOLD;
+        outcomeLabel.setText("YES: " + yes + "   NO: " + no
+            + "   UNKNOWN: " + unknown + "   needed: " + needed
+            + "   →  " + status);
         outcomeLabel.setForeground(color);
     }
 
@@ -294,12 +318,12 @@ public class VoteSessionPanel extends JPanel {
         );
 
         if (result.isPassed()) {
-            ActionResult effect = session.getAction().applyEffect(
+            session.getAction().applyEffect(
                 gameState.getResources(), gameState.getStats()
             );
         }
 
-        gameState.setActiveSession(null);
+        gameState.clearActiveSession();
         onFinalized.run();
     }
 

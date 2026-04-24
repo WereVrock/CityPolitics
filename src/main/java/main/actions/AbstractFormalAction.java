@@ -23,9 +23,9 @@ this.gameState   = gameState;
 this.votingEngine = new VotingEngine();
 }
 
+
+
 @Override
-
-
 public final ActionResult execute(ResourcePool resources, StatBlock stats) {
 if (!isAvailable()) {
 return ActionResult.fail(getName() + " already used this turn.");
@@ -42,7 +42,7 @@ gameState.getPartyManager().getParties(),
 resources,
 stats
 );
-gameState.setActiveSession(session);
+gameState.addSession(session);
 recordUse();
 
 return ActionResult.votePending(getName() + " sent to assembly. " + influenceCost + " influence spent.");
@@ -55,3 +55,4 @@ public abstract ActionResult applyEffect(ResourcePool resources, StatBlock stats
 
 protected GameState getGameState() { return gameState; }
 }
+
