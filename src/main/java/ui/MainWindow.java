@@ -89,7 +89,13 @@ private JPanel buildSaveLoadBar() {
 
         newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> { showMainView(); resetLogs(); }));
         saveBtn.addActionListener(e -> saveLoadDialog.save());
-        loadBtn.addActionListener(e -> saveLoadDialog.load(this::refreshAll));
+        loadBtn.addActionListener(e -> saveLoadDialog.load(() -> {
+            showMainView();
+            if (gameState.hasActiveSession()) showVoteSession();
+            updateEndTurnState();
+            resetLogs();
+            eventLogPanel.appendLine("Game loaded.");
+        }));
 
         JPanel bar = new JPanel(new GridLayout(1, 3, 6, 0));
         bar.setBackground(UITheme.BG_DARK);

@@ -44,7 +44,6 @@ public class SaveLoadDialog {
         try {
             SaveManager.load(gameState);
             onSuccess.run();
-            onMessage.accept("Game loaded.");
         } catch (IOException e) {
             showError("Load failed: " + e.getMessage());
         }
@@ -52,7 +51,7 @@ public class SaveLoadDialog {
 
     // ─── New Game ─────────────────────────────────────────────────────────────
 
-public void newGame(Runnable onSuccess) {
+    public void newGame(Runnable onSuccess) {
         int choice = JOptionPane.showConfirmDialog(
             owner,
             "Start a new game? All unsaved progress will be lost.",
@@ -61,12 +60,11 @@ public void newGame(Runnable onSuccess) {
             JOptionPane.WARNING_MESSAGE
         );
         if (choice != JOptionPane.YES_OPTION) return;
-
         gameState.reset();
         onSuccess.run();
     }
 
-// ─── Utility ─────────────────────────────────────────────────────────────
+    // ─── Utility ─────────────────────────────────────────────────────────────
 
     private void showError(String message) {
         JOptionPane.showMessageDialog(owner, message, "Error", JOptionPane.ERROR_MESSAGE);
