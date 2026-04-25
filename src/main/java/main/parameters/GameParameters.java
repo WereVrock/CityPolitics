@@ -135,9 +135,14 @@ public final class GameParameters {
     public static final double VOTE_OPINION_NEUTRAL          = 50.0;
     public static final double VOTE_OPINION_MAX_CONTRIBUTION = 1.0;
     public static final int    SEATS_NEEDED                  = 27;
-    public static final double DEAL_MONEY_FACTOR             = 8.0;
-    public static final double DEAL_INFLUENCE_FACTOR         = 4.0;
-    public static final double DEAL_HAPPINESS_FACTOR         = 1.5;
+    public static final double DEAL_MONEY_FACTOR             = 18.0;
+    public static final double DEAL_INFLUENCE_FACTOR         = 10.0;
+    public static final double DEAL_HAPPINESS_FACTOR         = 3.0;
+
+    // Favour is only demanded when the party's opposition is strong enough.
+    // Score magnitude must exceed these thresholds (after squaring) for favour to be required.
+    public static final double DEAL_FAVOUR_THRESHOLD_1       = 1;  // 1 favour
+    public static final double DEAL_FAVOUR_THRESHOLD_2       = 1.8;  // 2 favour
 
     // =========================================================
     // PASSIVE PER-TURN EFFECTS
