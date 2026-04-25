@@ -52,7 +52,7 @@ public class SaveLoadDialog {
 
     // ─── New Game ─────────────────────────────────────────────────────────────
 
-    public void newGame(Runnable onSuccess) {
+public void newGame(Runnable onSuccess) {
         int choice = JOptionPane.showConfirmDialog(
             owner,
             "Start a new game? All unsaved progress will be lost.",
@@ -62,14 +62,11 @@ public class SaveLoadDialog {
         );
         if (choice != JOptionPane.YES_OPTION) return;
 
-        while (gameState.hasActiveSession()) {
-            gameState.clearActiveSession();
-        }
         gameState.reset();
         onSuccess.run();
     }
 
-    // ─── Utility ─────────────────────────────────────────────────────────────
+// ─── Utility ─────────────────────────────────────────────────────────────
 
     private void showError(String message) {
         JOptionPane.showMessageDialog(owner, message, "Error", JOptionPane.ERROR_MESSAGE);

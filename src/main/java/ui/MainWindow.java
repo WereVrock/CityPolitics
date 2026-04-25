@@ -87,7 +87,7 @@ private JPanel buildSaveLoadBar() {
         JButton saveBtn = buildBarButton("SAVE");
         JButton loadBtn = buildBarButton("LOAD");
 
-        newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> { refreshAll(); resetLogs(); }));
+        newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> { showMainView(); resetLogs(); }));
         saveBtn.addActionListener(e -> saveLoadDialog.save());
         loadBtn.addActionListener(e -> saveLoadDialog.load(this::refreshAll));
 
@@ -176,6 +176,7 @@ private JButton buildBarButton(String label) {
         actionsWrapper.add(southStack,   BorderLayout.SOUTH);
         swapCenter(actionsWrapper);
         refreshAll();
+        updateEndTurnState();
     }
 
     private void showPartiesView() {
