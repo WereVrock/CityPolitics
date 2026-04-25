@@ -4,6 +4,7 @@ package main.politics;
 import main.actions.FormalAction;
 import main.resources.ResourcePool;
 import main.resources.StatBlock;
+import main.save.SaveData;
 
 import java.util.*;
 import main.parameters.GameParameters;
@@ -14,6 +15,30 @@ import main.parameters.GameParameters;
 public class VoteSessionManager {
 
     private final VotingEngine engine = new VotingEngine();
+
+    public VotingSession restoreSession(FormalAction action,
+                                        List<PoliticalParty> parties,
+                                        main.save.SaveData.VoteSessionEntry entry) {
+        java.util.Map<PoliticalParty, Double> scores = new java.util.LinkedHashMap<>();
+        java.util.Map<PoliticalParty, VotingSession.PartyVoteIntent> intents = new java.util.LinkedHashMap<>();
+        java.util.Map<PoliticalParty, Boolean> dealt = new java.util.LinkedHashMap<>();
+
+        for (SaveData.VoteSessionEntry.PartyVoteEntry pve : entry.partyVotes) {
+            for (PoliticalParty party : parties) {
+                if (party.getName().equals(pve.partyName)) {
+                    scores.put(party, pve.score);
+                    intents.put(party, VotingSession.PartyVoteIntent.valueOf(pve.intent));
+                    dealt.put(party, pve.dealt);
+                    break;
+                }
+            }
+        }
+
+        VotingSession.PartyVoteIntent playerIntent =
+            VotingSession.PartyVoteIntent.valueOf(entry.playerIntent);
+
+        return new VotingSession(action, parties, scores, intents, dealt, playerIntent);
+    }
 
     public VotingSession createSession(FormalAction action,
                                        List<PoliticalParty> parties,

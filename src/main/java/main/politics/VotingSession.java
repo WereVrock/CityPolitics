@@ -39,6 +39,25 @@ public class VotingSession {
         }
     }
 
+    /** Restore constructor — used by SaveManager when loading a persisted session. */
+    public VotingSession(FormalAction action,
+                         List<PoliticalParty> parties,
+                         Map<PoliticalParty, Double> scores,
+                         Map<PoliticalParty, PartyVoteIntent> intents,
+                         Map<PoliticalParty, Boolean> dealt,
+                         PartyVoteIntent playerIntent) {
+        this.action       = action;
+        this.parties      = new ArrayList<>(parties);
+        this.scores       = new LinkedHashMap<>(scores);
+        this.intents      = new LinkedHashMap<>(intents);
+        this.dealt        = new LinkedHashMap<>(dealt);
+        this.playerIntent = playerIntent;
+        this.favour       = new LinkedHashMap<>();
+        for (PoliticalParty p : parties) {
+            this.favour.put(p, p.getFavour());
+        }
+    }
+
     private PartyVoteIntent resolveIntent(double score) {
         if (score > GameParameters.VOTE_INDECISIVE_THRESHOLD)  return PartyVoteIntent.YES;
         if (score < -GameParameters.VOTE_INDECISIVE_THRESHOLD) return PartyVoteIntent.NO;

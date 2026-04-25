@@ -8,7 +8,7 @@ import main.politics.VotingSession;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import main.politics.PartyDialogueGenerator;
+import main.politics.NegotiationDialogueGenerator;
 
 /**
  * Shows the party leader portrait, in-character dialogue, and deal offer.
@@ -130,15 +130,17 @@ public class PartyNegotiationPanel extends JPanel {
         return panel;
     }
 
-    private String buildDialogue() {
-        return PartyDialogueGenerator.generate(
+private String buildDialogue() {
+        return NegotiationDialogueGenerator.generate(
             party,
             gameState.getActiveSession(),
-            gameState.getPartyManager().getOracles()
+            gameState.getPartyManager().getOracles(),
+            gameState.getResources(),
+            gameState.getStats()
         );
     }
 
-    private JPanel buildActionPanel() {
+private JPanel buildActionPanel() {
         JPanel panel = new JPanel(new BorderLayout(0, 8));
         panel.setBackground(UITheme.BG_DARK);
 

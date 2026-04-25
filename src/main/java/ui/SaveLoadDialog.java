@@ -62,6 +62,9 @@ public class SaveLoadDialog {
         );
         if (choice != JOptionPane.YES_OPTION) return;
 
+        while (gameState.hasActiveSession()) {
+            gameState.clearActiveSession();
+        }
         gameState.reset();
         onSuccess.run();
     }

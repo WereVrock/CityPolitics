@@ -2,11 +2,16 @@ package main.save;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import main.actions.FormalAction;
+import main.actions.PlayerAction;
 import main.calendar.GameCalendar;
 import main.core.GameState;
+import main.effects.ActiveEffect;
 import main.pops.Pop;
 import main.pops.PopType;
 import main.politics.PolitcalView;
+import main.politics.PoliticalParty;
+import main.politics.VotingSession;
 import main.resources.ResourcePool;
 import main.resources.StatBlock;
 
@@ -119,7 +124,51 @@ public class SaveManager {
         }
         data.pops = popEntries;
 
+        List<SaveData.PartyEntry> partyEntries = new ArrayList<>();
+        for (PoliticalParty party : gameState.getPartyManager().getParties()) {
+            partyEntries.add(new SaveData.PartyEntry(
+                party.getName(),
+                party.getPlayerOpinion(),
+                party.getPublicOpinion(),
+                party.getPower(),
+                party.getFavour()
+            ));
+        }
+        data.parties = partyEntries;
+
+        List<SaveData.ActiveEffectEntry> effectEntries = new ArrayList<>();
+        for (ActiveEffect effect : gameState.getEffectManager().getActiveEffects()) {
+            effectEntries.add(new SaveData.ActiveEffectEntry(
+                effect.getType().name(),
+                effect.getRemainingAmount(),
+                effect.getTurnsRemaining()
+            ));
+        }
+        data.activeEffects = effectEntries;
+
+        if (gameState.hasActiveSession()) {
+            data.pendingVoteSession = serializeSession(gameState.getActiveSession());
+        }
+
         return data;
+    }
+
+    private static SaveData.VoteSessionEntry serializeSession(VotingSession session) {
+        SaveData.VoteSessionEntry entry = new SaveData.VoteSessionEntry();
+        entry.actionName   = session.getAction().getName();
+        entry.playerIntent = session.getPlayerIntent().name();
+
+        List<SaveData.VoteSessionEntry.PartyVoteEntry> partyVotes = new ArrayList<>();
+        for (PoliticalParty party : session.getParties()) {
+            partyVotes.add(new SaveData.VoteSessionEntry.PartyVoteEntry(
+                party.getName(),
+                session.getScore(party),
+                session.getIntent(party).name(),
+                session.hasDealt(party)
+            ));
+        }
+        entry.partyVotes = partyVotes;
+        return entry;
     }
 
     // ─── SaveData → GameState ─────────────────────────────────────────────────
@@ -129,6 +178,9 @@ public class SaveManager {
         applyResources(data, gameState.getResources());
         applyStats(data, gameState.getStats());
         applyPops(data, gameState);
+        applyParties(data, gameState);
+        applyActiveEffects(data, gameState);
+        applyVoteSession(data, gameState);
     }
 
     private static void applyCalendar(SaveData data, GameCalendar cal) {
@@ -151,7 +203,7 @@ public class SaveManager {
 
     private static void applyPops(SaveData data, GameState gameState) {
         for (SaveData.PopEntry entry : data.pops) {
-            PopType              type        = PopType.valueOf(entry.popType);
+            PopType      type        = PopType.valueOf(entry.popType);
             PolitcalView affiliation = PolitcalView.valueOf(entry.affiliation);
             Pop pop = gameState.getPopManager().getPopByType(type);
             if (pop != null) {
@@ -159,5 +211,54 @@ public class SaveManager {
                 pop.setAffiliation(affiliation);
             }
         }
+    }
+
+    private static void applyParties(SaveData data, GameState gameState) {
+        if (data.parties == null) return;
+        for (SaveData.PartyEntry entry : data.parties) {
+            for (PoliticalParty party : gameState.getPartyManager().getParties()) {
+                if (party.getName().equals(entry.name)) {
+                    party.setPlayerOpinion(entry.playerOpinion);
+                    party.setPublicOpinion(entry.publicOpinion);
+                    party.setPower(entry.power);
+                    party.setFavour(entry.favour);
+                    break;
+                }
+            }
+        }
+    }
+
+    private static void applyActiveEffects(SaveData data, GameState gameState) {
+        gameState.getEffectManager().reset();
+        if (data.activeEffects == null) return;
+        for (SaveData.ActiveEffectEntry entry : data.activeEffects) {
+            ActiveEffect.Type type = ActiveEffect.Type.valueOf(entry.type);
+            gameState.getEffectManager().addEffect(
+                new ActiveEffect(type, entry.remainingAmount, entry.turnsRemaining, true)
+            );
+        }
+    }
+
+    private static void applyVoteSession(SaveData data, GameState gameState) {
+        gameState.clearActiveSession();
+        if (data.pendingVoteSession == null) return;
+
+        SaveData.VoteSessionEntry entry = data.pendingVoteSession;
+        FormalAction action = findActionByName(entry.actionName, gameState);
+        if (action == null) return;
+
+        List<PoliticalParty> parties = gameState.getPartyManager().getParties();
+        VotingSession session = gameState.getVoteSessionManager()
+            .restoreSession(action, parties, entry);
+        gameState.addSession(session);
+    }
+
+    private static FormalAction findActionByName(String name, GameState gameState) {
+        for (PlayerAction action : gameState.getActionRegistry().getActions()) {
+            if (action.getName().equals(name) && action instanceof FormalAction fa) {
+                return fa;
+            }
+        }
+        return null;
     }
 }

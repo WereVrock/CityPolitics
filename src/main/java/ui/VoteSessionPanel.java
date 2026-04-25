@@ -11,6 +11,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 import main.parameters.GameParameters;
+// NegotiationDialogueGenerator is used only in PartyNegotiationPanel
 
 /**
  * Main vote session screen. Shows parties, their expected votes,

@@ -121,7 +121,7 @@ public class PartiesOverviewPanel extends JPanel {
         return portrait;
     }
 
-    private JPanel buildPartyInfo(PoliticalParty party) {
+private JPanel buildPartyInfo(PoliticalParty party) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(UITheme.BG_PANEL);
@@ -146,13 +146,24 @@ public class PartiesOverviewPanel extends JPanel {
         favourLabel.setFont(UITheme.FONT_SMALL);
         favourLabel.setForeground(favour < 0 ? UITheme.TEXT_RED : UITheme.TEXT_SECONDARY);
 
+        JTextArea personality = new JTextArea(party.getPersonality());
+        personality.setFont(new java.awt.Font("Serif", java.awt.Font.ITALIC, 12));
+        personality.setForeground(UITheme.TEXT_SECONDARY);
+        personality.setBackground(UITheme.BG_PANEL);
+        personality.setEditable(false);
+        personality.setLineWrap(true);
+        personality.setWrapStyleWord(true);
+        personality.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 40));
+
         panel.add(name);
         panel.add(Box.createVerticalStrut(2));
         panel.add(leader);
-        panel.add(Box.createVerticalStrut(4));
+        panel.add(Box.createVerticalStrut(2));
         panel.add(seats);
         panel.add(Box.createVerticalStrut(2));
         panel.add(favourLabel);
+        panel.add(Box.createVerticalStrut(4));
+        panel.add(personality);
         panel.add(Box.createVerticalStrut(6));
 
         for (Map.Entry<PolitcalView, ViewStrength> entry : party.getViews().entrySet()) {
@@ -165,7 +176,7 @@ public class PartiesOverviewPanel extends JPanel {
         return panel;
     }
 
-    private JPanel buildOpinionPanel(PoliticalParty party) {
+private JPanel buildOpinionPanel(PoliticalParty party) {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(UITheme.BG_PANEL);

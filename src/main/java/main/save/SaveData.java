@@ -25,6 +25,9 @@ public class SaveData {
     public int happiness;
 
     public List<PopEntry> pops;
+    public List<PartyEntry> parties;
+    public List<ActiveEffectEntry> activeEffects;
+    public VoteSessionEntry pendingVoteSession;
 
     public static class PopEntry {
         public String popType;
@@ -37,6 +40,62 @@ public class SaveData {
             this.popType     = popType;
             this.affiliation = affiliation;
             this.count       = count;
+        }
+    }
+
+    public static class PartyEntry {
+        public String name;
+        public int playerOpinion;
+        public int publicOpinion;
+        public int power;
+        public int favour;
+
+        public PartyEntry() {}
+
+        public PartyEntry(String name, int playerOpinion, int publicOpinion, int power, int favour) {
+            this.name          = name;
+            this.playerOpinion = playerOpinion;
+            this.publicOpinion = publicOpinion;
+            this.power         = power;
+            this.favour        = favour;
+        }
+    }
+
+    public static class ActiveEffectEntry {
+        public String type;
+        public double remainingAmount;
+        public int    turnsRemaining;
+
+        public ActiveEffectEntry() {}
+
+        public ActiveEffectEntry(String type, double remainingAmount, int turnsRemaining) {
+            this.type            = type;
+            this.remainingAmount = remainingAmount;
+            this.turnsRemaining  = turnsRemaining;
+        }
+    }
+
+    public static class VoteSessionEntry {
+        public String actionName;
+        public String playerIntent;
+        public List<PartyVoteEntry> partyVotes;
+
+        public VoteSessionEntry() {}
+
+        public static class PartyVoteEntry {
+            public String partyName;
+            public double score;
+            public String intent;
+            public boolean dealt;
+
+            public PartyVoteEntry() {}
+
+            public PartyVoteEntry(String partyName, double score, String intent, boolean dealt) {
+                this.partyName = partyName;
+                this.score     = score;
+                this.intent    = intent;
+                this.dealt     = dealt;
+            }
         }
     }
 }

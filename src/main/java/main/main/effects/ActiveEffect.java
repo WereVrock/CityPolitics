@@ -20,7 +20,19 @@ public class ActiveEffect {
         this.remainingAmount  = initialAmount;
         this.turnsRemaining   = durationTurns;
         this.decayRate        = 1.0 - Math.pow(0.0001, 1.0 / durationTurns);
-        // approaches zero over durationTurns without ever snapping to exactly zero
+    }
+
+    /**
+     * Restores a saved effect. DecayRate is recalculated from remaining turns so decay
+     * continues at the same rate it was on when saved.
+     */
+    public ActiveEffect(Type type, double remainingAmount, int turnsRemaining, boolean restored) {
+        this.type            = type;
+        this.remainingAmount = remainingAmount;
+        this.turnsRemaining  = turnsRemaining;
+        this.decayRate       = turnsRemaining > 0
+            ? 1.0 - Math.pow(0.0001, 1.0 / turnsRemaining)
+            : 1.0;
     }
 
     /**
