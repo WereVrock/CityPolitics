@@ -23,9 +23,9 @@ public class MainWindow extends JFrame {
     private final SaveLoadDialog         saveLoadDialog;
     private final PartiesOverviewPanel   partiesOverviewPanel;
     private final VoteSessionPanel       voteSessionPanel;
+    private final MapView                mapView;
 
     private final JPanel  centerPanel;
-    private  JButton endTurnBtn;
     private  JButton partiesBtn;
     private  JButton openVoteBtn;
 
@@ -42,6 +42,8 @@ public class MainWindow extends JFrame {
         setLayout(new BorderLayout());
 
         calendarPanel        = new CalendarPanel(gameState);
+        calendarPanel.setEndTurnCallback(this::endTurn);
+        calendarPanel.setBlockedSupplier(() -> gameState.hasActiveSession());
         resourcePanel        = new ResourcePanel(gameState);
         popPanel             = new PopPanel(gameState);
         actionsPanel         = new ActionsPanel(gameState, this::handleActionResult);
@@ -49,6 +51,7 @@ public class MainWindow extends JFrame {
         saveLoadDialog       = new SaveLoadDialog(this, gameState, eventLogPanel::appendLine);
         partiesOverviewPanel = new PartiesOverviewPanel(gameState, this::showMainView);
         voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteFinalized, this::swapCenter);
+        mapView              = new MapView(gameState.getZoneManager(), this::showMainView);
 
         // Left sidebar
         JPanel leftSidebar = new JPanel(new BorderLayout());
@@ -119,16 +122,6 @@ private JButton buildBarButton(String label) {
     }
 
     private JPanel buildBottomBar() {
-        endTurnBtn = new JButton("END TURN  ▶");
-        endTurnBtn.setFont(new Font("Serif", Font.BOLD, 15));
-        endTurnBtn.setForeground(UITheme.ACCENT_FROST);
-        endTurnBtn.setBackground(new Color(25, 45, 65));
-        endTurnBtn.setBorderPainted(false);
-        endTurnBtn.setFocusPainted(false);
-        endTurnBtn.setPreferredSize(new Dimension(0, 48));
-        endTurnBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        endTurnBtn.addActionListener(e -> endTurn());
-
         partiesBtn = new JButton("PARTIES");
         partiesBtn.setFont(UITheme.FONT_BUTTON);
         partiesBtn.setForeground(UITheme.TEXT_SECONDARY);
@@ -138,6 +131,16 @@ private JButton buildBarButton(String label) {
         partiesBtn.setPreferredSize(new Dimension(90, 48));
         partiesBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         partiesBtn.addActionListener(e -> showPartiesView());
+
+        JButton mapBtn = new JButton("MAP");
+        mapBtn.setFont(UITheme.FONT_BUTTON);
+        mapBtn.setForeground(UITheme.TEXT_SECONDARY);
+        mapBtn.setBackground(UITheme.BUTTON_BG);
+        mapBtn.setBorderPainted(false);
+        mapBtn.setFocusPainted(false);
+        mapBtn.setPreferredSize(new Dimension(60, 48));
+        mapBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        mapBtn.addActionListener(e -> showMapView());
 
         openVoteBtn = new JButton("⚑ OPEN VOTE");
         openVoteBtn.setFont(UITheme.FONT_BUTTON);
@@ -154,13 +157,13 @@ private JButton buildBarButton(String label) {
         wrapper.setBackground(UITheme.BG_DARK);
         wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
 
-        JPanel leftBtns = new JPanel(new BorderLayout(4, 0));
+        JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         leftBtns.setBackground(UITheme.BG_DARK);
-        leftBtns.add(partiesBtn,  BorderLayout.WEST);
-        leftBtns.add(openVoteBtn, BorderLayout.EAST);
+        leftBtns.add(partiesBtn);
+        leftBtns.add(mapBtn);
+        leftBtns.add(openVoteBtn);
 
-        wrapper.add(leftBtns,   BorderLayout.WEST);
-        wrapper.add(endTurnBtn, BorderLayout.CENTER);
+        wrapper.add(leftBtns, BorderLayout.WEST);
         return wrapper;
     }
 
@@ -190,6 +193,11 @@ private JButton buildBarButton(String label) {
         swapCenter(partiesOverviewPanel);
     }
 
+    private void showMapView() {
+        mapView.refresh();
+        swapCenter(mapView);
+    }
+
     private void showVoteSession() {
         voteSessionPanel.refresh();
         swapCenter(voteSessionPanel);
@@ -207,10 +215,8 @@ private JButton buildBarButton(String label) {
     }
 
     private void updateEndTurnState() {
-        boolean blocked = gameState.hasActiveSession();
-        endTurnBtn.setEnabled(!blocked);
-        endTurnBtn.setBackground(blocked ? UITheme.BUTTON_DISABLED : new Color(25, 45, 65));
-        endTurnBtn.setText(blocked ? "VOTE PENDING  ⚠" : "END TURN  ▶");
+        boolean blocked       = gameState.hasActiveSession();
+        calendarPanel.updateEndTurnState(blocked, blocked);
         partiesBtn.setVisible(!blocked);
         openVoteBtn.setVisible(blocked);
     }

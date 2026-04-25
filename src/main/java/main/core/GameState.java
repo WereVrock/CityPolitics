@@ -3,6 +3,7 @@ package main.core;
 import main.actions.ActionRegistry;
 import main.calendar.GameCalendar;
 import main.effects.EffectManager;
+import main.map.ZoneManager;
 import main.pops.PopManager;
 import main.politics.PartyManager;
 import main.politics.VoteSessionManager;
@@ -23,6 +24,7 @@ public class GameState {
     private final PartyManager       partyManager;
     private final VoteSessionManager    voteSessionManager;
     private final List<VotingSession>   pendingSessions = new java.util.ArrayList<>();
+    private final ZoneManager            zoneManager;
 
     public GameState() {
         this.calendar       = new GameCalendar();
@@ -34,6 +36,7 @@ public class GameState {
         this.actionRegistry    = new ActionRegistry(this);
         this.turnProcessor     = new TurnProcessor();
         this.voteSessionManager = new VoteSessionManager();
+        this.zoneManager        = new ZoneManager();
     }
 
     public void reset() {
@@ -45,6 +48,7 @@ public class GameState {
         partyManager.reset();
         actionRegistry.resetAllActions();
         pendingSessions.clear();
+        zoneManager.reset();
     }
 
     public GameCalendar   getCalendar()       { return calendar; }
@@ -56,6 +60,7 @@ public class GameState {
     public EffectManager  getEffectManager()  { return effectManager; }
     public PartyManager        getPartyManager()         { return partyManager; }
     public VoteSessionManager  getVoteSessionManager()   { return voteSessionManager; }
+    public ZoneManager         getZoneManager()          { return zoneManager; }
     public VotingSession       getActiveSession()         { return pendingSessions.isEmpty() ? null : pendingSessions.get(0); }
     public void                addSession(VotingSession s){ pendingSessions.add(s); }
     public void                clearActiveSession()       { if (!pendingSessions.isEmpty()) pendingSessions.remove(0); }

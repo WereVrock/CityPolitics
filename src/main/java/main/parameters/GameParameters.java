@@ -160,4 +160,19 @@ public final class GameParameters {
     // =========================================================
     public static final int STAT_MIN                        = 0;
     public static final int STAT_MAX                        = 100;
+
+    // =========================================================
+    // MAP — ZONE PRODUCTION & POPS
+    // =========================================================
+    public static final int ZONE_CAPITAL_GOLD    = 12;
+    public static final int ZONE_CAPITAL_FOOD    = 10;
+    public static final int ZONE_CAPITAL_POPS    = 50;
+
+    public static final int ZONE_TOWN_GOLD       = 10;
+    public static final int ZONE_TOWN_FOOD       = 4;
+    public static final int ZONE_TOWN_POPS       = 20;
+
+    public static final int ZONE_VILLAGE_GOLD    = 3;
+    public static final int ZONE_VILLAGE_FOOD    = 12;
+    public static final int ZONE_VILLAGE_POPS    = 10;
 }
