@@ -1,5 +1,5 @@
 // MapInfoPanel.java
-package ui;
+package ui.map;
 
 import main.map.Zone;
 import main.map.ZoneManager;
@@ -8,6 +8,7 @@ import main.map.ZoneState;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import ui.UITheme;
 
 /**
  * Sidebar panel showing details about the currently selected zone.

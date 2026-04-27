@@ -1,4 +1,4 @@
-package ui;
+package ui.politics;
 
 import main.politics.VoteResult;
 import main.politics.VoteScore;
@@ -6,6 +6,7 @@ import main.politics.VoteScore;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import ui.UITheme;
 
 /**
  * Modal dialog displaying the full assembly vote breakdown.

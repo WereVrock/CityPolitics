@@ -1,5 +1,8 @@
 package ui;
 
+import ui.politics.PartiesOverviewPanel;
+import ui.map.MapView;
+import ui.politics.VoteSessionPanel;
 import main.actions.ActionResult;
 import main.core.GameState;
 

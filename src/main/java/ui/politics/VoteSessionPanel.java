@@ -1,4 +1,4 @@
-package ui;
+package ui.politics;
 
 import main.core.GameState;
 import main.politics.PoliticalParty;
@@ -11,6 +11,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 import main.parameters.GameParameters;
+import ui.UITheme;
 // NegotiationDialogueGenerator is used only in PartyNegotiationPanel
 
 /**

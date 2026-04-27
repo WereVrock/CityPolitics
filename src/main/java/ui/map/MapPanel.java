@@ -1,5 +1,5 @@
 // MapPanel.java
-package ui;
+package ui.map;
 
 import main.map.Zone;
 import main.map.ZoneManager;

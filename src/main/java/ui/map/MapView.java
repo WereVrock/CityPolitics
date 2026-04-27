@@ -1,5 +1,5 @@
 // MapView.java
-package ui;
+package ui.map;
 
 import main.map.Zone;
 import main.map.ZoneManager;
@@ -7,6 +7,7 @@ import main.map.ZoneManager;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import ui.UITheme;
 
 /**
  * Full map screen: MapPanel (centre) + MapInfoPanel (right sidebar) + back button.

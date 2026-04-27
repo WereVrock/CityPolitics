@@ -1,4 +1,4 @@
-package ui;
+package ui.politics;
 
 import main.core.GameState;
 import main.politics.DealOffer;
@@ -9,6 +9,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import main.politics.NegotiationDialogueGenerator;
+import ui.UITheme;
 
 /**
  * Shows the party leader portrait, in-character dialogue, and deal offer.

@@ -1,4 +1,4 @@
-package ui;
+package ui.politics;
 
 import main.politics.PolitcalView;
 import main.politics.PoliticalParty;
@@ -11,6 +11,7 @@ import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.util.List;
 import java.util.Map;
+import ui.UITheme;
 
 /**
  * Shows all parties, their seats, opinions, and political views.
