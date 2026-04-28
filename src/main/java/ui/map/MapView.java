@@ -1,7 +1,6 @@
 // MapView.java
 package ui.map;
 
-import main.map.Zone;
 import main.map.ZoneManager;
 
 import javax.swing.*;
@@ -17,12 +16,18 @@ public class MapView extends JPanel {
     private final MapPanel     mapPanel;
     private final MapInfoPanel infoPanel;
 
-    public MapView(ZoneManager zoneManager, Runnable onBack) {
+    public MapView(main.core.GameState gameState, Runnable onBack) {
+        ZoneManager zoneManager = gameState.getZoneManager();
         setLayout(new BorderLayout());
         setBackground(UITheme.BG_DARK);
 
         infoPanel = new MapInfoPanel(zoneManager);
-        mapPanel  = new MapPanel(zoneManager, zone -> infoPanel.showZone(zone));
+        mapPanel  = new MapPanel(
+            zoneManager,
+            gameState.getArmyManager(),
+            zone  -> infoPanel.showZone(zone),
+            army  -> infoPanel.showArmy(army)
+        );
 
         // Top bar
         JPanel topBar = new JPanel(new BorderLayout());
@@ -60,6 +65,7 @@ public class MapView extends JPanel {
     public void refresh() {
         mapPanel.clearSelection();
         infoPanel.showZone(null);
+        infoPanel.showArmy(null);
         mapPanel.repaint();
     }
 }

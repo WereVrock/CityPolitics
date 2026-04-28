@@ -26,6 +26,13 @@ public class MapInfoPanel extends JPanel {
     private final JLabel      adjacentLabel;
     private final JTextArea   adjacentArea;
 
+    // Army info
+    private final JLabel      armyTitleLabel;
+    private final JLabel      armyZoneLabel;
+    private final JLabel      armyMovesLabel;
+    private final JLabel      armyOrdersLabel;
+    private final JTextArea   armyOrdersArea;
+
     public MapInfoPanel(ZoneManager zoneManager) {
         this.zoneManager = zoneManager;
         setBackground(UITheme.BG_PANEL);
@@ -51,6 +58,20 @@ public class MapInfoPanel extends JPanel {
         adjacentArea.setWrapStyleWord(true);
         adjacentArea.setMaximumSize(new Dimension(180, 80));
 
+        armyTitleLabel  = makeLabel("",  UITheme.ACCENT_FROST,   UITheme.FONT_HEADER);
+        armyZoneLabel   = makeLabel("",  UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
+        armyMovesLabel  = makeLabel("",  UITheme.TEXT_SECONDARY, UITheme.FONT_BODY);
+        armyOrdersLabel = makeLabel("Orders:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
+
+        armyOrdersArea  = new JTextArea();
+        armyOrdersArea.setEditable(false);
+        armyOrdersArea.setBackground(UITheme.BG_PANEL);
+        armyOrdersArea.setForeground(UITheme.TEXT_PRIMARY);
+        armyOrdersArea.setFont(UITheme.FONT_SMALL);
+        armyOrdersArea.setLineWrap(true);
+        armyOrdersArea.setWrapStyleWord(true);
+        armyOrdersArea.setMaximumSize(new Dimension(180, 80));
+
         add(titleLabel);
         add(Box.createVerticalStrut(4));
         add(typeLabel);
@@ -64,9 +85,50 @@ public class MapInfoPanel extends JPanel {
         add(separator());
         add(adjacentLabel);
         add(adjacentArea);
+        add(separator());
+        add(armyTitleLabel);
+        add(Box.createVerticalStrut(2));
+        add(armyZoneLabel);
+        add(armyMovesLabel);
+        add(armyOrdersLabel);
+        add(armyOrdersArea);
         add(Box.createVerticalGlue());
 
         showEmpty();
+    }
+
+    public void showArmy(main.army.Army army) {
+        clearArmyInfo();
+        if (army == null) return;
+        Zone zone = zoneManager.getZone(army.getZoneId());
+        armyTitleLabel.setText("⚔ Army");
+        armyZoneLabel.setText("Location: " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+        armyMovesLabel.setText("Moves/turn: " + main.parameters.GameParameters.ARMY_MOVES_PER_TURN);
+
+        var orders = army.getPendingOrders();
+        if (orders.isEmpty()) {
+            armyOrdersArea.setText("Idle — click a zone\nto issue march order.");
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (var order : orders) {
+                Zone tgt = zoneManager.getZone(order.getTargetZoneId());
+                String tgtName = tgt != null ? tgt.getDisplayName() : order.getTargetZoneId();
+                if (order.getTurnsRemaining() > 0) {
+                    sb.append("→ ").append(tgtName)
+                      .append(" (msg in ").append(order.getTurnsRemaining()).append("t)\n");
+                } else {
+                    sb.append("→ ").append(tgtName).append(" (marching)\n");
+                }
+            }
+            armyOrdersArea.setText(sb.toString().trim());
+        }
+    }
+
+    private void clearArmyInfo() {
+        armyTitleLabel.setText("");
+        armyZoneLabel.setText("");
+        armyMovesLabel.setText("");
+        armyOrdersArea.setText("");
     }
 
     public void showZone(Zone zone) {
@@ -99,6 +161,7 @@ public class MapInfoPanel extends JPanel {
         supplyLabel.setText("");
         damageLabel.setText("");
         adjacentArea.setText("");
+        clearArmyInfo();
     }
 
     private JLabel makeLabel(String text, Color color, Font font) {

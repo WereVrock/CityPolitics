@@ -10,7 +10,6 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Top-level JFrame. Assembles all panels and wires the End Turn button.
@@ -54,7 +53,7 @@ public class MainWindow extends JFrame {
         saveLoadDialog       = new SaveLoadDialog(this, gameState, eventLogPanel::appendLine);
         partiesOverviewPanel = new PartiesOverviewPanel(gameState, this::showMainView);
         voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteFinalized, this::swapCenter);
-        mapView              = new MapView(gameState.getZoneManager(), this::showMainView);
+        mapView              = new MapView(gameState, this::showMainView);
 
         // Left sidebar
         JPanel leftSidebar = new JPanel(new BorderLayout());
@@ -226,13 +225,13 @@ private JButton buildBarButton(String label) {
 
     private void endTurn() {
         List<String> log = gameState.getTurnProcessor().processTurn(
+                gameState,
             gameState.getResources(),
             gameState.getStats(),
             gameState.getPopManager(),
             gameState.getCalendar(),
             gameState.getActionRegistry(),
-            gameState.getEffectManager()
-        );
+            gameState.getEffectManager()  );
         eventLogPanel.appendLines(log);
         refreshAll();
 

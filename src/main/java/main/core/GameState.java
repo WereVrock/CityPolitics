@@ -25,6 +25,7 @@ public class GameState {
     private final VoteSessionManager    voteSessionManager;
     private final List<VotingSession>   pendingSessions = new java.util.ArrayList<>();
     private final ZoneManager            zoneManager;
+    private final main.army.ArmyManager  armyManager;
 
     public GameState() {
         this.calendar       = new GameCalendar();
@@ -37,6 +38,7 @@ public class GameState {
         this.turnProcessor     = new TurnProcessor();
         this.voteSessionManager = new VoteSessionManager();
         this.zoneManager        = new ZoneManager();
+        this.armyManager        = new main.army.ArmyManager(zoneManager);
     }
 
     public void reset() {
@@ -49,6 +51,7 @@ public class GameState {
         actionRegistry.resetAllActions();
         pendingSessions.clear();
         zoneManager.reset();
+        armyManager.reset();
     }
 
     public GameCalendar   getCalendar()       { return calendar; }
@@ -60,7 +63,8 @@ public class GameState {
     public EffectManager  getEffectManager()  { return effectManager; }
     public PartyManager        getPartyManager()         { return partyManager; }
     public VoteSessionManager  getVoteSessionManager()   { return voteSessionManager; }
-    public ZoneManager         getZoneManager()          { return zoneManager; }
+    public ZoneManager              getZoneManager()     { return zoneManager; }
+    public main.army.ArmyManager    getArmyManager()     { return armyManager; }
     public VotingSession       getActiveSession()         { return pendingSessions.isEmpty() ? null : pendingSessions.get(0); }
     public void                addSession(VotingSession s){ pendingSessions.add(s); }
     public void                clearActiveSession()       { if (!pendingSessions.isEmpty()) pendingSessions.remove(0); }

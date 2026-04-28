@@ -14,6 +14,7 @@ import java.util.List;
 public class TurnProcessor {
 
     public List<String> processTurn(
+            GameState     gameState,
             ResourcePool  resources,
             StatBlock     stats,
             PopManager    popManager,
@@ -22,6 +23,7 @@ public class TurnProcessor {
             EffectManager effectManager) {
 
         List<String> log = new ArrayList<>();
+        log.addAll(gameState.getArmyManager().processTurn());
 
         applyPopEconomics(resources, popManager, log);
         applyStatDecay(stats, log);

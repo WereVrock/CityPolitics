@@ -175,4 +175,15 @@ public final class GameParameters {
     public static final int ZONE_VILLAGE_GOLD    = 3;
     public static final int ZONE_VILLAGE_FOOD    = 12;
     public static final int ZONE_VILLAGE_POPS    = 10;
+
+    // =========================================================
+    // ARMY
+    // =========================================================
+    /** Zones an army can traverse per turn once orders arrive. */
+    public static final int ARMY_MOVES_PER_TURN  = 3;
+    /**
+     * Zones a messenger travels per turn from the capital to the army.
+     * Orders issued when army is N zones from capital are delayed ceil(N/speed) turns.
+     */
+    public static final int ARMY_MESSAGE_SPEED   = 2;
 }

@@ -5,6 +5,7 @@ import main.map.ZoneManager;
 import main.map.ZoneState;
 
 import java.awt.*;
+import main.army.Army;
 
 public class MapRenderer {
 
@@ -28,18 +29,27 @@ private static final Font FONT_ZONE_STATS = new Font("Serif", Font.ITALIC, 10);
 
 private static final int ICON_LABEL_OFFSET = 18;
 
-private final ZoneManager zoneManager;
+private final ZoneManager  zoneManager;
+private       ArmyRenderer armyRenderer;
 
 public MapRenderer(ZoneManager zoneManager) {
-this.zoneManager = zoneManager;
+    this.zoneManager = zoneManager;
 }
 
-public void render(Graphics2D g2, Zone selected, Zone hovered) {
-drawBackground(g2);
-
-for (Zone zone : zoneManager.getZones()) {
-drawZone(g2, zone, selected, hovered);
+public void setArmyRenderer(ArmyRenderer armyRenderer) {
+    this.armyRenderer = armyRenderer;
 }
+
+public void render(Graphics2D g2, Zone selected, Zone hovered, Army selectedArmy) {
+    drawBackground(g2);
+
+    for (Zone zone : zoneManager.getZones()) {
+        drawZone(g2, zone, selected, hovered);
+    }
+
+    if (armyRenderer != null) {
+        armyRenderer.render(g2, selectedArmy);
+    }
 }
 
 public Zone hitTest(Point world) {

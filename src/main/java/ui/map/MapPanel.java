@@ -7,6 +7,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.function.Consumer;
+import main.army.Army;
+import main.army.ArmyManager;
 
 /**
  * Custom JPanel that renders the zone map.
@@ -17,22 +19,31 @@ public class MapPanel extends JPanel {
     private final ZoneManager    zoneManager;
     private final Consumer<Zone> onZoneSelected;
 
-    private final MapCamera   camera;
-    private final MapRenderer renderer;
+    private final MapCamera     camera;
+    private final MapRenderer   renderer;
+    private final ArmyRenderer  armyRenderer;
+    private final ArmyManager   armyManager;
+    private final Consumer<Army> onArmySelected;
 
-    private Zone  selectedZone = null;
-    private Zone  hoveredZone  = null;
+    private Zone  selectedZone  = null;
+    private Zone  hoveredZone   = null;
+    private Army  selectedArmy  = null;
 
     private Point dragStart  = null;
     private int   panXAtDrag = 0;
     private int   panYAtDrag = 0;
 
-    public MapPanel(ZoneManager zoneManager, Consumer<Zone> onZoneSelected) {
+    public MapPanel(ZoneManager zoneManager, ArmyManager armyManager,
+                    Consumer<Zone> onZoneSelected, Consumer<Army> onArmySelected) {
         this.zoneManager    = zoneManager;
+        this.armyManager    = armyManager;
         this.onZoneSelected = onZoneSelected;
+        this.onArmySelected = onArmySelected;
 
-        this.camera   = new MapCamera();
-        this.renderer = new MapRenderer(zoneManager);
+        this.camera        = new MapCamera();
+        this.renderer      = new MapRenderer(zoneManager);
+        this.armyRenderer  = new ArmyRenderer(armyManager, zoneManager);
+        this.renderer.setArmyRenderer(armyRenderer);
 
         setBackground(MapRenderer.COLOR_BG);
         setPreferredSize(new Dimension(800, 520));
@@ -40,11 +51,6 @@ public class MapPanel extends JPanel {
     }
 
     // ─── Selection ────────────────────────────────────────────────────────────
-
-    public void clearSelection() {
-        selectedZone = null;
-        repaint();
-    }
 
     public Zone getSelectedZone() {
         return selectedZone;
@@ -104,11 +110,47 @@ public class MapPanel extends JPanel {
     }
 
     private void handleClick(Point screenPt) {
+        Point world   = camera.screenToWorld(screenPt);
+        Army armyHit  = armyRenderer.hitTest(world, zoneManager);
+
+        if (armyHit != null) {
+            selectedArmy = (selectedArmy == armyHit) ? null : armyHit;
+            selectedZone = null;
+            repaint();
+            onArmySelected.accept(selectedArmy);
+            onZoneSelected.accept(null);
+            return;
+        }
+
         Zone hit = zoneAtScreenPoint(screenPt);
+
+        // If an army is selected and user clicks a zone → issue order
+        if (selectedArmy != null && hit != null) {
+            onZoneSelected.accept(hit);    // still update info panel
+            issueOrderToSelectedArmy(hit);
+            return;
+        }
+
         selectedZone = hit;
+        selectedArmy = null;
         repaint();
         onZoneSelected.accept(hit);
+        onArmySelected.accept(null);
     }
+
+    private void issueOrderToSelectedArmy(Zone target) {
+        if (selectedArmy == null) return;
+        armyManager.issueMoveOrder(selectedArmy, target.getId());
+        repaint();
+    }
+
+    public void clearSelection() {
+        selectedZone = null;
+        selectedArmy = null;
+        repaint();
+    }
+
+    public Army getSelectedArmy() { return selectedArmy; }
 
     // ─── Hit testing ──────────────────────────────────────────────────────────
 
@@ -128,7 +170,7 @@ public class MapPanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         camera.applyTransform(g2);
-        renderer.render(g2, selectedZone, hoveredZone);
+        renderer.render(g2, selectedZone, hoveredZone, selectedArmy);
 
         g2.dispose();
     }
