@@ -38,24 +38,50 @@ public final class SettlementIconRenderer {
         g2.drawRect(cx + 5, cy - 12, 4, 6);
     }
 
-    private static void drawTowerIcon(Graphics2D g2, int cx, int cy, Color shadowColor) {
-        g2.setColor(shadowColor);
-        g2.fillRect(cx - 5, cy - 10, 10, 14);
+ private static void drawTowerIcon(Graphics2D g2, int cx, int cy, Color shadowColor) {
+    int baseY = cy + 4; // common ground line
 
-        int[] rx = {cx - 7, cx + 7, cx};
-        int[] ry = {cy - 10, cy - 10, cy - 17};
-        g2.fillPolygon(rx, ry, 3);
+    g2.setColor(shadowColor);
 
-        g2.setColor(new Color(30, 18, 6));
-        g2.fillRoundRect(cx - 2, cy - 6, 4, 5, 2, 2);
+    // --- Tower ---
+    int towerHeight = 14;
+    int towerTop = baseY - towerHeight;
 
-        g2.setColor(new Color(160, 200, 150));
-        g2.setStroke(new BasicStroke(0.7f));
-        g2.drawRect(cx - 5, cy - 10, 10, 14);
-        g2.drawPolygon(rx, ry, 3);
-    }
+    g2.fillRect(cx - 3, towerTop, 6, towerHeight);
 
-    private static void drawHutIcon(Graphics2D g2, int cx, int cy, Color shadowColor) {
+    int[] rx = {cx - 4, cx + 4, cx};
+    int[] ry = {towerTop, towerTop, towerTop - 7};
+    g2.fillPolygon(rx, ry, 3);
+
+    g2.setColor(new Color(30, 18, 6));
+    g2.fillRoundRect(cx - 1, baseY - 6, 2, 5, 2, 2);
+
+    g2.setColor(new Color(160, 200, 150));
+    g2.setStroke(new BasicStroke(0.7f));
+    g2.drawRect(cx - 3, towerTop, 6, towerHeight);
+    g2.drawPolygon(rx, ry, 3);
+
+    // --- House ---
+    int hx = cx + 10;
+    int houseHeight = 6;
+    int houseTop = baseY - houseHeight;
+
+    g2.setColor(shadowColor);
+    g2.fillRect(hx - 3, houseTop, 6, houseHeight);
+
+    int[] hRoofX = {hx - 4, hx + 4, hx};
+    int[] hRoofY = {houseTop, houseTop, houseTop - 5};
+    g2.fillPolygon(hRoofX, hRoofY, 3);
+
+    // door
+    g2.setColor(new Color(30, 18, 6));
+    g2.fillRect(hx - 1, baseY - 3, 2, 3);
+
+    // outline
+    g2.setColor(new Color(160, 200, 150));
+    g2.drawRect(hx - 3, houseTop, 6, houseHeight);
+    g2.drawPolygon(hRoofX, hRoofY, 3);
+}   private static void drawHutIcon(Graphics2D g2, int cx, int cy, Color shadowColor) {
         g2.setColor(shadowColor);
         g2.fillRect(cx - 6, cy - 6, 12, 10);
 
