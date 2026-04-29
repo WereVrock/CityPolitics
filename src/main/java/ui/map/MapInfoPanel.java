@@ -97,41 +97,64 @@ public class MapInfoPanel extends JPanel {
         showEmpty();
     }
 
-    public void showArmy(main.army.Army army) {
+public void showArmy(main.army.Army army) {
         clearArmyInfo();
         if (army == null) return;
         Zone zone = zoneManager.getZone(army.getZoneId());
-        armyTitleLabel.setText("⚔ Army");
-        armyZoneLabel.setText("Location: " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
-        armyMovesLabel.setText("Moves/turn: " + main.parameters.GameParameters.ARMY_MOVES_PER_TURN);
+        armyTitleLabel.setText("⚔ Army — " + army.getId());
+        armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+        
+        int movesRemaining = army.getMovesRemaining();
+        armyMovesLabel.setText("🕐 Moves left this turn: " + movesRemaining + "/" + main.parameters.GameParameters.ARMY_MOVES_PER_TURN);
 
         var orders = army.getPendingOrders();
-        if (orders.isEmpty()) {
-            armyOrdersArea.setText("Idle — click a zone\nto issue march order.");
-        } else {
-            StringBuilder sb = new StringBuilder();
+        String marchTarget = army.getMarchTarget();
+        
+        StringBuilder sb = new StringBuilder();
+        
+        // Show currently executing march order
+        if (marchTarget != null) {
+            Zone tgt = zoneManager.getZone(marchTarget);
+            String tgtName = tgt != null ? tgt.getDisplayName() : marchTarget;
+            Zone current = zoneManager.getZone(army.getZoneId());
+            String currentName = current != null ? current.getDisplayName() : army.getZoneId();
+            sb.append("▶ MARCHING: ").append(currentName).append(" → ").append(tgtName).append("\n");
+        }
+        
+        // Show pending (not yet delivered) orders
+        if (!orders.isEmpty()) {
+            if (sb.length() > 0) sb.append("\n");
+            sb.append("⏳ PENDING ORDERS (messenger en route):\n");
             for (var order : orders) {
                 Zone tgt = zoneManager.getZone(order.getTargetZoneId());
                 String tgtName = tgt != null ? tgt.getDisplayName() : order.getTargetZoneId();
                 if (order.getTurnsRemaining() > 0) {
-                    sb.append("→ ").append(tgtName)
-                      .append(" (msg in ").append(order.getTurnsRemaining()).append("t)\n");
+                    sb.append("   → ").append(tgtName)
+                      .append(" — arrives in ").append(order.getTurnsRemaining()).append(" turn");
+                    if (order.getTurnsRemaining() > 1) sb.append("s");
+                    sb.append("\n");
                 } else {
-                    sb.append("→ ").append(tgtName).append(" (marching)\n");
+                    sb.append("   → ").append(tgtName).append(" — ready to march\n");
                 }
             }
-            armyOrdersArea.setText(sb.toString().trim());
         }
+        
+        if (sb.length() == 0) {
+            sb.append("IDLE\nClick on any zone to issue a march order.\n");
+            sb.append("Orders have delay = distance from capital ÷ messenger speed.");
+        }
+        
+        armyOrdersArea.setText(sb.toString());
     }
 
-    private void clearArmyInfo() {
+private void clearArmyInfo() {
         armyTitleLabel.setText("");
         armyZoneLabel.setText("");
         armyMovesLabel.setText("");
         armyOrdersArea.setText("");
     }
 
-    public void showZone(Zone zone) {
+public void showZone(Zone zone) {
         if (zone == null) { showEmpty(); return; }
         ZoneState state = zoneManager.getState(zone.getId());
 

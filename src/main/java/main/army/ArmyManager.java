@@ -81,9 +81,6 @@ public class ArmyManager {
      */
 
 public List<String> processTurn() {
-        long startTime = System.currentTimeMillis();
-        System.out.println("End Turn clicked at " + currentTimeStr());
-
         List<String> log = new ArrayList<>();
 
         for (Army army : new ArrayList<>(armies)) {
@@ -98,8 +95,6 @@ public List<String> processTurn() {
                 log.addAll(marchOneStep(army));
             }
         }
-        long endTime = System.currentTimeMillis();
-        System.out.println("Turn processing completed at " + currentTimeStr() + " (took " + (endTime - startTime) + " ms)");
         return log;
     }
 
@@ -110,26 +105,21 @@ private List<String> marchOneStep(Army army) {
 
         if (path == null || path.size() <= 1) {
             log.add("⚔ " + army.getId() + " has reached " + zoneName(army.getZoneId()) + ".");
-            System.out.println("Army " + army.getId() + " reached destination at " + zoneName(army.getZoneId()) + " at " + currentTimeStr());
             army.clearMarchTarget();
             return log;
         }
 
-        String oldZoneId = army.getZoneId();
-        String oldZoneName = zoneName(oldZoneId);
+        String oldZoneName = zoneName(army.getZoneId());
         String newZoneId = path.get(1);
         String newZoneName = zoneName(newZoneId);
 
         army.moveTo(newZoneId);
 
-        System.out.println("Army " + army.getId() + " teleported from " + oldZoneName + " to " + newZoneName + " at " + currentTimeStr());
-
         if (army.getZoneId().equals(target)) {
             log.add("⚔ " + army.getId() + " has reached " + zoneName(target) + ".");
-            System.out.println("Army " + army.getId() + " reached destination at " + zoneName(target) + " at " + currentTimeStr());
             army.clearMarchTarget();
         } else {
-            log.add("⚔ " + army.getId() + " marching — now at " + zoneName(army.getZoneId()) + ".");
+            log.add("⚔ " + army.getId() + " marching from " + oldZoneName + " to " + newZoneName + ".");
         }
         return log;
     }
@@ -178,11 +168,7 @@ private List<String> marchOneStep(Army army) {
         return z != null ? z.getDisplayName() : id;
     }
 
-    // Helper for logging timestamps
-    private String currentTimeStr() {
-        long now = System.currentTimeMillis();
-        return String.format("%tT.%03d", now, now % 1000);
-    }
+
 
     // ─── Save/load support ────────────────────────────────────────────────────
 

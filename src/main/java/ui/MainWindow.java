@@ -225,7 +225,6 @@ private JButton buildBarButton(String label) {
     }
 
 private void endTurn() {
-        long t0 = System.currentTimeMillis();
         List<String> log = gameState.getTurnProcessor().processTurn(
             gameState,
             gameState.getResources(),
@@ -235,26 +234,11 @@ private void endTurn() {
             gameState.getActionRegistry(),
             gameState.getEffectManager()
         );
-        long t1 = System.currentTimeMillis();
         eventLogPanel.appendLines(log);
-        long t2 = System.currentTimeMillis();
         calendarPanel.refresh();
-        long t3 = System.currentTimeMillis();
         resourcePanel.refresh();
-        long t4 = System.currentTimeMillis();
         popPanel.refresh();
-        long t5 = System.currentTimeMillis();
         actionsPanel.refresh();
-        long t6 = System.currentTimeMillis();
-
-        System.out.println("=== END TURN TIMING ===");
-        System.out.println("processTurn:      " + (t1-t0) + "ms");
-        System.out.println("appendLines:      " + (t2-t1) + "ms");
-        System.out.println("calendarPanel:    " + (t3-t2) + "ms");
-        System.out.println("resourcePanel:    " + (t4-t3) + "ms");
-        System.out.println("popPanel:         " + (t5-t4) + "ms");
-        System.out.println("actionsPanel:     " + (t6-t5) + "ms");
-        System.out.println("TOTAL:            " + (t6-t0) + "ms");
 
         // Force repaint of map if it is currently visible
         if (centerPanel.getComponentCount() > 0 && centerPanel.getComponent(0) == mapView) {

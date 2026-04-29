@@ -12,7 +12,8 @@ import main.army.ArmyManager;
 
 /**
  * Custom JPanel that renders the zone map.
- * Handles zoom, pan (drag), and zone selection via click.
+ * Handles zoom, pan (drag), and zone/army selection via left click,
+ * and army move orders via right click.
  */
 public class MapPanel extends JPanel {
 
@@ -50,13 +51,19 @@ public class MapPanel extends JPanel {
         setupMouseHandlers();
     }
 
-    // ─── Selection ────────────────────────────────────────────────────────────
-
     public Zone getSelectedZone() {
         return selectedZone;
     }
 
-    // ─── Mouse ────────────────────────────────────────────────────────────────
+    public Army getSelectedArmy() {
+        return selectedArmy;
+    }
+
+    public void clearSelection() {
+        selectedZone = null;
+        selectedArmy = null;
+        repaint();
+    }
 
     private void setupMouseHandlers() {
         addMouseListener(new MouseAdapter() {
@@ -73,8 +80,13 @@ public class MapPanel extends JPanel {
                 if (dragStart != null) {
                     int dx = rel.x - dragStart.x;
                     int dy = rel.y - dragStart.y;
-                    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) {
-                        handleClick(rel);
+                    boolean isClick = Math.abs(dx) < 4 && Math.abs(dy) < 4;
+                    if (isClick) {
+                        if (e.getButton() == MouseEvent.BUTTON3) {
+                            handleRightClick(rel);
+                        } else if (e.getButton() == MouseEvent.BUTTON1) {
+                            handleLeftClick(rel);
+                        }
                     }
                 }
                 dragStart = null;
@@ -109,11 +121,12 @@ public class MapPanel extends JPanel {
         });
     }
 
-    private void handleClick(Point screenPt) {
+    private void handleLeftClick(Point screenPt) {
         Point world   = camera.screenToWorld(screenPt);
         Army armyHit  = armyRenderer.hitTest(world, zoneManager);
 
         if (armyHit != null) {
+            // Toggle army selection
             selectedArmy = (selectedArmy == armyHit) ? null : armyHit;
             selectedZone = null;
             repaint();
@@ -123,14 +136,6 @@ public class MapPanel extends JPanel {
         }
 
         Zone hit = zoneAtScreenPoint(screenPt);
-
-        // If an army is selected and user clicks a zone → issue order
-        if (selectedArmy != null && hit != null) {
-            onZoneSelected.accept(hit);    // still update info panel
-            issueOrderToSelectedArmy(hit);
-            return;
-        }
-
         selectedZone = hit;
         selectedArmy = null;
         repaint();
@@ -138,28 +143,19 @@ public class MapPanel extends JPanel {
         onArmySelected.accept(null);
     }
 
-    private void issueOrderToSelectedArmy(Zone target) {
+    private void handleRightClick(Point screenPt) {
         if (selectedArmy == null) return;
+        Zone target = zoneAtScreenPoint(screenPt);
+        if (target == null) return;
         armyManager.issueMoveOrder(selectedArmy, target.getId());
+        onArmySelected.accept(selectedArmy);  // update info panel
         repaint();
     }
-
-    public void clearSelection() {
-        selectedZone = null;
-        selectedArmy = null;
-        repaint();
-    }
-
-    public Army getSelectedArmy() { return selectedArmy; }
-
-    // ─── Hit testing ──────────────────────────────────────────────────────────
 
     private Zone zoneAtScreenPoint(Point screenPt) {
         Point world = camera.screenToWorld(screenPt);
         return renderer.hitTest(world);
     }
-
-    // ─── Painting ─────────────────────────────────────────────────────────────
 
     @Override
     protected void paintComponent(Graphics g) {
