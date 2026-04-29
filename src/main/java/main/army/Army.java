@@ -58,17 +58,23 @@ public class Army {
     public PendingOrder tickOrders() {
         if (pendingOrders.isEmpty()) return null;
         PendingOrder head = pendingOrders.peekFirst();
-        head.tick();
         if (head.isDelivered()) {
             pendingOrders.pollFirst();
             return head;
         }
+        head.tick();
         return null;
     }
 
     // ─── Execution ────────────────────────────────────────────────────────────
 
-    /** Moves the army to a new zone, consuming one move. */
+    private String marchTarget = null;
+
+    public String getMarchTarget()          { return marchTarget; }
+    public void   setMarchTarget(String id) { this.marchTarget = id; }
+    public void   clearMarchTarget()        { this.marchTarget = null; }
+
+    /** Moves the army one zone, consuming one move. */
     public boolean moveTo(String targetZoneId) {
         if (movesRemaining <= 0) return false;
         zoneId = targetZoneId;

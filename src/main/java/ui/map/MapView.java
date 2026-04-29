@@ -1,6 +1,7 @@
 // MapView.java
 package ui.map;
 
+import main.map.Zone;
 import main.map.ZoneManager;
 
 import javax.swing.*;
@@ -50,15 +51,8 @@ public class MapView extends JPanel {
         topBar.add(title,   BorderLayout.WEST);
         topBar.add(backBtn, BorderLayout.EAST);
 
-        // Scroll pane for map (allows panning beyond visible area if needed)
-        JScrollPane scroll = new JScrollPane(mapPanel,
-            JScrollPane.VERTICAL_SCROLLBAR_NEVER,
-            JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.setBorder(null);
-        scroll.setBackground(new Color(30, 24, 18));
-
         add(topBar,    BorderLayout.NORTH);
-        add(scroll,    BorderLayout.CENTER);
+        add(mapPanel,  BorderLayout.CENTER);
         add(infoPanel, BorderLayout.EAST);
     }
 

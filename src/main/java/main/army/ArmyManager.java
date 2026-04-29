@@ -79,49 +79,62 @@ public class ArmyManager {
      * Called once per turn. Resets movement, delivers orders, executes moves.
      * Returns log lines.
      */
-    public List<String> processTurn() {
+
+public List<String> processTurn() {
+        long startTime = System.currentTimeMillis();
+        System.out.println("End Turn clicked at " + currentTimeStr());
+
         List<String> log = new ArrayList<>();
 
-        for (Army army : armies) {
+        for (Army army : new ArrayList<>(armies)) {
             army.resetMoves(GameParameters.ARMY_MOVES_PER_TURN);
 
             PendingOrder delivered = army.tickOrders();
-            if (delivered != null) {
-                log.addAll(executeOrder(army, delivered));
+            if (delivered != null && delivered.getType() == PendingOrder.OrderType.MOVE_TO) {
+                army.setMarchTarget(delivered.getTargetZoneId());
+            }
+
+            if (army.getMarchTarget() != null) {
+                log.addAll(marchOneStep(army));
             }
         }
+        long endTime = System.currentTimeMillis();
+        System.out.println("Turn processing completed at " + currentTimeStr() + " (took " + (endTime - startTime) + " ms)");
         return log;
     }
 
-    private List<String> executeOrder(Army army, PendingOrder order) {
+private List<String> marchOneStep(Army army) {
         List<String> log = new ArrayList<>();
-        if (order.getType() == PendingOrder.OrderType.MOVE_TO) {
-            String target = order.getTargetZoneId();
-            // Move step-by-step along BFS path, consuming moves
-            List<String> path = bfsPath(army.getZoneId(), target);
-            if (path == null || path.size() <= 1) {
-                log.add("⚔ " + army.getId() + " order received but already at destination.");
-                return log;
-            }
-            int steps = 0;
-            for (int i = 1; i < path.size() && army.getMovesRemaining() > 0; i++) {
-                army.moveTo(path.get(i));
-                steps++;
-            }
-            String loc = zoneName(army.getZoneId());
-            if (army.getZoneId().equals(target)) {
-                log.add("⚔ " + army.getId() + " has reached " + loc + ".");
-            } else {
-                log.add("⚔ " + army.getId() + " marching — now at " + loc
-                        + " (" + steps + " zone(s) moved). Order continues next turn.");
-                // Re-enqueue remainder
-                army.enqueueOrder(new PendingOrder(PendingOrder.OrderType.MOVE_TO, target, 0));
-            }
+        String target = army.getMarchTarget();
+        List<String> path = bfsPath(army.getZoneId(), target);
+
+        if (path == null || path.size() <= 1) {
+            log.add("⚔ " + army.getId() + " has reached " + zoneName(army.getZoneId()) + ".");
+            System.out.println("Army " + army.getId() + " reached destination at " + zoneName(army.getZoneId()) + " at " + currentTimeStr());
+            army.clearMarchTarget();
+            return log;
+        }
+
+        String oldZoneId = army.getZoneId();
+        String oldZoneName = zoneName(oldZoneId);
+        String newZoneId = path.get(1);
+        String newZoneName = zoneName(newZoneId);
+
+        army.moveTo(newZoneId);
+
+        System.out.println("Army " + army.getId() + " teleported from " + oldZoneName + " to " + newZoneName + " at " + currentTimeStr());
+
+        if (army.getZoneId().equals(target)) {
+            log.add("⚔ " + army.getId() + " has reached " + zoneName(target) + ".");
+            System.out.println("Army " + army.getId() + " reached destination at " + zoneName(target) + " at " + currentTimeStr());
+            army.clearMarchTarget();
+        } else {
+            log.add("⚔ " + army.getId() + " marching — now at " + zoneName(army.getZoneId()) + ".");
         }
         return log;
     }
 
-    // ─── BFS path ─────────────────────────────────────────────────────────────
+// ─── BFS path ─────────────────────────────────────────────────────────────
 
     /** Returns ordered list of zone ids from start to end inclusive, or null if unreachable. */
     public List<String> bfsPath(String from, String to) {
@@ -163,6 +176,12 @@ public class ArmyManager {
     private String zoneName(String id) {
         var z = zoneManager.getZone(id);
         return z != null ? z.getDisplayName() : id;
+    }
+
+    // Helper for logging timestamps
+    private String currentTimeStr() {
+        long now = System.currentTimeMillis();
+        return String.format("%tT.%03d", now, now % 1000);
     }
 
     // ─── Save/load support ────────────────────────────────────────────────────
