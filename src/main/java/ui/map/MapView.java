@@ -1,36 +1,64 @@
 // MapView.java
 package ui.map;
 
-import main.map.Zone;
+import main.core.GameState;
 import main.map.ZoneManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import main.army.Army;
 import ui.UITheme;
 
 /**
- * Full map screen: MapPanel (centre) + MapInfoPanel (right sidebar) + back button.
+ * Full map screen: MapPanel (centre) + MapInfoPanel (right sidebar)
+ * + ArmyListPanel (bottom-right) + back button.
  */
 public class MapView extends JPanel {
 
     private final MapPanel     mapPanel;
     private final MapInfoPanel infoPanel;
+    private final ArmyListPanel armyListPanel;
 
-    public MapView(main.core.GameState gameState, Runnable onBack) {
+public MapView(GameState gameState, Runnable onBack) {
         ZoneManager zoneManager = gameState.getZoneManager();
         setLayout(new BorderLayout());
         setBackground(UITheme.BG_DARK);
 
-        infoPanel = new MapInfoPanel(zoneManager);
-        mapPanel  = new MapPanel(
+        infoPanel     = new MapInfoPanel(zoneManager);
+        armyListPanel = new ArmyListPanel(gameState.getArmyManager());
+
+        mapPanel = new MapPanel(
             zoneManager,
             gameState.getArmyManager(),
-            zone  -> infoPanel.showZone(zone),
-            army  -> infoPanel.showArmy(army)
+            zone -> { infoPanel.showZone(zone); },
+            army -> { if (army != null) infoPanel.showArmy(army, zoneManager); else infoPanel.clearArmy(); },
+            armyListPanel
         );
 
-        // Top bar
+        armyListPanel.setOnDragDropCallback(new ArmyListPanel.DragDropCallback() {
+            @Override
+            public void onDrop(Army army, String zoneId) {
+                // army.moveTo() already called in MapPanel.drop()
+                armyListPanel.refresh();
+                mapPanel.repaint();
+                infoPanel.showArmy(army, zoneManager);
+            }
+
+            @Override
+            public void onDragCancelled(Army army) {
+                // army.cancelDrag() already called in ArmyListPanel drag end
+                armyListPanel.refresh();
+                mapPanel.repaint();
+            }
+        });
+
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(UITheme.BG_PANEL);
+        rightPanel.setPreferredSize(new Dimension(200, 0));
+        rightPanel.add(infoPanel,     BorderLayout.CENTER);
+        rightPanel.add(armyListPanel, BorderLayout.SOUTH);
+
         JPanel topBar = new JPanel(new BorderLayout());
         topBar.setBackground(UITheme.BG_PANEL);
         topBar.setBorder(new EmptyBorder(6, 12, 6, 12));
@@ -51,15 +79,16 @@ public class MapView extends JPanel {
         topBar.add(title,   BorderLayout.WEST);
         topBar.add(backBtn, BorderLayout.EAST);
 
-        add(topBar,    BorderLayout.NORTH);
-        add(mapPanel,  BorderLayout.CENTER);
-        add(infoPanel, BorderLayout.EAST);
+        add(topBar,     BorderLayout.NORTH);
+        add(mapPanel,   BorderLayout.CENTER);
+        add(rightPanel, BorderLayout.EAST);
     }
 
-    public void refresh() {
+public void refresh() {
         mapPanel.clearSelection();
-        infoPanel.showZone(null);
-        infoPanel.showArmy(null);
+        infoPanel.clearZone();
+        infoPanel.clearArmy();
+        armyListPanel.refresh();
         mapPanel.repaint();
     }
 }

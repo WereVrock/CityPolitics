@@ -1,31 +1,33 @@
-// ui/map/ArmyRenderer.java
+// ArmyRenderer.java
 package ui.map;
 
 import main.army.Army;
 import main.army.ArmyManager;
-import main.army.PendingOrder;
 import main.map.Zone;
 import main.map.ZoneManager;
 
 import java.awt.*;
-import java.util.Deque;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Renders armies on the map canvas.
- * Each army is drawn as a shield icon with a banner.
- * Armies with pending orders show a small hourglass indicator.
+ * Renders deployed armies on the map canvas.
+ * Multiple armies in the same zone are laid out side by side in slots.
+ * Heartland armies that are in city (not dragging) are also rendered.
  */
 public class ArmyRenderer {
 
-    private static final Color COLOR_ARMY_BODY    = new Color(60,  80,  160);
+    private static final Color COLOR_ARMY_BODY     = new Color(60,  80,  160);
     private static final Color COLOR_ARMY_OUTLINE  = new Color(200, 210, 255);
     private static final Color COLOR_ARMY_BANNER   = new Color(220, 50,  50);
-    private static final Color COLOR_PENDING_DOT   = new Color(240, 190, 40);
     private static final Color COLOR_LABEL         = new Color(240, 235, 255);
     private static final Color COLOR_LABEL_SHADOW  = new Color(10,  5,   30, 180);
     private static final Color COLOR_SELECTED_RING = new Color(100, 160, 255);
 
-    private static final Font FONT_LABEL = new Font("Serif", Font.BOLD, 10);
+    private static final int   SLOT_WIDTH  = 22; // horizontal spacing between armies
+    private static final Font  FONT_LABEL  = new Font("Serif", Font.BOLD, 9);
 
     private final ArmyManager armyManager;
     private final ZoneManager zoneManager;
@@ -36,12 +38,29 @@ public class ArmyRenderer {
     }
 
     public void render(Graphics2D g2, Army selectedArmy) {
+        // Group visible armies by zone
+        Map<String, List<Army>> byZone = new LinkedHashMap<>();
         for (Army army : armyManager.getArmies()) {
-            Zone zone = zoneManager.getZone(army.getZoneId());
+            if (army.isDragging()) continue;
+            String zid = army.getZoneId();
+            byZone.computeIfAbsent(zid, k -> new ArrayList<>()).add(army);
+        }
+
+        for (Map.Entry<String, List<Army>> entry : byZone.entrySet()) {
+            Zone zone = zoneManager.getZone(entry.getKey());
             if (zone == null) continue;
-            int cx = zone.getLabelX() + 30;
-            int cy = zone.getLabelY() - 20;
-            drawArmy(g2, army, cx, cy, army == selectedArmy);
+            List<Army> armies = entry.getValue();
+            int count = armies.size();
+            // Centre the row of armies around the zone label anchor
+            int anchorX = zone.getLabelX() + 30;
+            int anchorY = zone.getLabelY() - 20;
+            int totalWidth = (count - 1) * SLOT_WIDTH;
+            int startX = anchorX - totalWidth / 2;
+
+            for (int i = 0; i < count; i++) {
+                int cx = startX + i * SLOT_WIDTH;
+                drawArmy(g2, armies.get(i), cx, anchorY, armies.get(i) == selectedArmy);
+            }
         }
     }
 
@@ -49,61 +68,61 @@ public class ArmyRenderer {
         if (selected) {
             g2.setColor(COLOR_SELECTED_RING);
             g2.setStroke(new BasicStroke(2f));
-            g2.drawOval(cx - 13, cy - 16, 26, 28);
+            g2.drawOval(cx - 11, cy - 14, 22, 24);
         }
 
-        // Shield body
-        int[] sx = { cx - 8, cx + 8, cx + 8, cx,     cx - 8 };
-        int[] sy = { cy - 10, cy - 10, cy - 2, cy + 6, cy - 2  };
+        // Shield
+        int[] sx = { cx - 7, cx + 7, cx + 7, cx,     cx - 7 };
+        int[] sy = { cy - 9,  cy - 9,  cy - 2, cy + 5, cy - 2  };
         g2.setColor(COLOR_ARMY_BODY);
         g2.fillPolygon(sx, sy, 5);
         g2.setColor(COLOR_ARMY_OUTLINE);
-        g2.setStroke(new BasicStroke(1.2f));
+        g2.setStroke(new BasicStroke(1f));
         g2.drawPolygon(sx, sy, 5);
 
         // Banner pole
-        g2.setColor(COLOR_ARMY_OUTLINE);
-        g2.setStroke(new BasicStroke(1f));
-        g2.drawLine(cx, cy - 10, cx, cy - 22);
+        g2.drawLine(cx, cy - 9, cx, cy - 19);
 
         // Banner flag
-        int[] bx = { cx, cx + 8, cx };
-        int[] by = { cy - 22, cy - 19, cy - 16 };
+        int[] bx = { cx, cx + 7, cx };
+        int[] by = { cy - 19, cy - 16, cy - 13 };
         g2.setColor(COLOR_ARMY_BANNER);
         g2.fillPolygon(bx, by, 3);
 
-        // Pending order indicator (yellow dot + turns)
-        Deque<PendingOrder> orders = army.getPendingOrders();
-        if (!orders.isEmpty()) {
-            PendingOrder head = orders.peekFirst();
-            g2.setColor(COLOR_PENDING_DOT);
-            g2.fillOval(cx + 5, cy - 14, 7, 7);
-            if (head.getTurnsRemaining() > 0) {
-                g2.setFont(new Font("SansSerif", Font.BOLD, 7));
-                g2.setColor(Color.BLACK);
-                g2.drawString(String.valueOf(head.getTurnsRemaining()), cx + 7, cy - 8);
-            }
-        }
-
-        // Label
+        // Label (army number only, to fit narrow slot)
+        String label = army.getId().replace("army_", "#");
         g2.setFont(FONT_LABEL);
-        String label = "Army";
         g2.setColor(COLOR_LABEL_SHADOW);
-        g2.drawString(label, cx - 9, cy + 16);
+        g2.drawString(label, cx - 6, cy + 14);
         g2.setColor(COLOR_LABEL);
-        g2.drawString(label, cx - 10, cy + 15);
+        g2.drawString(label, cx - 7, cy + 13);
     }
 
-    /** Returns the army at a given world point, or null. */
+    /** Returns the army at a given world point, or null. Checks all visible armies. */
     public Army hitTest(Point world, ZoneManager zm) {
+        // Build same slot layout as render to get exact positions
+        Map<String, List<Army>> byZone = new LinkedHashMap<>();
         for (Army army : armyManager.getArmies()) {
-            Zone zone = zm.getZone(army.getZoneId());
+            if (army.isDragging()) continue;
+            byZone.computeIfAbsent(army.getZoneId(), k -> new ArrayList<>()).add(army);
+        }
+
+        for (Map.Entry<String, List<Army>> entry : byZone.entrySet()) {
+            Zone zone = zm.getZone(entry.getKey());
             if (zone == null) continue;
-            int cx = zone.getLabelX() + 30;
-            int cy = zone.getLabelY() - 20;
-            int dx = world.x - cx;
-            int dy = world.y - cy;
-            if (dx * dx + dy * dy <= 13 * 13) return army;
+            List<Army> armies = entry.getValue();
+            int count      = armies.size();
+            int anchorX    = zone.getLabelX() + 30;
+            int anchorY    = zone.getLabelY() - 20;
+            int totalWidth = (count - 1) * SLOT_WIDTH;
+            int startX     = anchorX - totalWidth / 2;
+
+            for (int i = 0; i < count; i++) {
+                int cx = startX + i * SLOT_WIDTH;
+                int dx = world.x - cx;
+                int dy = world.y - anchorY;
+                if (dx * dx + dy * dy <= 11 * 11) return armies.get(i);
+            }
         }
         return null;
     }

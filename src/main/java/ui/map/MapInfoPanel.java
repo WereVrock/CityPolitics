@@ -1,6 +1,7 @@
 // MapInfoPanel.java
 package ui.map;
 
+import main.army.Army;
 import main.map.Zone;
 import main.map.ZoneManager;
 import main.map.ZoneState;
@@ -11,156 +12,114 @@ import java.awt.*;
 import ui.UITheme;
 
 /**
- * Sidebar panel showing details about the currently selected zone.
+ * Right-side info panel. Uses CardLayout to switch between zone and army views.
  */
 public class MapInfoPanel extends JPanel {
 
-    private final ZoneManager zoneManager;
-    private final JLabel      titleLabel;
-    private final JLabel      typeLabel;
-    private final JLabel      goldLabel;
-    private final JLabel      foodLabel;
-    private final JLabel      popsLabel;
-    private final JLabel      supplyLabel;
-    private final JLabel      damageLabel;
-    private final JLabel      adjacentLabel;
-    private final JTextArea   adjacentArea;
+    private static final String CARD_ZONE  = "zone";
+    private static final String CARD_ARMY  = "army";
+    private static final String CARD_EMPTY = "empty";
 
-    // Army info
-    private final JLabel      armyTitleLabel;
-    private final JLabel      armyZoneLabel;
-    private final JLabel      armyMovesLabel;
-    private final JLabel      armyOrdersLabel;
-    private final JTextArea   armyOrdersArea;
+    private final ZoneManager zoneManager;
+    private final CardLayout  cardLayout;
+    private final JPanel      cards;
+
+    // Zone
+    private final JLabel    zoneTitleLabel;
+    private final JLabel    zoneTypeLabel;
+    private final JLabel    goldLabel;
+    private final JLabel    foodLabel;
+    private final JLabel    popsLabel;
+    private final JLabel    supplyLabel;
+    private final JLabel    damageLabel;
+    private final JTextArea adjacentArea;
+
+    // Army
+    private final JLabel armyTitleLabel;
+    private final JLabel armyZoneLabel;
+    private final JLabel armyStatusLabel;
 
     public MapInfoPanel(ZoneManager zoneManager) {
         this.zoneManager = zoneManager;
+        cardLayout = new CardLayout();
+        cards      = new JPanel(cardLayout);
+        cards.setBackground(UITheme.BG_PANEL);
+
         setBackground(UITheme.BG_PANEL);
-        setPreferredSize(new Dimension(200, 0));
+        setLayout(new BorderLayout());
         setBorder(new EmptyBorder(12, 10, 12, 10));
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
-        titleLabel    = makeLabel("Select a zone", UITheme.TEXT_GOLD,      UITheme.FONT_HEADER);
-        typeLabel     = makeLabel("",              UITheme.TEXT_SECONDARY,  UITheme.FONT_SMALL);
-        goldLabel     = makeLabel("",              new Color(210, 170, 80), UITheme.FONT_BODY);
-        foodLabel     = makeLabel("",              new Color(120, 200, 100),UITheme.FONT_BODY);
-        popsLabel     = makeLabel("",              UITheme.TEXT_PRIMARY,    UITheme.FONT_BODY);
-        supplyLabel   = makeLabel("",              UITheme.ACCENT_FROST,    UITheme.FONT_BODY);
-        damageLabel   = makeLabel("",              UITheme.TEXT_RED,        UITheme.FONT_BODY);
-        adjacentLabel = makeLabel("Adjacent:",     UITheme.TEXT_SECONDARY,  UITheme.FONT_SMALL);
+        // ── Empty card ──
+        JPanel emptyCard = new JPanel();
+        emptyCard.setBackground(UITheme.BG_PANEL);
+        JLabel emptyLabel = makeLabel("Select a zone\nor an army.", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
+        emptyCard.add(emptyLabel);
+        cards.add(emptyCard, CARD_EMPTY);
 
-        adjacentArea  = new JTextArea();
+        // ── Zone card ──
+        zoneTitleLabel = makeLabel("", UITheme.TEXT_GOLD,           UITheme.FONT_HEADER);
+        zoneTypeLabel  = makeLabel("", UITheme.TEXT_SECONDARY,      UITheme.FONT_SMALL);
+        goldLabel      = makeLabel("", new Color(210, 170, 80),     UITheme.FONT_BODY);
+        foodLabel      = makeLabel("", new Color(120, 200, 100),    UITheme.FONT_BODY);
+        popsLabel      = makeLabel("", UITheme.TEXT_PRIMARY,        UITheme.FONT_BODY);
+        supplyLabel    = makeLabel("", UITheme.ACCENT_FROST,        UITheme.FONT_BODY);
+        damageLabel    = makeLabel("", UITheme.TEXT_RED,            UITheme.FONT_BODY);
+
+        adjacentArea = new JTextArea();
         adjacentArea.setEditable(false);
         adjacentArea.setBackground(UITheme.BG_PANEL);
         adjacentArea.setForeground(UITheme.TEXT_PRIMARY);
         adjacentArea.setFont(UITheme.FONT_SMALL);
         adjacentArea.setLineWrap(true);
         adjacentArea.setWrapStyleWord(true);
-        adjacentArea.setMaximumSize(new Dimension(180, 80));
 
-        armyTitleLabel  = makeLabel("",  UITheme.ACCENT_FROST,   UITheme.FONT_HEADER);
-        armyZoneLabel   = makeLabel("",  UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
-        armyMovesLabel  = makeLabel("",  UITheme.TEXT_SECONDARY, UITheme.FONT_BODY);
-        armyOrdersLabel = makeLabel("Orders:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
+        JPanel zoneCard = new JPanel();
+        zoneCard.setLayout(new BoxLayout(zoneCard, BoxLayout.Y_AXIS));
+        zoneCard.setBackground(UITheme.BG_PANEL);
+        zoneCard.add(zoneTitleLabel);
+        zoneCard.add(Box.createVerticalStrut(4));
+        zoneCard.add(zoneTypeLabel);
+        zoneCard.add(sep());
+        zoneCard.add(goldLabel);
+        zoneCard.add(foodLabel);
+        zoneCard.add(popsLabel);
+        zoneCard.add(sep());
+        zoneCard.add(supplyLabel);
+        zoneCard.add(damageLabel);
+        zoneCard.add(sep());
+        zoneCard.add(makeLabel("Adjacent:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL));
+        zoneCard.add(adjacentArea);
+        zoneCard.add(Box.createVerticalGlue());
+        cards.add(zoneCard, CARD_ZONE);
 
-        armyOrdersArea  = new JTextArea();
-        armyOrdersArea.setEditable(false);
-        armyOrdersArea.setBackground(UITheme.BG_PANEL);
-        armyOrdersArea.setForeground(UITheme.TEXT_PRIMARY);
-        armyOrdersArea.setFont(UITheme.FONT_SMALL);
-        armyOrdersArea.setLineWrap(true);
-        armyOrdersArea.setWrapStyleWord(true);
-        armyOrdersArea.setMaximumSize(new Dimension(180, 80));
+        // ── Army card ──
+        armyTitleLabel  = makeLabel("", UITheme.ACCENT_FROST,   UITheme.FONT_HEADER);
+        armyZoneLabel   = makeLabel("", UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
+        armyStatusLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
 
-        add(titleLabel);
-        add(Box.createVerticalStrut(4));
-        add(typeLabel);
-        add(separator());
-        add(goldLabel);
-        add(foodLabel);
-        add(popsLabel);
-        add(separator());
-        add(supplyLabel);
-        add(damageLabel);
-        add(separator());
-        add(adjacentLabel);
-        add(adjacentArea);
-        add(separator());
-        add(armyTitleLabel);
-        add(Box.createVerticalStrut(2));
-        add(armyZoneLabel);
-        add(armyMovesLabel);
-        add(armyOrdersLabel);
-        add(armyOrdersArea);
-        add(Box.createVerticalGlue());
+        JPanel armyCard = new JPanel();
+        armyCard.setLayout(new BoxLayout(armyCard, BoxLayout.Y_AXIS));
+        armyCard.setBackground(UITheme.BG_PANEL);
+        armyCard.add(armyTitleLabel);
+        armyCard.add(Box.createVerticalStrut(4));
+        armyCard.add(armyZoneLabel);
+        armyCard.add(Box.createVerticalStrut(4));
+        armyCard.add(armyStatusLabel);
+        armyCard.add(Box.createVerticalStrut(8));
+        armyCard.add(makeLabel("Right-click to recall.", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL));
+        armyCard.add(Box.createVerticalGlue());
+        cards.add(armyCard, CARD_ARMY);
 
-        showEmpty();
+        add(cards, BorderLayout.CENTER);
+        cardLayout.show(cards, CARD_EMPTY);
     }
 
-public void showArmy(main.army.Army army) {
-        clearArmyInfo();
-        if (army == null) return;
-        Zone zone = zoneManager.getZone(army.getZoneId());
-        armyTitleLabel.setText("⚔ Army — " + army.getId());
-        armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
-        
-        int movesRemaining = army.getMovesRemaining();
-        armyMovesLabel.setText("🕐 Moves left this turn: " + movesRemaining + "/" + main.parameters.GameParameters.ARMY_MOVES_PER_TURN);
-
-        var orders = army.getPendingOrders();
-        String marchTarget = army.getMarchTarget();
-        
-        StringBuilder sb = new StringBuilder();
-        
-        // Show currently executing march order
-        if (marchTarget != null) {
-            Zone tgt = zoneManager.getZone(marchTarget);
-            String tgtName = tgt != null ? tgt.getDisplayName() : marchTarget;
-            Zone current = zoneManager.getZone(army.getZoneId());
-            String currentName = current != null ? current.getDisplayName() : army.getZoneId();
-            sb.append("▶ MARCHING: ").append(currentName).append(" → ").append(tgtName).append("\n");
-        }
-        
-        // Show pending (not yet delivered) orders
-        if (!orders.isEmpty()) {
-            if (sb.length() > 0) sb.append("\n");
-            sb.append("⏳ PENDING ORDERS (messenger en route):\n");
-            for (var order : orders) {
-                Zone tgt = zoneManager.getZone(order.getTargetZoneId());
-                String tgtName = tgt != null ? tgt.getDisplayName() : order.getTargetZoneId();
-                if (order.getTurnsRemaining() > 0) {
-                    sb.append("   → ").append(tgtName)
-                      .append(" — arrives in ").append(order.getTurnsRemaining()).append(" turn");
-                    if (order.getTurnsRemaining() > 1) sb.append("s");
-                    sb.append("\n");
-                } else {
-                    sb.append("   → ").append(tgtName).append(" — ready to march\n");
-                }
-            }
-        }
-        
-        if (sb.length() == 0) {
-            sb.append("IDLE\nClick on any zone to issue a march order.\n");
-            sb.append("Orders have delay = distance from capital ÷ messenger speed.");
-        }
-        
-        armyOrdersArea.setText(sb.toString());
-    }
-
-private void clearArmyInfo() {
-        armyTitleLabel.setText("");
-        armyZoneLabel.setText("");
-        armyMovesLabel.setText("");
-        armyOrdersArea.setText("");
-    }
-
-public void showZone(Zone zone) {
-        if (zone == null) { showEmpty(); return; }
+    public void showZone(Zone zone) {
+        if (zone == null) { clearZone(); return; }
         ZoneState state = zoneManager.getState(zone.getId());
 
-        titleLabel.setText(zone.getDisplayName());
-        typeLabel.setText(zone.getSettlement().name().charAt(0)
-            + zone.getSettlement().name().substring(1).toLowerCase());
+        zoneTitleLabel.setText(zone.getDisplayName());
+        zoneTypeLabel.setText(capitalize(zone.getSettlement().name()));
         goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
         foodLabel.setText("Food/turn:  " + zone.getFoodProduction());
         popsLabel.setText("Pops:       " + zone.getZonePops());
@@ -173,19 +132,25 @@ public void showZone(Zone zone) {
             if (adj != null) sb.append(adj.getDisplayName()).append("\n");
         }
         adjacentArea.setText(sb.toString().trim());
+        cardLayout.show(cards, CARD_ZONE);
     }
 
-    private void showEmpty() {
-        titleLabel.setText("Select a zone");
-        typeLabel.setText("");
-        goldLabel.setText("");
-        foodLabel.setText("");
-        popsLabel.setText("");
-        supplyLabel.setText("");
-        damageLabel.setText("");
-        adjacentArea.setText("");
-        clearArmyInfo();
+    public void showArmy(Army army, ZoneManager zm) {
+        if (army == null) { clearArmy(); return; }
+        armyTitleLabel.setText("⚔ " + army.getId());
+        if (army.isInCity()) {
+            armyZoneLabel.setText("📍 Heartland (City)");
+            armyStatusLabel.setText("Status: In city");
+        } else {
+            Zone zone = zm.getZone(army.getZoneId());
+            armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+            armyStatusLabel.setText("Status: Deployed — right-click to recall");
+        }
+        cardLayout.show(cards, CARD_ARMY);
     }
+
+    public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
+    public void clearArmy() { cardLayout.show(cards, CARD_EMPTY); }
 
     private JLabel makeLabel(String text, Color color, Font font) {
         JLabel l = new JLabel(text);
@@ -195,11 +160,16 @@ public void showZone(Zone zone) {
         return l;
     }
 
-    private JSeparator separator() {
-        JSeparator sep = new JSeparator();
-        sep.setForeground(UITheme.BORDER_COLOR);
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-        sep.setAlignmentX(LEFT_ALIGNMENT);
-        return sep;
+    private JSeparator sep() {
+        JSeparator s = new JSeparator();
+        s.setForeground(UITheme.BORDER_COLOR);
+        s.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        s.setAlignmentX(LEFT_ALIGNMENT);
+        return s;
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return s.charAt(0) + s.substring(1).toLowerCase();
     }
 }

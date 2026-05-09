@@ -38,7 +38,7 @@ public class GameState {
         this.turnProcessor     = new TurnProcessor();
         this.voteSessionManager = new VoteSessionManager();
         this.zoneManager        = new ZoneManager();
-        this.armyManager        = new main.army.ArmyManager(zoneManager);
+        this.armyManager        = new main.army.ArmyManager();
     }
 
     public void reset() {

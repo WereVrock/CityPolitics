@@ -13,7 +13,7 @@ import java.util.List;
 
 public class TurnProcessor {
 
-    public List<String> processTurn(
+public List<String> processTurn(
             GameState     gameState,
             ResourcePool  resources,
             StatBlock     stats,
@@ -23,7 +23,6 @@ public class TurnProcessor {
             EffectManager effectManager) {
 
         List<String> log = new ArrayList<>();
-        log.addAll(gameState.getArmyManager().processTurn());
 
         applyPopEconomics(resources, popManager, log);
         applyStatDecay(stats, log);
@@ -35,7 +34,7 @@ public class TurnProcessor {
         return log;
     }
 
-    private void applyPopEconomics(ResourcePool resources, PopManager popManager, List<String> log) {
+private void applyPopEconomics(ResourcePool resources, PopManager popManager, List<String> log) {
         int moneyGained     = popManager.getTotalMoneyGeneration();
         int influenceGained = popManager.getTotalInfluenceGeneration();
         int foodConsumed    = popManager.getTotalFoodConsumption();
