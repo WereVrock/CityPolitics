@@ -26,7 +26,7 @@ public class ArmyRenderer {
     private static final Color COLOR_LABEL_SHADOW  = new Color(10,  5,   30, 180);
     private static final Color COLOR_SELECTED_RING = new Color(100, 160, 255);
 
-    private static final int   SLOT_WIDTH  = 22; // horizontal spacing between armies
+    private static final int   SLOT_WIDTH  = 38; // horizontal spacing between armies
     private static final Font  FONT_LABEL  = new Font("Serif", Font.BOLD, 9);
 
     private final ArmyManager armyManager;
@@ -64,7 +64,7 @@ public class ArmyRenderer {
         }
     }
 
-    private void drawArmy(Graphics2D g2, Army army, int cx, int cy, boolean selected) {
+private void drawArmy(Graphics2D g2, Army army, int cx, int cy, boolean selected) {
         if (selected) {
             g2.setColor(COLOR_SELECTED_RING);
             g2.setStroke(new BasicStroke(2f));
@@ -72,8 +72,8 @@ public class ArmyRenderer {
         }
 
         // Shield
-        int[] sx = { cx - 7, cx + 7, cx + 7, cx,     cx - 7 };
-        int[] sy = { cy - 9,  cy - 9,  cy - 2, cy + 5, cy - 2  };
+        int[] sx = { cx - 7, cx + 7, cx + 7, cx,    cx - 7 };
+        int[] sy = { cy - 9,  cy - 9,  cy - 2, cy + 5, cy - 2 };
         g2.setColor(COLOR_ARMY_BODY);
         g2.fillPolygon(sx, sy, 5);
         g2.setColor(COLOR_ARMY_OUTLINE);
@@ -89,17 +89,20 @@ public class ArmyRenderer {
         g2.setColor(COLOR_ARMY_BANNER);
         g2.fillPolygon(bx, by, 3);
 
-        // Label — abbreviated display name
+        // Label centered under shield
         String full  = army.getDisplayName();
-        String label = full.length() > 6 ? full.substring(0, 6) : full;
+        String label = full.length() > 8 ? full.substring(0, 8) : full;
         g2.setFont(FONT_LABEL);
+        FontMetrics fm = g2.getFontMetrics();
+        int labelX = cx - fm.stringWidth(label) / 2;
+        int labelY = cy + 18;
         g2.setColor(COLOR_LABEL_SHADOW);
-        g2.drawString(label, cx - 6, cy + 14);
+        g2.drawString(label, labelX + 1, labelY + 1);
         g2.setColor(COLOR_LABEL);
-        g2.drawString(label, cx - 7, cy + 13);
+        g2.drawString(label, labelX, labelY);
     }
 
-    /** Returns the army at a given world point, or null. Checks all visible armies. */
+/** Returns the army at a given world point, or null. Checks all visible armies. */
     public Army hitTest(Point world, ZoneManager zm) {
         // Build same slot layout as render to get exact positions
         Map<String, List<Army>> byZone = new LinkedHashMap<>();
