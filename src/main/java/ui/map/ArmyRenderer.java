@@ -89,8 +89,9 @@ public class ArmyRenderer {
         g2.setColor(COLOR_ARMY_BANNER);
         g2.fillPolygon(bx, by, 3);
 
-        // Label (army number only, to fit narrow slot)
-        String label = army.getId().replace("army_", "#");
+        // Label — abbreviated display name
+        String full  = army.getDisplayName();
+        String label = full.length() > 6 ? full.substring(0, 6) : full;
         g2.setFont(FONT_LABEL);
         g2.setColor(COLOR_LABEL_SHADOW);
         g2.drawString(label, cx - 6, cy + 14);

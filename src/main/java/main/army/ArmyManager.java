@@ -15,13 +15,13 @@ public class ArmyManager {
         spawnStartingArmies();
     }
 
-    private void spawnStartingArmies() {
-        addArmy(new Army("army_1"));
-        addArmy(new Army("army_2"));
-        addArmy(new Army("army_3"));
+private void spawnStartingArmies() {
+        addArmy(new Army("army_1", "Thunder Legion"));
+        addArmy(new Army("army_2", "Knights of Ruin"));
+        addArmy(new Army("army_3", "Iron Wolves"));
     }
 
-    private void addArmy(Army army) {
+private void addArmy(Army army) {
         armies.add(army);
         armyById.put(army.getId(), army);
     }

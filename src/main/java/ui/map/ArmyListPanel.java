@@ -89,16 +89,11 @@ public class ArmyListPanel extends JPanel {
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         card.setAlignmentX(LEFT_ALIGNMENT);
 
-        JLabel name = new JLabel("⚔ " + army.getId());
+        JLabel name = new JLabel("⚔ " + army.getDisplayName());
         name.setFont(UITheme.FONT_BUTTON);
         name.setForeground(UITheme.ACCENT_FROST);
 
-        JLabel hint = new JLabel("drag to deploy");
-        hint.setFont(UITheme.FONT_SMALL);
-        hint.setForeground(UITheme.TEXT_SECONDARY);
-
         card.add(name, BorderLayout.WEST);
-        card.add(hint, BorderLayout.EAST);
 
         DragSource ds = DragSource.getDefaultDragSource();
         ds.createDefaultDragGestureRecognizer(card, DnDConstants.ACTION_MOVE, dge -> {

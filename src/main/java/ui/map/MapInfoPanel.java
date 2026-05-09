@@ -106,7 +106,7 @@ public class MapInfoPanel extends JPanel {
         armyCard.add(Box.createVerticalStrut(4));
         armyCard.add(armyStatusLabel);
         armyCard.add(Box.createVerticalStrut(8));
-        armyCard.add(makeLabel("Right-click to recall.", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL));
+
         armyCard.add(Box.createVerticalGlue());
         cards.add(armyCard, CARD_ARMY);
 
@@ -135,21 +135,21 @@ public class MapInfoPanel extends JPanel {
         cardLayout.show(cards, CARD_ZONE);
     }
 
-    public void showArmy(Army army, ZoneManager zm) {
+public void showArmy(Army army, ZoneManager zm) {
         if (army == null) { clearArmy(); return; }
-        armyTitleLabel.setText("⚔ " + army.getId());
+        armyTitleLabel.setText("⚔ " + army.getDisplayName());
         if (army.isInCity()) {
             armyZoneLabel.setText("📍 Heartland (City)");
             armyStatusLabel.setText("Status: In city");
         } else {
             Zone zone = zm.getZone(army.getZoneId());
             armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
-            armyStatusLabel.setText("Status: Deployed — right-click to recall");
+            armyStatusLabel.setText("Status: Deployed");
         }
         cardLayout.show(cards, CARD_ARMY);
     }
 
-    public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
+public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
     public void clearArmy() { cardLayout.show(cards, CARD_EMPTY); }
 
     private JLabel makeLabel(String text, Color color, Font font) {

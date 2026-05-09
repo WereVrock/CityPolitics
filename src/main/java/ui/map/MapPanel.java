@@ -21,7 +21,7 @@ import java.util.function.Consumer;
  *   Drag from ArmyListPanel → deploy to dropped zone
  *   Drop on heartland or cancel → army returns to city
  */
-public class MapPanel extends JPanel implements DropTargetListener {
+public class MapPanel extends JPanel implements DropTargetListener, DragGestureListener, DragSourceListener {
 
     private final ZoneManager    zoneManager;
     private final ArmyManager    armyManager;
@@ -58,6 +58,8 @@ public class MapPanel extends JPanel implements DropTargetListener {
         setBackground(MapRenderer.COLOR_BG);
         setPreferredSize(new Dimension(800, 520));
         new DropTarget(this, DnDConstants.ACTION_MOVE, this, true);
+        DragSource.getDefaultDragSource()
+            .createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_MOVE, this);
         setupMouseHandlers();
     }
 
@@ -190,6 +192,47 @@ public class MapPanel extends JPanel implements DropTargetListener {
     @Override public void dragOver(DropTargetDragEvent e)          { e.acceptDrag(DnDConstants.ACTION_MOVE); }
     @Override public void dropActionChanged(DropTargetDragEvent e) {}
     @Override public void dragExit(DropTargetEvent e)              {}
+
+    // ─── DragGestureListener — drag army directly from map ───────────────────
+
+    private Army draggedFromMap = null;
+
+    @Override
+    public void dragGestureRecognized(DragGestureEvent dge) {
+        Point world   = camera.screenToWorld(dge.getDragOrigin());
+        Army armyHit  = armyRenderer.hitTest(world, zoneManager);
+        if (armyHit == null) return;
+
+        draggedFromMap = armyHit;
+        armyHit.startDrag();
+        armyListPanel.refresh();
+        repaint();
+
+        Transferable t = new java.awt.datatransfer.Transferable() {
+            @Override public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() { return new java.awt.datatransfer.DataFlavor[]{ArmyListPanel.ARMY_FLAVOR}; }
+            @Override public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor f) { return f.equals(ArmyListPanel.ARMY_FLAVOR); }
+            @Override public Object getTransferData(java.awt.datatransfer.DataFlavor f) { return armyHit; }
+        };
+        dge.startDrag(DragSource.DefaultMoveDrop, t, this);
+    }
+
+    // ─── DragSourceListener ──────────────────────────────────────────────────
+
+    @Override
+    public void dragDropEnd(DragSourceDropEvent dsde) {
+        if (draggedFromMap == null) return;
+        if (!dsde.getDropSuccess()) {
+            draggedFromMap.cancelDrag();
+            armyListPanel.refresh();
+            repaint();
+        }
+        draggedFromMap = null;
+    }
+
+    @Override public void dragEnter(DragSourceDragEvent e)         {}
+    @Override public void dragOver(DragSourceDragEvent e)          {}
+    @Override public void dropActionChanged(DragSourceDragEvent e) {}
+    @Override public void dragExit(DragSourceEvent e)              {}
 
     @Override
     protected void paintComponent(Graphics g) {

@@ -14,13 +14,17 @@ public class Army {
     private String zoneId;
     private boolean dragging; // true while being dragged, hidden from map
 
-    public Army(String id) {
-        this.id       = id;
-        this.zoneId   = HEARTLAND_ID;
-        this.dragging = false;
+    private final String displayName;
+
+    public Army(String id, String displayName) {
+        this.id          = id;
+        this.displayName = displayName;
+        this.zoneId      = HEARTLAND_ID;
+        this.dragging    = false;
     }
 
     public String  getId()              { return id; }
+    public String  getDisplayName()     { return displayName; }
     public String  getZoneId()          { return zoneId; }
     public boolean isInCity()           { return HEARTLAND_ID.equals(zoneId); }
     public boolean isDeployed()         { return !isInCity(); }
