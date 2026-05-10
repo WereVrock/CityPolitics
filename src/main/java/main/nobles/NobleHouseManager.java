@@ -110,7 +110,7 @@ public class NobleHouseManager {
             "house_valdris", "House Valdris", "Lord Edaran Valdris",
             "Silver-tongued and patient. Has waited twenty years for his moment and shows no impatience whatsoever.",
             NobleHouse.Race.HUMAN,
-            List.of("heartland", "northern_vale", "greenvale", "westgate"),
+            List.of("northern_vale", "greenvale", "westgate"),
             120
         ));
 

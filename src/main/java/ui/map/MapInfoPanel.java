@@ -9,30 +9,30 @@ import main.map.ZoneState;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import ui.UITheme;
 
-/**
- * Right-side info panel. Uses CardLayout to switch between zone and army views.
- */
 public class MapInfoPanel extends JPanel {
 
     private static final String CARD_ZONE  = "zone";
     private static final String CARD_ARMY  = "army";
     private static final String CARD_EMPTY = "empty";
 
-    private final ZoneManager zoneManager;
-    private final CardLayout  cardLayout;
-    private final JPanel      cards;
+    private final ZoneManager   zoneManager;
+    private final CardLayout    cardLayout;
+    private final JPanel        cards;
+    private final main.nobles.NobleHouseManager nobleHouseManager;
 
     // Zone
-    private final JLabel    zoneTitleLabel;
-    private final JLabel    zoneTypeLabel;
-    private final JLabel    ownerLabel;
-    private final JLabel    goldLabel;
-    private final JLabel    foodLabel;
-    private final JLabel    popsLabel;
-    private final JLabel    supplyLabel;
-    private final JLabel    damageLabel;
+    private final JLabel   zoneTitleLabel;
+    private final JLabel   zoneTypeLabel;
+    private final JButton  ownerButton;
+    private final JLabel   goldLabel;
+    private final JLabel   foodLabel;
+    private final JLabel   popsLabel;
+    private final JLabel   supplyLabel;
+    private final JLabel   damageLabel;
     private final JTextArea adjacentArea;
 
     // Army
@@ -40,35 +40,43 @@ public class MapInfoPanel extends JPanel {
     private final JLabel armyZoneLabel;
     private final JLabel armyStatusLabel;
 
-    private final main.nobles.NobleHouseManager nobleHouseManager;
-
     public MapInfoPanel(ZoneManager zoneManager, main.nobles.NobleHouseManager nobleHouseManager) {
         this.zoneManager       = zoneManager;
         this.nobleHouseManager = nobleHouseManager;
+
         cardLayout = new CardLayout();
         cards      = new JPanel(cardLayout);
         cards.setBackground(UITheme.BG_PANEL);
 
         setBackground(UITheme.BG_PANEL);
         setLayout(new BorderLayout());
-        setBorder(new EmptyBorder(12, 10, 12, 10));
+        setBorder(new EmptyBorder(8, 8, 8, 8));
 
         // ── Empty card ──
         JPanel emptyCard = new JPanel();
         emptyCard.setBackground(UITheme.BG_PANEL);
-        JLabel emptyLabel = makeLabel("Select a zone\nor an army.", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
-        emptyCard.add(emptyLabel);
+        emptyCard.add(makeLabel("Select a zone\nor an army.", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL));
         cards.add(emptyCard, CARD_EMPTY);
 
         // ── Zone card ──
-        zoneTitleLabel = makeLabel("", UITheme.TEXT_GOLD,           UITheme.FONT_HEADER);
-        zoneTypeLabel  = makeLabel("", UITheme.TEXT_SECONDARY,      UITheme.FONT_SMALL);
-        ownerLabel     = makeLabel("", new Color(220, 190, 130),    UITheme.FONT_SMALL);
-        goldLabel      = makeLabel("", new Color(210, 170, 80),     UITheme.FONT_BODY);
-        foodLabel      = makeLabel("", new Color(120, 200, 100),    UITheme.FONT_BODY);
-        popsLabel      = makeLabel("", UITheme.TEXT_PRIMARY,        UITheme.FONT_BODY);
-        supplyLabel    = makeLabel("", UITheme.ACCENT_FROST,        UITheme.FONT_BODY);
-        damageLabel    = makeLabel("", UITheme.TEXT_RED,            UITheme.FONT_BODY);
+        zoneTitleLabel = makeLabel("", UITheme.TEXT_GOLD,        UITheme.FONT_HEADER);
+        zoneTypeLabel  = makeLabel("", UITheme.TEXT_SECONDARY,   UITheme.FONT_SMALL);
+        goldLabel      = makeLabel("", new Color(210, 170, 80),  UITheme.FONT_BODY);
+        foodLabel      = makeLabel("", new Color(120, 200, 100), UITheme.FONT_BODY);
+        popsLabel      = makeLabel("", UITheme.TEXT_PRIMARY,     UITheme.FONT_BODY);
+        supplyLabel    = makeLabel("", UITheme.ACCENT_FROST,     UITheme.FONT_BODY);
+        damageLabel    = makeLabel("", UITheme.TEXT_RED,         UITheme.FONT_BODY);
+
+        ownerButton = new JButton("");
+        ownerButton.setFont(UITheme.FONT_SMALL);
+        ownerButton.setForeground(new Color(220, 190, 130));
+        ownerButton.setBackground(UITheme.BG_PANEL);
+        ownerButton.setBorderPainted(false);
+        ownerButton.setFocusPainted(false);
+        ownerButton.setContentAreaFilled(false);
+        ownerButton.setHorizontalAlignment(SwingConstants.LEFT);
+        ownerButton.setHorizontalTextPosition(SwingConstants.LEFT);
+        ownerButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         adjacentArea = new JTextArea();
         adjacentArea.setEditable(false);
@@ -78,25 +86,32 @@ public class MapInfoPanel extends JPanel {
         adjacentArea.setLineWrap(true);
         adjacentArea.setWrapStyleWord(true);
 
-        JPanel zoneCard = new JPanel();
-        zoneCard.setLayout(new BoxLayout(zoneCard, BoxLayout.Y_AXIS));
+        JPanel zoneCard = new JPanel(new GridBagLayout());
         zoneCard.setBackground(UITheme.BG_PANEL);
-        zoneCard.add(zoneTitleLabel);
-        zoneCard.add(Box.createVerticalStrut(4));
-        zoneCard.add(zoneTypeLabel);
-        zoneCard.add(Box.createVerticalStrut(2));
-        zoneCard.add(ownerLabel);
-        zoneCard.add(sep());
-        zoneCard.add(goldLabel);
-        zoneCard.add(foodLabel);
-        zoneCard.add(popsLabel);
-        zoneCard.add(sep());
-        zoneCard.add(supplyLabel);
-        zoneCard.add(damageLabel);
-        zoneCard.add(sep());
-        zoneCard.add(makeLabel("Adjacent:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL));
-        zoneCard.add(adjacentArea);
-        zoneCard.add(Box.createVerticalGlue());
+
+        GridBagConstraints zc = new GridBagConstraints();
+        zc.gridx   = 0;
+        zc.weightx = 1.0;
+        zc.fill    = GridBagConstraints.HORIZONTAL;
+        zc.insets  = new Insets(1, 0, 1, 0);
+
+        zc.gridy = 0;  zoneCard.add(zoneTitleLabel, zc);
+        zc.gridy = 1;  zoneCard.add(zoneTypeLabel,  zc);
+        zc.gridy = 2;  zoneCard.add(ownerButton,    zc);
+        zc.gridy = 3;  zoneCard.add(sep(),          zc);
+        zc.gridy = 4;  zoneCard.add(goldLabel,      zc);
+        zc.gridy = 5;  zoneCard.add(foodLabel,      zc);
+        zc.gridy = 6;  zoneCard.add(popsLabel,      zc);
+        zc.gridy = 7;  zoneCard.add(sep(),          zc);
+        zc.gridy = 8;  zoneCard.add(supplyLabel,    zc);
+        zc.gridy = 9;  zoneCard.add(damageLabel,    zc);
+        zc.gridy = 10; zoneCard.add(sep(),          zc);
+        zc.gridy = 11; zoneCard.add(makeLabel("Adjacent:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
+        zc.gridy   = 12;
+        zc.weighty = 1.0;
+        zc.fill    = GridBagConstraints.BOTH;
+        zoneCard.add(adjacentArea, zc);
+
         cards.add(zoneCard, CARD_ZONE);
 
         // ── Army card ──
@@ -104,49 +119,59 @@ public class MapInfoPanel extends JPanel {
         armyZoneLabel   = makeLabel("", UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
         armyStatusLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
 
-        JPanel armyCard = new JPanel();
-        armyCard.setLayout(new BoxLayout(armyCard, BoxLayout.Y_AXIS));
+        JPanel armyCard = new JPanel(new GridBagLayout());
         armyCard.setBackground(UITheme.BG_PANEL);
-        armyCard.add(armyTitleLabel);
-        armyCard.add(Box.createVerticalStrut(4));
-        armyCard.add(armyZoneLabel);
-        armyCard.add(Box.createVerticalStrut(4));
-        armyCard.add(armyStatusLabel);
-        armyCard.add(Box.createVerticalStrut(8));
+        GridBagConstraints ac = new GridBagConstraints();
+        ac.gridx = 0; ac.weightx = 1.0; ac.fill = GridBagConstraints.HORIZONTAL;
+        ac.insets = new Insets(2, 0, 2, 0);
+        ac.gridy = 0; armyCard.add(armyTitleLabel,  ac);
+        ac.gridy = 1; armyCard.add(armyZoneLabel,   ac);
+        ac.gridy = 2; armyCard.add(armyStatusLabel, ac);
+        ac.gridy = 3; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
+        armyCard.add(Box.createVerticalGlue(), ac);
 
-        armyCard.add(Box.createVerticalGlue());
         cards.add(armyCard, CARD_ARMY);
 
         add(cards, BorderLayout.CENTER);
         cardLayout.show(cards, CARD_EMPTY);
     }
 
-public void showZone(Zone zone) {
-    if (zone == null) { clearZone(); return; }
-    ZoneState state = zoneManager.getState(zone.getId());
+    public void showZone(Zone zone) {
+        if (zone == null) { clearZone(); return; }
+        ZoneState state = zoneManager.getState(zone.getId());
 
-    zoneTitleLabel.setText(zone.getDisplayName());
-    zoneTypeLabel.setText(capitalize(zone.getSettlement().name()));
+        zoneTitleLabel.setText(zone.getDisplayName());
+        zoneTypeLabel.setText(capitalize(zone.getSettlement().name()));
 
-    main.nobles.NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
-    ownerLabel.setText(owner != null ? owner.getName() : "Unowned");
+        for (java.awt.event.ActionListener al : ownerButton.getActionListeners())
+            ownerButton.removeActionListener(al);
 
-    goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
-    foodLabel.setText("Food/turn:  " + zone.getFoodProduction());
-    popsLabel.setText("Pops:       " + zone.getZonePops());
-    supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%");
-    damageLabel.setText("Damage:     " + state.getDamage() + "%");
+        main.nobles.NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
+        if (owner != null) {
+            ownerButton.setText("<html><body>⚑ " + owner.getName() + "</body></html>");
+            ownerButton.setForeground(new Color(220, 190, 130));
+            ownerButton.addActionListener(e -> showHouseDialog(owner));
+        } else {
+            ownerButton.setText("<html><body>Unowned</body></html>");
+            ownerButton.setForeground(UITheme.TEXT_SECONDARY);
+        }
 
-    StringBuilder sb = new StringBuilder();
-    for (String adjId : zone.getAdjacentIds()) {
-        Zone adj = zoneManager.getZone(adjId);
-        if (adj != null) sb.append(adj.getDisplayName()).append("\n");
+        goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
+        foodLabel.setText("Food/turn:  " + zone.getFoodProduction());
+        popsLabel.setText("Pops:       " + zone.getZonePops());
+        supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%");
+        damageLabel.setText("Damage:     " + state.getDamage() + "%");
+
+        StringBuilder sb = new StringBuilder();
+        for (String adjId : zone.getAdjacentIds()) {
+            Zone adj = zoneManager.getZone(adjId);
+            if (adj != null) sb.append(adj.getDisplayName()).append("\n");
+        }
+        adjacentArea.setText(sb.toString().trim());
+        cardLayout.show(cards, CARD_ZONE);
     }
-    adjacentArea.setText(sb.toString().trim());
-    cardLayout.show(cards, CARD_ZONE);
-}
 
-public void showArmy(Army army, ZoneManager zm) {
+    public void showArmy(Army army, ZoneManager zm) {
         if (army == null) { clearArmy(); return; }
         armyTitleLabel.setText("⚔ " + army.getDisplayName());
         if (army.isInCity()) {
@@ -160,27 +185,106 @@ public void showArmy(Army army, ZoneManager zm) {
         cardLayout.show(cards, CARD_ARMY);
     }
 
-public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
+    public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
     public void clearArmy() { cardLayout.show(cards, CARD_EMPTY); }
 
     private JLabel makeLabel(String text, Color color, Font font) {
         JLabel l = new JLabel(text);
         l.setForeground(color);
         l.setFont(font);
-        l.setAlignmentX(LEFT_ALIGNMENT);
         return l;
     }
 
     private JSeparator sep() {
         JSeparator s = new JSeparator();
         s.setForeground(UITheme.BORDER_COLOR);
-        s.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-        s.setAlignmentX(LEFT_ALIGNMENT);
         return s;
     }
 
     private String capitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return s.charAt(0) + s.substring(1).toLowerCase();
+    }
+
+    private void showHouseDialog(main.nobles.NobleHouse house) {
+        Window parent = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(parent instanceof Frame ? (Frame) parent : null,
+            house.getName(), true);
+        dialog.setSize(420, 380);
+        dialog.setLocationRelativeTo(this);
+
+        JPanel content = new JPanel(new GridBagLayout());
+        content.setBackground(UITheme.BG_PANEL);
+        content.setBorder(new EmptyBorder(16, 16, 16, 16));
+
+        GridBagConstraints dc = new GridBagConstraints();
+        dc.gridx = 0; dc.weightx = 1.0; dc.fill = GridBagConstraints.HORIZONTAL;
+        dc.insets = new Insets(2, 0, 2, 0);
+
+        int row = 0;
+        dc.gridy = row++; content.add(makeDialogLabel(house.getName(),       UITheme.TEXT_GOLD,      UITheme.FONT_HEADER), dc);
+        dc.gridy = row++; content.add(makeDialogLabel(house.getLeaderName(), UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL),  dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Race: " + house.getRace().name(), UITheme.TEXT_PRIMARY, UITheme.FONT_SMALL), dc);
+
+        JTextArea personality = new JTextArea(house.getLeaderPersonality());
+        personality.setFont(new Font("Serif", Font.ITALIC, 12));
+        personality.setForeground(UITheme.TEXT_SECONDARY);
+        personality.setBackground(UITheme.BG_PANEL);
+        personality.setEditable(false);
+        personality.setLineWrap(true);
+        personality.setWrapStyleWord(true);
+        dc.gridy = row++; content.add(personality, dc);
+
+        dc.gridy = row++; content.add(makeDialogLabel("Opinion: " + house.getPlayerOpinion() + " / 100", opinionColor(house.getPlayerOpinion()), UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Gold: "      + house.getGold(),      new Color(210,170,80),  UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Manpower: "  + house.getManpower(),  UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Influence: " + house.getInfluence(), UITheme.ACCENT_FROST,   UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Standing army: " + house.getStandingArmySize(), UITheme.TEXT_PRIMARY, UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Raised army:   " + house.getRaisedArmySize(),   UITheme.TEXT_PRIMARY, UITheme.FONT_BODY), dc);
+
+        StringBuilder zones = new StringBuilder("Territories: ");
+        for (int i = 0; i < house.getZoneIds().size(); i++) {
+            if (i > 0) zones.append(", ");
+            zones.append(house.getZoneIds().get(i).replace("_", " "));
+        }
+        JTextArea zoneArea = new JTextArea(zones.toString());
+        zoneArea.setFont(UITheme.FONT_SMALL);
+        zoneArea.setForeground(new Color(180, 200, 160));
+        zoneArea.setBackground(UITheme.BG_PANEL);
+        zoneArea.setEditable(false);
+        zoneArea.setLineWrap(true);
+        zoneArea.setWrapStyleWord(true);
+        dc.gridy = row++; content.add(zoneArea, dc);
+
+        dc.gridy = row; dc.weighty = 1.0; dc.fill = GridBagConstraints.BOTH;
+        content.add(Box.createVerticalGlue(), dc);
+
+        JButton close = new JButton("CLOSE");
+        close.setFont(UITheme.FONT_BUTTON);
+        close.setForeground(UITheme.TEXT_SECONDARY);
+        close.setBackground(UITheme.BUTTON_BG);
+        close.setBorderPainted(false);
+        close.setFocusPainted(false);
+        close.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        close.addActionListener(e -> dialog.dispose());
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(content,                         BorderLayout.CENTER);
+        dialog.add(close,                           BorderLayout.SOUTH);
+        dialog.getContentPane().setBackground(UITheme.BG_PANEL);
+        dialog.setVisible(true);
+    }
+
+    private JLabel makeDialogLabel(String text, Color color, Font font) {
+        JLabel l = new JLabel(text);
+        l.setFont(font);
+        l.setForeground(color);
+        return l;
+    }
+
+    private Color opinionColor(int v) {
+        if (v >= 70) return UITheme.TEXT_GREEN;
+        if (v <= 30) return UITheme.TEXT_RED;
+        return UITheme.TEXT_PRIMARY;
     }
 }

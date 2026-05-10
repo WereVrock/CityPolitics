@@ -55,7 +55,7 @@ public MapView(GameState gameState, Runnable onBack) {
 
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(UITheme.BG_PANEL);
-        rightPanel.setPreferredSize(new Dimension(200, 0));
+        rightPanel.setPreferredSize(new Dimension(240, 0));
         rightPanel.add(infoPanel,     BorderLayout.CENTER);
         rightPanel.add(armyListPanel, BorderLayout.SOUTH);
 
@@ -76,8 +76,27 @@ public MapView(GameState gameState, Runnable onBack) {
         backBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         backBtn.addActionListener(e -> onBack.run());
 
-        topBar.add(title,   BorderLayout.WEST);
-        topBar.add(backBtn, BorderLayout.EAST);
+        JButton politicalBtn = new JButton("⚑ POLITICAL VIEW");
+        politicalBtn.setFont(UITheme.FONT_BUTTON);
+        politicalBtn.setForeground(UITheme.TEXT_SECONDARY);
+        politicalBtn.setBackground(UITheme.BUTTON_BG);
+        politicalBtn.setBorderPainted(false);
+        politicalBtn.setFocusPainted(false);
+        politicalBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        politicalBtn.addActionListener(e -> {
+            mapPanel.togglePoliticalView();
+            boolean active = mapPanel.isPoliticalViewActive();
+            politicalBtn.setForeground(active ? UITheme.TEXT_GOLD : UITheme.TEXT_SECONDARY);
+            politicalBtn.setBackground(active ? new Color(60, 40, 20) : UITheme.BUTTON_BG);
+        });
+
+        JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        topRight.setBackground(UITheme.BG_PANEL);
+        topRight.add(politicalBtn);
+        topRight.add(backBtn);
+
+        topBar.add(title,    BorderLayout.WEST);
+        topBar.add(topRight, BorderLayout.EAST);
 
         add(topBar,     BorderLayout.NORTH);
         add(mapPanel,   BorderLayout.CENTER);

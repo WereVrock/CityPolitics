@@ -30,8 +30,7 @@ public class NobleHousesPanel extends JPanel {
 
         add(buildHeader(), BorderLayout.NORTH);
 
-        listPanel = new JPanel();
-        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        listPanel = new JPanel(new GridBagLayout());
         listPanel.setBackground(UITheme.BG_DARK);
 
         JScrollPane scroll = new JScrollPane(listPanel);
@@ -68,11 +67,24 @@ public class NobleHousesPanel extends JPanel {
 public void refresh() {
     listPanel.removeAll();
     NobleHouseManager manager = gameState.getNobleHouseManager();
+    GridBagConstraints gbc = new GridBagConstraints();
+    gbc.gridx   = 0;
+    gbc.weightx = 1.0;
+    gbc.fill    = GridBagConstraints.HORIZONTAL;
+    gbc.insets  = new Insets(0, 0, 8, 0);
+
+    int row = 0;
     for (NobleHouse house : manager.getHouses()) {
-        listPanel.add(buildHouseCard(house));
-        listPanel.add(Box.createVerticalStrut(8));
+        gbc.gridy = row++;
+        gbc.weighty = 0;
+        listPanel.add(buildHouseCard(house), gbc);
     }
-    listPanel.add(Box.createVerticalGlue());
+    // push everything up
+    gbc.gridy   = row;
+    gbc.weighty = 1.0;
+    gbc.fill    = GridBagConstraints.BOTH;
+    listPanel.add(Box.createVerticalGlue(), gbc);
+
     listPanel.revalidate();
     listPanel.repaint();
 }
@@ -84,11 +96,6 @@ private JPanel buildHouseCard(NobleHouse house) {
         BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
         new EmptyBorder(10, 12, 10, 12)
     ));
-    card.setAlignmentX(LEFT_ALIGNMENT);
-    card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
-    card.setMinimumSize(new Dimension(0, 160));
-    card.setPreferredSize(new Dimension(listPanel.getWidth(), 160));
-
     card.add(buildPortrait(house),  BorderLayout.WEST);
     card.add(buildInfo(house),      BorderLayout.CENTER);
     card.add(buildStats(house),     BorderLayout.EAST);

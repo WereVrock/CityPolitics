@@ -3,6 +3,7 @@ package ui.map;
 
 import main.map.*;
 import main.nobles.NobleHouse;
+import main.nobles.NobleHouseColors;
 import main.nobles.NobleHouseManager;
 
 import java.awt.*;
@@ -40,6 +41,7 @@ public class MapRenderer {
     private final MountainEdgeRenderer     mountainEdgeRenderer;
     private final TerrainSymbolRenderer    terrainSymbolRenderer;
     private       ArmyRenderer             armyRenderer;
+    private       boolean                  politicalView = false;
 
     public MapRenderer(ZoneManager zoneManager,
                        ZoneDecorationRegistry decorationRegistry,
@@ -58,6 +60,9 @@ public class MapRenderer {
     public void setArmyRenderer(ArmyRenderer armyRenderer) {
         this.armyRenderer = armyRenderer;
     }
+
+    public void setPoliticalView(boolean enabled) { this.politicalView = enabled; }
+    public boolean isPoliticalView()              { return politicalView; }
 
     public void render(Graphics2D g2, Zone selected, Zone hovered, Army selectedArmy) {
         drawBackground(g2);
@@ -113,32 +118,60 @@ public class MapRenderer {
         g2.fillRect(-200, -200, 2000, 1200);
     }
 
-    private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered) {
-        Polygon   poly  = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
-        ZoneState state = zoneManager.getState(zone.getId());
+private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered) {
+    Polygon   poly  = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
+    ZoneState state = zoneManager.getState(zone.getId());
 
-        Color base = switch (zone.getSettlement()) {
+    Color base;
+    if (politicalView) {
+        NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
+        base = owner != null
+            ? NobleHouseColors.getPrimary(owner.getId())
+            : new Color(60, 55, 70);
+    } else {
+        base = switch (zone.getSettlement()) {
             case CAPITAL -> COLOR_CAPITAL;
             case TOWN    -> COLOR_TOWN;
             case VILLAGE -> COLOR_VILLAGE;
         };
-        if (zone == selected) base = base.brighter();
+    }
 
-        g2.setColor(base);
-        g2.fillPolygon(poly);
+    if (zone == selected) base = base.brighter();
+    g2.setColor(base);
+    g2.fillPolygon(poly);
 
-        if (zone == hovered && zone != selected) {
-            g2.setColor(COLOR_HOVER);
-            g2.fillPolygon(poly);
-        }
-
-        if (state.getDamage() > 0) {
-            g2.setColor(new Color(180, 30, 30, 100));
-            g2.fillPolygon(poly);
+    if (politicalView) {
+        NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
+        if (owner != null) {
+            // Secondary color as a diagonal stripe overlay
+            Color sec = NobleHouseColors.getSecondary(owner.getId());
+            g2.setColor(new Color(sec.getRed(), sec.getGreen(), sec.getBlue(), 80));
+            int s = 18;
+            Shape old = g2.getClip();
+            g2.setClip(poly);
+            for (int x = -200; x < 1400; x += s) {
+                g2.fillPolygon(
+                    new int[]{x, x+s, x+s*2, x+s},
+                    new int[]{0, 0,   800,    800},
+                    4
+                );
+            }
+            g2.setClip(old);
         }
     }
 
-    private void drawZoneBorder(Graphics2D g2, Zone zone, Zone selected) {
+    if (zone == hovered && zone != selected) {
+        g2.setColor(COLOR_HOVER);
+        g2.fillPolygon(poly);
+    }
+
+    if (state.getDamage() > 0) {
+        g2.setColor(new Color(180, 30, 30, 100));
+        g2.fillPolygon(poly);
+    }
+}
+
+private void drawZoneBorder(Graphics2D g2, Zone zone, Zone selected) {
         Polygon poly = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
         g2.setColor(zone == selected ? COLOR_BORDER_SEL : COLOR_BORDER);
         g2.setStroke(new BasicStroke(zone == selected ? 3f : 2f));
