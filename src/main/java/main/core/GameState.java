@@ -23,9 +23,11 @@ public class GameState {
     private final EffectManager  effectManager;
     private final PartyManager       partyManager;
     private final VoteSessionManager    voteSessionManager;
-    private final List<VotingSession>   pendingSessions = new java.util.ArrayList<>();
-    private final ZoneManager            zoneManager;
-    private final main.army.ArmyManager  armyManager;
+    private final List<VotingSession>        pendingSessions = new java.util.ArrayList<>();
+    private final ZoneManager                zoneManager;
+    private final main.army.ArmyManager      armyManager;
+    private final main.map.WorldGeography    worldGeography;
+    private final main.map.ZoneDecorationRegistry decorationRegistry;
 
     public GameState() {
         this.calendar       = new GameCalendar();
@@ -39,6 +41,8 @@ public class GameState {
         this.voteSessionManager = new VoteSessionManager();
         this.zoneManager        = new ZoneManager();
         this.armyManager        = new main.army.ArmyManager();
+        this.worldGeography     = new main.map.WorldGeography();
+        this.decorationRegistry = new main.map.ZoneDecorationRegistry();
     }
 
     public void reset() {
@@ -63,8 +67,10 @@ public class GameState {
     public EffectManager  getEffectManager()  { return effectManager; }
     public PartyManager        getPartyManager()         { return partyManager; }
     public VoteSessionManager  getVoteSessionManager()   { return voteSessionManager; }
-    public ZoneManager              getZoneManager()     { return zoneManager; }
-    public main.army.ArmyManager    getArmyManager()     { return armyManager; }
+    public ZoneManager                   getZoneManager()        { return zoneManager; }
+    public main.army.ArmyManager         getArmyManager()        { return armyManager; }
+    public main.map.WorldGeography       getWorldGeography()     { return worldGeography; }
+    public main.map.ZoneDecorationRegistry getDecorationRegistry(){ return decorationRegistry; }
     public VotingSession       getActiveSession()         { return pendingSessions.isEmpty() ? null : pendingSessions.get(0); }
     public void                addSession(VotingSession s){ pendingSessions.add(s); }
     public void                clearActiveSession()       { if (!pendingSessions.isEmpty()) pendingSessions.remove(0); }

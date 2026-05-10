@@ -29,8 +29,7 @@ public MapView(GameState gameState, Runnable onBack) {
         armyListPanel = new ArmyListPanel(gameState.getArmyManager());
 
         mapPanel = new MapPanel(
-            zoneManager,
-            gameState.getArmyManager(),
+            gameState,
             zone -> { infoPanel.showZone(zone); },
             army -> { if (army != null) infoPanel.showArmy(army, zoneManager); else infoPanel.clearArmy(); },
             armyListPanel

@@ -41,22 +41,29 @@ public class MapPanel extends JPanel implements DropTargetListener, DragGestureL
     private int   panXAtDrag = 0;
     private int   panYAtDrag = 0;
 
-    public MapPanel(ZoneManager zoneManager, ArmyManager armyManager,
+    private final main.core.GameState gameState;
+
+    public MapPanel(main.core.GameState gameState,
                     Consumer<Zone> onZoneSelected, Consumer<Army> onArmySelected,
                     ArmyListPanel armyListPanel) {
-        this.zoneManager    = zoneManager;
-        this.armyManager    = armyManager;
+        this.gameState      = gameState;
+        this.zoneManager    = gameState.getZoneManager();
+        this.armyManager    = gameState.getArmyManager();
         this.onZoneSelected = onZoneSelected;
         this.onArmySelected = onArmySelected;
         this.armyListPanel  = armyListPanel;
 
         this.camera       = new MapCamera();
-        this.renderer     = new MapRenderer(zoneManager);
+        this.renderer     = new MapRenderer(zoneManager,
+                                gameState.getDecorationRegistry(),
+                                gameState.getWorldGeography());
         this.armyRenderer = new ArmyRenderer(armyManager, zoneManager);
         this.renderer.setArmyRenderer(armyRenderer);
 
         setBackground(MapRenderer.COLOR_BG);
-        setPreferredSize(new Dimension(800, 520));
+        setPreferredSize(new Dimension(
+            main.parameters.GameParameters.MAP_CANVAS_WIDTH,
+            main.parameters.GameParameters.MAP_CANVAS_HEIGHT));
         new DropTarget(this, DnDConstants.ACTION_MOVE, this, true);
         DragSource.getDefaultDragSource()
             .createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_MOVE, this);
