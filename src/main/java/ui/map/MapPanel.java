@@ -45,7 +45,8 @@ public class MapPanel extends JPanel implements DropTargetListener, DragGestureL
 
     public MapPanel(main.core.GameState gameState,
                     Consumer<Zone> onZoneSelected, Consumer<Army> onArmySelected,
-                    ArmyListPanel armyListPanel) {
+                    ArmyListPanel armyListPanel,
+                    main.nobles.NobleHouseManager nobleHouseManager) {
         this.gameState      = gameState;
         this.zoneManager    = gameState.getZoneManager();
         this.armyManager    = gameState.getArmyManager();
@@ -56,7 +57,8 @@ public class MapPanel extends JPanel implements DropTargetListener, DragGestureL
         this.camera       = new MapCamera();
         this.renderer     = new MapRenderer(zoneManager,
                                 gameState.getDecorationRegistry(),
-                                gameState.getWorldGeography());
+                                gameState.getWorldGeography(),
+                                nobleHouseManager);
         this.armyRenderer = new ArmyRenderer(armyManager, zoneManager);
         this.renderer.setArmyRenderer(armyRenderer);
 

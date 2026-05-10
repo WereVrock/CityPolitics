@@ -2,6 +2,8 @@
 package ui.map;
 
 import main.map.*;
+import main.nobles.NobleHouse;
+import main.nobles.NobleHouseManager;
 
 import java.awt.*;
 import main.army.Army;
@@ -32,6 +34,7 @@ public class MapRenderer {
     private final ZoneManager              zoneManager;
     private final ZoneDecorationRegistry   decorationRegistry;
     private final WorldGeography           worldGeography;
+    private final NobleHouseManager        nobleHouseManager;
     private final SeaRenderer              seaRenderer;
     private final RiverRenderer            riverRenderer;
     private final MountainEdgeRenderer     mountainEdgeRenderer;
@@ -40,10 +43,12 @@ public class MapRenderer {
 
     public MapRenderer(ZoneManager zoneManager,
                        ZoneDecorationRegistry decorationRegistry,
-                       WorldGeography worldGeography) {
+                       WorldGeography worldGeography,
+                       NobleHouseManager nobleHouseManager) {
         this.zoneManager           = zoneManager;
         this.decorationRegistry    = decorationRegistry;
         this.worldGeography        = worldGeography;
+        this.nobleHouseManager     = nobleHouseManager;
         this.seaRenderer           = new SeaRenderer(worldGeography);
         this.riverRenderer         = new RiverRenderer(worldGeography);
         this.mountainEdgeRenderer  = new MountainEdgeRenderer(decorationRegistry);
@@ -142,13 +147,12 @@ public class MapRenderer {
     }
 
 private void drawZoneLabels(Graphics2D g2, Zone zone) {
-    ZoneDecoration dec = decorationRegistry.get(zone.getId());
-    boolean hasIcon = dec.getSymbol() != ZoneDecoration.TerrainSymbol.NONE;
+    ZoneDecoration dec     = decorationRegistry.get(zone.getId());
+    boolean        hasIcon = dec.getSymbol() != ZoneDecoration.TerrainSymbol.NONE;
 
     int lx = zone.getLabelX();
     int ly = zone.getLabelY() + ICON_LABEL_OFFSET;
 
-    // Shift name right to make room for the icon on the left
     int nameX = hasIcon ? lx + 6 : lx;
 
     g2.setFont(FONT_ZONE_NAME);

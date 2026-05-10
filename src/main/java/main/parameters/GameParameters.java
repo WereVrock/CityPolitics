@@ -177,6 +177,56 @@ public final class GameParameters {
     public static final int ZONE_VILLAGE_POPS    = 10;
 
     // =========================================================
+    // NOBLE HOUSES
+    // =========================================================
+
+    /** Starting opinion of every noble house toward the player (0–100). */
+    public static final int    NOBLE_HOUSE_STARTING_OPINION          = 50;
+
+    /** Starting influence for every noble house. */
+    public static final int    NOBLE_HOUSE_STARTING_INFLUENCE        = 10;
+
+    /** Opinion clamps shared with parties for uniformity. */
+    public static final int    NOBLE_OPINION_MIN                     = 0;
+    public static final int    NOBLE_OPINION_MAX                     = 100;
+
+    /**
+     * Opinion at or below which a house is considered hostile and sends
+     * nothing to the player.
+     */
+    public static final int    NOBLE_HOSTILE_OPINION_THRESHOLD       = 15;
+
+    /**
+     * Maximum fraction of manpower a house sends to the player.
+     * Reached at 100 opinion. Scales linearly from 0 at hostile threshold.
+     */
+    public static final double NOBLE_MAX_MANPOWER_SEND_FRACTION      = 0.50;
+
+    /** Raw manpower each controlled zone generates per turn (2–10 range). */
+    public static final int    NOBLE_ZONE_MANPOWER_PER_TURN          = 6;
+
+    /** Gold each controlled zone generates for the house per turn (half sent to player). */
+    public static final int    NOBLE_ZONE_GOLD_PER_TURN              = 5;
+
+    /** Base influence gained per house per turn. */
+    public static final double NOBLE_INFLUENCE_BASE_PER_TURN         = 1.0;
+
+    /** Additional influence per controlled zone per turn. */
+    public static final double NOBLE_INFLUENCE_PER_ZONE              = 0.3;
+
+    /**
+     * Standing army size = manpower-per-turn × this multiplier.
+     * Housed in the capital, free of upkeep and recruitment cost.
+     */
+    public static final int    NOBLE_STANDING_ARMY_MANPOWER_MULTIPLIER = 5;
+
+    /** Gold cost to recruit one soldier into the raised army. */
+    public static final int    NOBLE_RECRUIT_COST_PER_SOLDIER        = 3;
+
+    /** Gold cost per soldier per turn to maintain the raised army. */
+    public static final int    NOBLE_UPKEEP_COST_PER_SOLDIER         = 1;
+
+    // =========================================================
     // ARMY
     // =========================================================
     /** Zones an army can traverse per turn once orders arrive. */

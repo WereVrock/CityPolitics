@@ -27,6 +27,7 @@ public class MapInfoPanel extends JPanel {
     // Zone
     private final JLabel    zoneTitleLabel;
     private final JLabel    zoneTypeLabel;
+    private final JLabel    ownerLabel;
     private final JLabel    goldLabel;
     private final JLabel    foodLabel;
     private final JLabel    popsLabel;
@@ -39,8 +40,11 @@ public class MapInfoPanel extends JPanel {
     private final JLabel armyZoneLabel;
     private final JLabel armyStatusLabel;
 
-    public MapInfoPanel(ZoneManager zoneManager) {
-        this.zoneManager = zoneManager;
+    private final main.nobles.NobleHouseManager nobleHouseManager;
+
+    public MapInfoPanel(ZoneManager zoneManager, main.nobles.NobleHouseManager nobleHouseManager) {
+        this.zoneManager       = zoneManager;
+        this.nobleHouseManager = nobleHouseManager;
         cardLayout = new CardLayout();
         cards      = new JPanel(cardLayout);
         cards.setBackground(UITheme.BG_PANEL);
@@ -59,6 +63,7 @@ public class MapInfoPanel extends JPanel {
         // ── Zone card ──
         zoneTitleLabel = makeLabel("", UITheme.TEXT_GOLD,           UITheme.FONT_HEADER);
         zoneTypeLabel  = makeLabel("", UITheme.TEXT_SECONDARY,      UITheme.FONT_SMALL);
+        ownerLabel     = makeLabel("", new Color(220, 190, 130),    UITheme.FONT_SMALL);
         goldLabel      = makeLabel("", new Color(210, 170, 80),     UITheme.FONT_BODY);
         foodLabel      = makeLabel("", new Color(120, 200, 100),    UITheme.FONT_BODY);
         popsLabel      = makeLabel("", UITheme.TEXT_PRIMARY,        UITheme.FONT_BODY);
@@ -79,6 +84,8 @@ public class MapInfoPanel extends JPanel {
         zoneCard.add(zoneTitleLabel);
         zoneCard.add(Box.createVerticalStrut(4));
         zoneCard.add(zoneTypeLabel);
+        zoneCard.add(Box.createVerticalStrut(2));
+        zoneCard.add(ownerLabel);
         zoneCard.add(sep());
         zoneCard.add(goldLabel);
         zoneCard.add(foodLabel);
@@ -114,26 +121,30 @@ public class MapInfoPanel extends JPanel {
         cardLayout.show(cards, CARD_EMPTY);
     }
 
-    public void showZone(Zone zone) {
-        if (zone == null) { clearZone(); return; }
-        ZoneState state = zoneManager.getState(zone.getId());
+public void showZone(Zone zone) {
+    if (zone == null) { clearZone(); return; }
+    ZoneState state = zoneManager.getState(zone.getId());
 
-        zoneTitleLabel.setText(zone.getDisplayName());
-        zoneTypeLabel.setText(capitalize(zone.getSettlement().name()));
-        goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
-        foodLabel.setText("Food/turn:  " + zone.getFoodProduction());
-        popsLabel.setText("Pops:       " + zone.getZonePops());
-        supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%");
-        damageLabel.setText("Damage:     " + state.getDamage() + "%");
+    zoneTitleLabel.setText(zone.getDisplayName());
+    zoneTypeLabel.setText(capitalize(zone.getSettlement().name()));
 
-        StringBuilder sb = new StringBuilder();
-        for (String adjId : zone.getAdjacentIds()) {
-            Zone adj = zoneManager.getZone(adjId);
-            if (adj != null) sb.append(adj.getDisplayName()).append("\n");
-        }
-        adjacentArea.setText(sb.toString().trim());
-        cardLayout.show(cards, CARD_ZONE);
+    main.nobles.NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
+    ownerLabel.setText(owner != null ? owner.getName() : "Unowned");
+
+    goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
+    foodLabel.setText("Food/turn:  " + zone.getFoodProduction());
+    popsLabel.setText("Pops:       " + zone.getZonePops());
+    supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%");
+    damageLabel.setText("Damage:     " + state.getDamage() + "%");
+
+    StringBuilder sb = new StringBuilder();
+    for (String adjId : zone.getAdjacentIds()) {
+        Zone adj = zoneManager.getZone(adjId);
+        if (adj != null) sb.append(adj.getDisplayName()).append("\n");
     }
+    adjacentArea.setText(sb.toString().trim());
+    cardLayout.show(cards, CARD_ZONE);
+}
 
 public void showArmy(Army army, ZoneManager zm) {
         if (army == null) { clearArmy(); return; }

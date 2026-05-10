@@ -25,14 +25,15 @@ public MapView(GameState gameState, Runnable onBack) {
         setLayout(new BorderLayout());
         setBackground(UITheme.BG_DARK);
 
-        infoPanel     = new MapInfoPanel(zoneManager);
+        infoPanel     = new MapInfoPanel(zoneManager, gameState.getNobleHouseManager());
         armyListPanel = new ArmyListPanel(gameState.getArmyManager());
 
         mapPanel = new MapPanel(
             gameState,
             zone -> { infoPanel.showZone(zone); },
             army -> { if (army != null) infoPanel.showArmy(army, zoneManager); else infoPanel.clearArmy(); },
-            armyListPanel
+            armyListPanel,
+            gameState.getNobleHouseManager()
         );
 
         armyListPanel.setOnDragDropCallback(new ArmyListPanel.DragDropCallback() {

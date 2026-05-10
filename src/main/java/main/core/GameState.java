@@ -4,6 +4,7 @@ import main.actions.ActionRegistry;
 import main.calendar.GameCalendar;
 import main.effects.EffectManager;
 import main.map.ZoneManager;
+import main.nobles.NobleHouseManager;
 import main.pops.PopManager;
 import main.politics.PartyManager;
 import main.politics.VoteSessionManager;
@@ -28,6 +29,7 @@ public class GameState {
     private final main.army.ArmyManager      armyManager;
     private final main.map.WorldGeography    worldGeography;
     private final main.map.ZoneDecorationRegistry decorationRegistry;
+    private final NobleHouseManager               nobleHouseManager;
 
     public GameState() {
         this.calendar       = new GameCalendar();
@@ -43,6 +45,7 @@ public class GameState {
         this.armyManager        = new main.army.ArmyManager();
         this.worldGeography     = new main.map.WorldGeography();
         this.decorationRegistry = new main.map.ZoneDecorationRegistry();
+        this.nobleHouseManager  = new NobleHouseManager(zoneManager);
     }
 
     public void reset() {
@@ -56,6 +59,7 @@ public class GameState {
         pendingSessions.clear();
         zoneManager.reset();
         armyManager.reset();
+        nobleHouseManager.reset();
     }
 
     public GameCalendar   getCalendar()       { return calendar; }
@@ -71,6 +75,7 @@ public class GameState {
     public main.army.ArmyManager         getArmyManager()        { return armyManager; }
     public main.map.WorldGeography       getWorldGeography()     { return worldGeography; }
     public main.map.ZoneDecorationRegistry getDecorationRegistry(){ return decorationRegistry; }
+    public NobleHouseManager               getNobleHouseManager()  { return nobleHouseManager; }
     public VotingSession       getActiveSession()         { return pendingSessions.isEmpty() ? null : pendingSessions.get(0); }
     public void                addSession(VotingSession s){ pendingSessions.add(s); }
     public void                clearActiveSession()       { if (!pendingSessions.isEmpty()) pendingSessions.remove(0); }

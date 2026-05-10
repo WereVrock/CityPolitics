@@ -3,6 +3,7 @@ package main.core;
 import main.actions.ActionRegistry;
 import main.calendar.GameCalendar;
 import main.effects.EffectManager;
+import main.nobles.NobleHouseManager;
 import main.parameters.GameParameters;
 import main.pops.PopManager;
 import main.resources.ResourcePool;
@@ -14,17 +15,19 @@ import java.util.List;
 public class TurnProcessor {
 
 public List<String> processTurn(
-            GameState     gameState,
-            ResourcePool  resources,
-            StatBlock     stats,
-            PopManager    popManager,
-            GameCalendar  calendar,
-            ActionRegistry actionRegistry,
-            EffectManager effectManager) {
+            GameState          gameState,
+            ResourcePool       resources,
+            StatBlock          stats,
+            PopManager         popManager,
+            GameCalendar       calendar,
+            ActionRegistry     actionRegistry,
+            EffectManager      effectManager,
+            NobleHouseManager  nobleHouseManager) {
 
         List<String> log = new ArrayList<>();
 
         applyPopEconomics(resources, popManager, log);
+        log.addAll(nobleHouseManager.processTurn(resources));
         applyStatDecay(stats, log);
         log.addAll(effectManager.processTurn(stats));
         calendar.advance();

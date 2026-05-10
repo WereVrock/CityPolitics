@@ -25,6 +25,7 @@ public class MainWindow extends JFrame {
     private final EventLogPanel          eventLogPanel;
     private final SaveLoadDialog         saveLoadDialog;
     private final PartiesOverviewPanel   partiesOverviewPanel;
+    private final ui.nobles.NobleHousesPanel nobleHousesPanel;
     private final VoteSessionPanel       voteSessionPanel;
     private final MapView                mapView;
 
@@ -53,6 +54,7 @@ public class MainWindow extends JFrame {
         eventLogPanel        = new EventLogPanel();
         saveLoadDialog       = new SaveLoadDialog(this, gameState, eventLogPanel::appendLine);
         partiesOverviewPanel = new PartiesOverviewPanel(gameState, this::showMainView);
+        nobleHousesPanel     = new ui.nobles.NobleHousesPanel(gameState, this::showMainView);
         voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteFinalized, this::swapCenter);
         mapView              = new MapView(gameState, this::showMainView);
 
@@ -135,6 +137,16 @@ private JButton buildBarButton(String label) {
         partiesBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         partiesBtn.addActionListener(e -> showPartiesView());
 
+        JButton noblesBtn = new JButton("NOBLES");
+        noblesBtn.setFont(UITheme.FONT_BUTTON);
+        noblesBtn.setForeground(UITheme.TEXT_SECONDARY);
+        noblesBtn.setBackground(UITheme.BUTTON_BG);
+        noblesBtn.setBorderPainted(false);
+        noblesBtn.setFocusPainted(false);
+        noblesBtn.setPreferredSize(new Dimension(100, 48));
+        noblesBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        noblesBtn.addActionListener(e -> showNoblesView());
+
         JButton mapBtn = new JButton("MAP");
         mapBtn.setFont(UITheme.FONT_BUTTON);
         mapBtn.setForeground(UITheme.TEXT_SECONDARY);
@@ -163,6 +175,7 @@ private JButton buildBarButton(String label) {
         JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
         leftBtns.setBackground(UITheme.BG_DARK);
         leftBtns.add(partiesBtn);
+        leftBtns.add(noblesBtn);
         leftBtns.add(mapBtn);
         leftBtns.add(openVoteBtn);
 
@@ -189,6 +202,11 @@ private JButton buildBarButton(String label) {
         swapCenter(actionsWrapper);
         refreshAll();
         updateEndTurnState();
+    }
+
+    private void showNoblesView() {
+        nobleHousesPanel.refresh();
+        swapCenter(nobleHousesPanel);
     }
 
     private void showPartiesView() {
@@ -232,7 +250,8 @@ private void endTurn() {
             gameState.getPopManager(),
             gameState.getCalendar(),
             gameState.getActionRegistry(),
-            gameState.getEffectManager()
+            gameState.getEffectManager(),
+            gameState.getNobleHouseManager()
         );
         eventLogPanel.appendLines(log);
         calendarPanel.refresh();
