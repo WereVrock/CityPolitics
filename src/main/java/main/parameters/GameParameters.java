@@ -147,6 +147,7 @@ public final class GameParameters {
     // =========================================================
     // PASSIVE PER-TURN EFFECTS
     // =========================================================
+    public static final int BASE_INFLUENCE_PER_TURN         = 1;
     public static final int HAPPINESS_DECAY_PER_TURN        = 2;
     public static final int CORRUPTION_DECAY_PER_TURN       = 1;
 
@@ -225,6 +226,53 @@ public final class GameParameters {
 
     /** Gold cost per soldier per turn to maintain the raised army. */
     public static final int    NOBLE_UPKEEP_COST_PER_SOLDIER         = 1;
+
+    // =========================================================
+    // NOBLE HOUSE — PRESTIGE & DEFENSE
+    // =========================================================
+    public static final int    NOBLE_STARTING_PRESTIGE               = 50;
+    public static final int    NOBLE_STARTING_DEFENSE                = 10;
+    public static final double NOBLE_INFLUENCE_PRESTIGE_FACTOR       = 0.002; // per prestige point
+
+    // =========================================================
+    // COMBAT (placeholder values)
+    // =========================================================
+    public static final double COMBAT_BASE_CASUALTY_RATE             = 0.20;
+    public static final double COMBAT_CASUALTY_VARIANCE              = 0.10;
+    public static final double COMBAT_DEFENSE_REDUCTION              = 0.50; // max 50% reduction at 100 defense
+
+    // =========================================================
+    // DEMAND FORMULA
+    // =========================================================
+    public static final double DEMAND_BASE_SCORE                     = 50.0;
+    public static final double DEMAND_PRESTIGE_WEIGHT                = 0.3;
+    public static final double DEMAND_ARMY_WEIGHT                    = 0.1;
+    public static final double DEMAND_ALLIED_BONUS                   = 30.0;
+    public static final double DEMAND_RIVAL_PENALTY                  = -40.0;
+    public static final double DEMAND_SHARED_RIVAL_BONUS             = 20.0;
+    public static final double DEMAND_RANDOM_RANGE                   = 15.0;
+    public static final double DEMAND_ACCEPT_THRESHOLD               = 50.0;
+    public static final double DEMAND_WEALTH_FRACTION                = 0.20;
+    public static final int    DEMAND_ARMY_AMOUNT                    = 10;
+    public static final int    DEMAND_PRESTIGE_AMOUNT                = 8;
+
+    // =========================================================
+    // NOBLE AI
+    // =========================================================
+    public static final double AI_DOMINANT_MOTIVATION_CHANCE         = 0.75;
+    public static final int    AI_FORTIFY_THRESHOLD                  = 30;
+    public static final double AI_RAID_GOLD_FRACTION                 = 0.15;
+    public static final double AI_SUPPORT_GOLD_FRACTION              = 0.10;
+    public static final int    AI_SCHEME_PRESTIGE_LOSS               = 10;
+    public static final int    AI_SCHEME_PRESTIGE_GAIN               = 5;
+    public static final int    AI_FORTIFY_GOLD_COST                  = 20;
+    public static final int    AI_FORTIFY_DEFENSE_GAIN               = 10;
+    public static final int    AI_INFLUENCE_COST_ATTACK              = 3;
+    public static final int    AI_INFLUENCE_COST_RAID                = 2;
+    public static final int    AI_INFLUENCE_COST_DEMAND              = 2;
+    public static final int    AI_INFLUENCE_COST_SCHEME              = 3;
+    public static final int    AI_INFLUENCE_COST_ALLY                = 1;
+    public static final int    AI_INFLUENCE_COST_SUPPORT             = 2;
 
     // =========================================================
     // ARMY

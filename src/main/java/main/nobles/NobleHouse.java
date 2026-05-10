@@ -1,113 +1,152 @@
-// NobleHouse.java
 package main.nobles;
 
 import main.parameters.GameParameters;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 /**
  * A noble house with territory, resources, opinion toward the player,
- * and a standing army.
+ * a standing army, and an active character driving AI behavior.
  */
 public class NobleHouse {
 
     public enum Race { HUMAN, ELF, DWARF, ORC }
 
-    private final String       id;
-    private final String       name;
-    private final String       leaderName;
-    private final String       leaderPersonality;
-    private final Race         race;
-    private final List<String> zoneIds;          // zone IDs this house controls
+    private final String             id;
+    private final String             name;
+    private final Race               race;
+    private final List<String>       zoneIds;
+    private final List<NobleCharacter> characters;   // 3 slots; index 0 active for now
+    private final int                activeCharacterIndex;
 
     // Resources
     private int gold;
     private int manpower;
     private int influence;
 
-    // Opinion toward player: 0–100
+    // Stats
     private int playerOpinion;
+    private int prestige;    // 0–100, hidden; displayed via Prestige enum
+    private int defense;     // 0–100
 
-    // Standing army (free, in capital, no upkeep)
-    private final int standingArmySize;
-
-    // Raised army (costs gold to recruit and maintain)
+    // Army
+    private int standingArmySize;
     private int raisedArmySize;
 
-    public NobleHouse(String id, String name, String leaderName, String leaderPersonality,
-                      Race race, List<String> zoneIds, int startingGold) {
-        this.id                = id;
-        this.name              = name;
-        this.leaderName        = leaderName;
-        this.leaderPersonality = leaderPersonality;
-        this.race              = race;
-        this.zoneIds           = zoneIds;
-        this.gold              = startingGold;
-        this.manpower          = 0;
-        this.influence         = GameParameters.NOBLE_HOUSE_STARTING_INFLUENCE;
-        this.playerOpinion     = GameParameters.NOBLE_HOUSE_STARTING_OPINION;
-        this.raisedArmySize    = 0;
-        this.standingArmySize  = computeStandingArmySize();
+    public NobleHouse(String id, String name, Race race,
+                      List<String> zoneIds,
+                      List<NobleCharacter> characters,
+                      int startingGold, int startingPrestige) {
+        this.id                   = id;
+        this.name                 = name;
+        this.race                 = race;
+        this.zoneIds              = new ArrayList<>(zoneIds);
+        this.characters           = new ArrayList<>(characters);
+        this.activeCharacterIndex = 0;
+        this.gold                 = startingGold;
+        this.manpower             = 0;
+        this.influence            = GameParameters.NOBLE_HOUSE_STARTING_INFLUENCE;
+        this.playerOpinion        = GameParameters.NOBLE_HOUSE_STARTING_OPINION;
+        this.prestige             = startingPrestige;
+        this.defense              = GameParameters.NOBLE_STARTING_DEFENSE;
+        this.raisedArmySize       = 0;
+        this.standingArmySize     = computeStandingArmySize();
+    }
+
+    // ─── Character ───────────────────────────────────────────────────────────
+
+    public NobleCharacter getActiveCharacter() {
+        if (characters.isEmpty()) return null;
+        return characters.get(activeCharacterIndex);
+    }
+
+    public List<NobleCharacter> getCharacters() {
+        return Collections.unmodifiableList(characters);
+    }
+
+    // ─── Prestige ────────────────────────────────────────────────────────────
+
+    public int     getPrestige()      { return prestige; }
+    public Prestige getPrestigeLevel(){ return Prestige.fromValue(prestige); }
+
+    public void addPrestige(int delta) {
+        prestige = Math.max(0, Math.min(100, prestige + delta));
+    }
+
+    // ─── Defense ─────────────────────────────────────────────────────────────
+
+    public int  getDefense()          { return defense; }
+    public void addDefense(int delta) {
+        defense = Math.max(0, Math.min(100, defense + delta));
     }
 
     // ─── Manpower ────────────────────────────────────────────────────────────
 
-    /** Total raw manpower generated per turn across all controlled zones. */
     public int getManpowerPerTurn() {
         return zoneIds.size() * GameParameters.NOBLE_ZONE_MANPOWER_PER_TURN;
     }
 
-    /**
-     * Fraction of manpower sent to player this turn.
-     * Scales 0–50% based on opinion (0 opinion = 0%, 100 opinion = 50%).
-     * If opinion is below hostile threshold, nothing is sent.
-     */
     public double getManpowerSendFraction() {
         if (playerOpinion <= GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD) return 0.0;
         return (playerOpinion / 100.0) * GameParameters.NOBLE_MAX_MANPOWER_SEND_FRACTION;
     }
 
-    /** Manpower sent to player this turn (half the raw total, scaled by opinion). */
     public int computeManpowerSentToPlayer() {
         return (int) Math.floor(getManpowerPerTurn() * getManpowerSendFraction());
     }
 
-    /** Manpower retained by this house this turn. */
     public int computeManpowerRetained() {
         return getManpowerPerTurn() - computeManpowerSentToPlayer();
     }
 
     // ─── Gold ────────────────────────────────────────────────────────────────
 
-    /** Whether this house sends gold/food to the player (false if hostile). */
     public boolean sendsResourcesToPlayer() {
         return playerOpinion > GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD;
     }
 
     // ─── Influence ───────────────────────────────────────────────────────────
 
+    /**
+     * Influence generated per turn: base + per-zone + prestige bonus.
+     */
     public int getInfluencePerTurn() {
+        int prestigeBonus = (int)(prestige * GameParameters.NOBLE_INFLUENCE_PRESTIGE_FACTOR);
         return (int) Math.floor(
             GameParameters.NOBLE_INFLUENCE_BASE_PER_TURN
             + GameParameters.NOBLE_INFLUENCE_PER_ZONE * zoneIds.size()
+            + prestigeBonus
         );
     }
 
-    // ─── Standing army ───────────────────────────────────────────────────────
+    // ─── Army ────────────────────────────────────────────────────────────────
 
     private int computeStandingArmySize() {
-        return getManpowerPerTurn() * GameParameters.NOBLE_STANDING_ARMY_MANPOWER_MULTIPLIER;
+        return getManpowerPerTurn()
+            * GameParameters.NOBLE_STANDING_ARMY_MANPOWER_MULTIPLIER;
     }
 
     public int getStandingArmySize() { return standingArmySize; }
     public int getRaisedArmySize()   { return raisedArmySize; }
     public int getTotalArmySize()    { return standingArmySize + raisedArmySize; }
 
-    /**
-     * Attempt to raise additional soldiers. Returns soldiers actually raised.
-     * Costs NOBLE_RECRUIT_COST_PER_SOLDIER gold per soldier.
-     */
+    public void setTotalArmySize(int size) {
+        // Losses come from raised army first, then standing
+        int total = Math.max(0, size);
+        if (total >= standingArmySize) {
+            raisedArmySize = total - standingArmySize;
+        } else {
+            standingArmySize = total;
+            raisedArmySize   = 0;
+        }
+    }
+
+    public void addToRaisedArmy(int soldiers) {
+        raisedArmySize = Math.max(0, raisedArmySize + soldiers);
+    }
+
     public int raiseArmy(int soldiers) {
         int affordable = gold / GameParameters.NOBLE_RECRUIT_COST_PER_SOLDIER;
         int toRaise    = Math.min(soldiers, affordable);
@@ -116,27 +155,43 @@ public class NobleHouse {
         return toRaise;
     }
 
-    /**
-     * Pay upkeep for raised army. If gold runs out soldiers disband.
-     */
     public void payUpkeep() {
         int cost = raisedArmySize * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
         if (gold >= cost) {
             gold -= cost;
         } else {
-            // Disband as many as needed
             int canAfford  = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
             raisedArmySize = canAfford;
             gold           = gold - canAfford * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
         }
     }
 
+    // ─── Zone management ─────────────────────────────────────────────────────
+
+    public void addZone(String zoneId) {
+        if (!zoneIds.contains(zoneId)) {
+            zoneIds.add(zoneId);
+            standingArmySize = computeStandingArmySize();
+        }
+    }
+
+    public void removeZone(String zoneId) {
+        zoneIds.remove(zoneId);
+        standingArmySize = computeStandingArmySize();
+    }
+
     // ─── Accessors / mutators ─────────────────────────────────────────────────
 
     public String       getId()                { return id; }
     public String       getName()              { return name; }
-    public String       getLeaderName()        { return leaderName; }
-    public String       getLeaderPersonality() { return leaderPersonality; }
+    public String       getLeaderName()        {
+        NobleCharacter c = getActiveCharacter();
+        return c != null ? c.getName() : name;
+    }
+    public String       getLeaderPersonality() {
+        NobleCharacter c = getActiveCharacter();
+        return c != null ? c.getPersonality() : "";
+    }
     public Race         getRace()              { return race; }
     public List<String> getZoneIds()           { return Collections.unmodifiableList(zoneIds); }
 

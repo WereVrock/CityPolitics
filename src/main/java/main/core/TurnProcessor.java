@@ -43,10 +43,10 @@ private void applyPopEconomics(ResourcePool resources, PopManager popManager, Li
         int foodConsumed    = popManager.getTotalFoodConsumption();
 
         resources.addMoney(moneyGained);
-        resources.addInfluence(influenceGained);
+        resources.addInfluence(influenceGained + GameParameters.BASE_INFLUENCE_PER_TURN);
         resources.addFood(-foodConsumed);
 
-        log.add("Pops generated " + moneyGained + " money, " + influenceGained + " influence.");
+        log.add("Pops generated " + moneyGained + " money, " + (influenceGained + GameParameters.BASE_INFLUENCE_PER_TURN) + " influence.");
         log.add("Pops consumed " + foodConsumed + " food.");
     }
 
