@@ -6,5 +6,5 @@ package main.nobles.ai;
 public enum DemandType {
     WEALTH,
     ARMY,
-    PRESTIGE
+    ACKNOWLEDGE_SUPERIORITY
 }

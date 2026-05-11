@@ -8,29 +8,21 @@ import java.util.Random;
 
 /**
  * Placeholder combat resolver.
- * Armies deal random casualties scaled by army power.
- * Defense reduces attacker effectiveness.
- * Replace internals later without touching callers.
+ * Supports both single attacker and combined coalition force.
  */
 public class CombatResolver {
 
     private static final Random RNG = new Random();
 
     /**
-     * Resolve a single engagement between attacker and defender.
-     * Mutates armySize on both forces.
-     * @param attacker
-     * @param defender
-     * @return 
+     * Single attacker vs defender.
      */
     public static CombatResult resolve(ArmyForce attacker, ArmyForce defender) {
         List<String> log = new ArrayList<>();
 
-        // Defense reduces attacker effectiveness: 0 defense = full power, 100 defense = half power
         double defenseMultiplier = 1.0 - (defender.getDefense() / 100.0)
-                                       * GameParameters.COMBAT_DEFENSE_REDUCTION;
+            * GameParameters.COMBAT_DEFENSE_REDUCTION;
 
-        // Each side deals casualties proportional to army size + randomness
         int attackerPower  = attacker.getArmySize();
         int defenderPower  = (int)(defender.getArmySize() * defenseMultiplier);
 
@@ -46,16 +38,77 @@ public class CombatResolver {
         log.add("Attacker losses: " + attackerLosses
             + "  Defender losses: " + defenderLosses);
 
+        return resolveWinner(attacker.getHouseId(), defender.getHouseId(),
+            attacker, defender, attackerLosses, defenderLosses, log);
+    }
+
+    /**
+     * Coalition attack: multiple attackers combined vs one defender.
+     * Returns a single CombatResult. Winner is "coalition" or defender id.
+     * Losses are distributed proportionally across coalition members.
+     */
+    public static CombatResult resolveCoalition(List<ArmyForce> attackers,
+                                                 ArmyForce defender,
+                                                 String coordinatorId) {
+        List<String> log = new ArrayList<>();
+
+        int totalAttackerPower = 0;
+        for (ArmyForce a : attackers) totalAttackerPower += a.getArmySize();
+
+        double defenseMultiplier = 1.0 - (defender.getDefense() / 100.0)
+            * GameParameters.COMBAT_DEFENSE_REDUCTION;
+        int defenderPower = (int)(defender.getArmySize() * defenseMultiplier);
+
+        int defenderLosses  = resolveCasualties(totalAttackerPower, defender.getArmySize());
+        int totalAtkLosses  = resolveCasualties(defenderPower, totalAttackerPower);
+
+        StringBuilder members = new StringBuilder();
+        for (int i = 0; i < attackers.size(); i++) {
+            if (i > 0) members.append(", ");
+            members.append(attackers.get(i).getHouseId());
+        }
+        log.add("Coalition [" + members + "] attacks " + defender.getHouseId()
+            + " (" + totalAttackerPower + " vs " + defender.getArmySize() + ")");
+
+        // Distribute losses proportionally
+        for (ArmyForce a : attackers) {
+            double fraction = (double) a.getArmySize() / Math.max(1, totalAttackerPower);
+            int losses = (int) Math.ceil(totalAtkLosses * fraction);
+            a.applyLosses(losses);
+        }
+        defender.applyLosses(defenderLosses);
+
+        log.add("Coalition losses: " + totalAtkLosses
+            + "  Defender losses: " + defenderLosses);
+
+        boolean coalitionWins = totalAttackerPower - totalAtkLosses
+            > defender.getArmySize() - defenderLosses;
+
+        if (coalitionWins) {
+            log.add("Coalition wins the engagement.");
+            return new CombatResult(coordinatorId, defender.getHouseId(),
+                totalAtkLosses, defenderLosses, log);
+        } else {
+            log.add(defender.getHouseId() + " repels the coalition.");
+            return new CombatResult(defender.getHouseId(), coordinatorId,
+                totalAtkLosses, defenderLosses, log);
+        }
+    }
+
+    private static CombatResult resolveWinner(String attackerId, String defenderId,
+                                               ArmyForce attacker, ArmyForce defender,
+                                               int attackerLosses, int defenderLosses,
+                                               List<String> log) {
         String winnerId;
         String loserId;
 
         if (attacker.getArmySize() > defender.getArmySize()) {
-            winnerId = attacker.getHouseId();
-            loserId  = defender.getHouseId();
+            winnerId = attackerId;
+            loserId  = defenderId;
             log.add(winnerId + " wins the engagement.");
         } else if (defender.getArmySize() > attacker.getArmySize()) {
-            winnerId = defender.getHouseId();
-            loserId  = attacker.getHouseId();
+            winnerId = defenderId;
+            loserId  = attackerId;
             log.add(winnerId + " repels the attack.");
         } else {
             winnerId = null;
@@ -63,13 +116,10 @@ public class CombatResolver {
             log.add("The engagement ends in a draw.");
         }
 
-        return new CombatResult(winnerId, loserId, attackerLosses, defenderLosses, log);
+        return new CombatResult(winnerId, loserId,
+            attackerLosses, defenderLosses, log);
     }
 
-    /**
-     * How many casualties does a force of [power] inflict on a force of [targetSize]?
-     * Placeholder: random 10–30% of target size, scaled by power ratio.
-     */
     private static int resolveCasualties(int power, int targetSize) {
         if (power <= 0 || targetSize <= 0) return 0;
         double ratio    = Math.min(2.0, (double) power / Math.max(1, targetSize));

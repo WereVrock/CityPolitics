@@ -4,10 +4,11 @@ import java.util.List;
 
 /**
  * Outcome of a combat engagement.
+ * Supports both single attacker and combined coalition attacks.
  */
 public class CombatResult {
 
-    private final String       winnerId;    // null = draw
+    private final String       winnerId;
     private final String       loserId;
     private final int          attackerLosses;
     private final int          defenderLosses;

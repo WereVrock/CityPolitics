@@ -7,8 +7,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * A noble house with territory, resources, opinion toward the player,
- * army, prestige, defense, and an active character driving AI behavior.
+ * A noble house with territory, resources, opinion, army, prestige,
+ * defense, threatened status, and an active character.
  */
 public class NobleHouse {
 
@@ -21,14 +21,15 @@ public class NobleHouse {
     private final List<NobleCharacter> characters;
     private final int                  activeCharacterIndex;
 
-    private int gold;
-    private int manpower;
-    private int influence;
-    private int playerOpinion;
-    private int prestige;
-    private int defense;
-    private int standingArmySize;
-    private int raisedArmySize;
+    private int     gold;
+    private int     manpower;
+    private int     influence;
+    private int     playerOpinion;
+    private int     prestige;
+    private int     defense;
+    private int     standingArmySize;
+    private int     raisedArmySize;
+    private boolean threatened;
 
     public NobleHouse(String id, String name, Race race,
                       List<String> zoneIds,
@@ -47,6 +48,7 @@ public class NobleHouse {
         this.prestige             = startingPrestige;
         this.defense              = GameParameters.NOBLE_STARTING_DEFENSE;
         this.raisedArmySize       = 0;
+        this.threatened           = false;
         this.standingArmySize     = computeStandingArmySize();
     }
 
@@ -54,9 +56,23 @@ public class NobleHouse {
 
     public boolean isEliminated() { return zoneIds.isEmpty(); }
 
+    // ─── Threatened ──────────────────────────────────────────────────────────
+
+    public boolean isThreatened()          { return threatened; }
+    public void    setThreatened(boolean v){ this.threatened = v; }
+
+    // ─── Military score ──────────────────────────────────────────────────────
+
+    public int getMilitaryScore() {
+        NobleCharacter c = getActiveCharacter();
+        int skill = c != null ? c.getMilitary() : 0;
+        return (int)(getTotalArmySize() * (1.0 + skill
+            * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
+    }
+
     // ─── Character ───────────────────────────────────────────────────────────
 
-    public NobleCharacter      getActiveCharacter() {
+    public NobleCharacter getActiveCharacter() {
         if (characters.isEmpty()) return null;
         return characters.get(activeCharacterIndex);
     }
@@ -75,8 +91,8 @@ public class NobleHouse {
 
     // ─── Defense ─────────────────────────────────────────────────────────────
 
-    public int  getDefense()           { return defense; }
-    public void addDefense(int delta)  {
+    public int  getDefense()          { return defense; }
+    public void addDefense(int delta) {
         defense = Math.max(0, Math.min(100, defense + delta));
     }
 
@@ -98,8 +114,6 @@ public class NobleHouse {
     public int computeManpowerRetained() {
         return getManpowerPerTurn() - computeManpowerSentToPlayer();
     }
-
-    // ─── Gold ────────────────────────────────────────────────────────────────
 
     public boolean sendsResourcesToPlayer() {
         return playerOpinion > GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD;
@@ -158,8 +172,8 @@ public class NobleHouse {
         } else {
             int canAfford  = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
             raisedArmySize = canAfford;
-            gold           = gold - canAfford
-                * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+            gold           = gold
+                - canAfford * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
         }
     }
 
@@ -179,9 +193,9 @@ public class NobleHouse {
 
     // ─── Accessors ───────────────────────────────────────────────────────────
 
-    public String       getId()   { return id; }
-    public String       getName() { return name; }
-    public Race         getRace() { return race; }
+    public String getId()   { return id; }
+    public String getName() { return name; }
+    public Race   getRace() { return race; }
 
     public String getLeaderName() {
         NobleCharacter c = getActiveCharacter();
@@ -193,11 +207,11 @@ public class NobleHouse {
         return c != null ? c.getPersonality() : "";
     }
 
-    public List<String> getZoneIds()         { return Collections.unmodifiableList(zoneIds); }
-    public int          getGold()            { return gold; }
-    public int          getManpower()        { return manpower; }
-    public int          getInfluence()       { return influence; }
-    public int          getPlayerOpinion()   { return playerOpinion; }
+    public List<String> getZoneIds()       { return Collections.unmodifiableList(zoneIds); }
+    public int          getGold()          { return gold; }
+    public int          getManpower()      { return manpower; }
+    public int          getInfluence()     { return influence; }
+    public int          getPlayerOpinion() { return playerOpinion; }
 
     public void addGold(int v)      { gold      = Math.max(0, gold      + v); }
     public void addManpower(int v)  { manpower  = Math.max(0, manpower  + v); }

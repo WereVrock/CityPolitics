@@ -262,6 +262,39 @@ public final class GameParameters {
     // =========================================================
     // CLAIM FABRICATION
     // =========================================================
+    // =========================================================
+    // COALITION
+    // =========================================================
+    public static final int    COALITION_ZONE_THRESHOLD              = 3;
+    public static final double COALITION_ARMY_THRESHOLD              = 0.90;
+
+    // =========================================================
+    // THREATENED
+    // =========================================================
+    public static final double THREATENED_BASE_CHANCE_MULTIPLIER     = 5.0;
+    public static final double THREATENED_DECAY_CHANCE               = 0.05;
+
+    // =========================================================
+    // RAID COOLDOWN & PRODUCTION MALUS
+    // =========================================================
+    public static final int    RAID_COOLDOWN_TURNS                   = 3;
+    public static final double RAID_PRODUCTION_MALUS                 = 0.30;
+
+    // =========================================================
+    // CONQUEST MALUS
+    // =========================================================
+    public static final int    CONQUEST_MALUS_DECAY_PER_TURN         = 10;
+    public static final double CONQUEST_MALUS_GOLD_COST_PER_PERCENT  = 0.05;
+    public static final double CONQUEST_MALUS_INFLUENCE_COST_PER_PERCENT = 0.02;
+
+    // =========================================================
+    // ACKNOWLEDGE SUPERIORITY
+    // =========================================================
+    public static final double SUPERIORITY_BASE_ACCEPT_CHANCE        = 0.60;
+    public static final double SUPERIORITY_RANDOM_RANGE              = 0.20;
+
+   
+
     public static final double CLAIM_BASE_SUCCESS_CHANCE             = 0.35;
     public static final double CLAIM_CUNNING_BONUS_PER_POINT         = 0.15;
 
@@ -285,7 +318,7 @@ public final class GameParameters {
     public static final double ALLIANCE_BREAK_CLEAN_PER_DIPLOMACY    = 0.15;
     public static final double ALLY_BASE_ACCEPT_CHANCE               = 0.50;
     public static final double ALLY_DIPLOMACY_BONUS_PER_POINT        = 0.10;
-    public static final double ALLY_DEFENSE_MIN_STRENGTH_FRACTION    = 0.60;
+    public static final double ALLY_DEFENSE_MIN_STRENGTH_FRACTION    = 0.35;
 
     // =========================================================
     // RELATIONSHIP DECAY
