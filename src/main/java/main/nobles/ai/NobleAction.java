@@ -6,9 +6,12 @@ package main.nobles.ai;
 public enum NobleAction {
     ATTACK,
     ALLY,
+    BREAK_ALLIANCE,
     DEMAND,
+    FABRICATE_CLAIM,
+    FORTIFY,
+    GIFT,
     RAID,
     SCHEME,
-    FORTIFY,
     SUPPORT_RIVAL
 }

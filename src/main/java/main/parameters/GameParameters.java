@@ -259,6 +259,64 @@ public final class GameParameters {
     // =========================================================
     // NOBLE AI
     // =========================================================
+    // =========================================================
+    // CLAIM FABRICATION
+    // =========================================================
+    public static final double CLAIM_BASE_SUCCESS_CHANCE             = 0.35;
+    public static final double CLAIM_CUNNING_BONUS_PER_POINT         = 0.15;
+
+    // =========================================================
+    // SCHEME SUCCESS
+    // =========================================================
+    public static final double SCHEME_BASE_SUCCESS_CHANCE            = 0.40;
+    public static final double SCHEME_CUNNING_BONUS_PER_POINT        = 0.15;
+
+    // =========================================================
+    // MILITARY SKILL
+    // =========================================================
+    public static final double MILITARY_SKILL_BONUS_PER_POINT        = 0.10;
+
+    // =========================================================
+    // ALLIANCE RULES
+    // =========================================================
+    public static final int    ALLIANCE_MAX_PER_HOUSE                = 2;
+    public static final double ALLIANCE_MIN_ARMY_FRACTION            = 0.50;
+    public static final double ALLIANCE_BREAK_CLEAN_BASE             = 0.30;
+    public static final double ALLIANCE_BREAK_CLEAN_PER_DIPLOMACY    = 0.15;
+    public static final double ALLY_BASE_ACCEPT_CHANCE               = 0.50;
+    public static final double ALLY_DIPLOMACY_BONUS_PER_POINT        = 0.10;
+    public static final double ALLY_DEFENSE_MIN_STRENGTH_FRACTION    = 0.60;
+
+    // =========================================================
+    // RELATIONSHIP DECAY
+    // =========================================================
+    public static final int    HOSTILE_DECAY_TURNS                   = 3;
+
+    // =========================================================
+    // RAID CAP
+    // =========================================================
+    public static final double RAID_MAX_GOLD_ZONE_MULTIPLIER         = 3.0;
+
+    // =========================================================
+    // DEMAND — DIPLOMACY BONUS
+    // =========================================================
+    public static final double DEMAND_DIPLOMACY_BONUS_PER_POINT      = 5.0;
+
+    // =========================================================
+    // GIFT
+    // =========================================================
+    public static final int    GIFT_MONEY_AMOUNT                     = 30;
+    public static final double GIFT_WEIGHT_SECURITY                  = 0.60;
+    public static final double GIFT_WEIGHT_WEALTH                    = 0.25;
+    public static final double GIFT_WEIGHT_PRESTIGE                  = 0.30;
+    public static final double GIFT_WEIGHT_EXPANSION                 = 0.10;
+    public static final int    GIFT_WEALTH_GOLD_THRESHOLD            = 150;
+
+    // =========================================================
+    // NOBLE AI — INFLUENCE COSTS (new)
+    // =========================================================
+    public static final int    AI_INFLUENCE_COST_FABRICATE           = 2;
+
     public static final double AI_DOMINANT_MOTIVATION_CHANCE         = 0.75;
     public static final int    AI_FORTIFY_THRESHOLD                  = 30;
     public static final double AI_RAID_GOLD_FRACTION                 = 0.15;

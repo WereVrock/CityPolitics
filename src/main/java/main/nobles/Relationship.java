@@ -1,10 +1,13 @@
 package main.nobles;
 
 /**
- * Relationship stance between two noble houses.
+ * Five-tier relationship ladder between two noble houses.
+ * Ordered from most positive to most hostile.
  */
 public enum Relationship {
     ALLIED,
+    FRIENDLY,
     NEUTRAL,
+    HOSTILE,
     RIVAL
 }

@@ -9,12 +9,13 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Owns all noble houses, drives their per-turn economy and AI tick.
+ * Owns all noble houses, claims, relationships, and drives their per-turn tick.
  */
 public class NobleHouseManager {
 
     private final List<NobleHouse>    houses        = new ArrayList<>();
     private final RelationshipManager relationships = new RelationshipManager();
+    private final ClaimManager        claimManager  = new ClaimManager();
 
     public NobleHouseManager(main.map.ZoneManager zoneManager) {
         buildHouses();
@@ -26,14 +27,18 @@ public class NobleHouseManager {
         List<String> log = new ArrayList<>();
 
         for (NobleHouse house : houses) {
-            processEconomy(house, playerResources, log);
+            if (!house.isEliminated()) {
+                processEconomy(house, playerResources, log);
+            }
         }
 
-        // AI ticks — copy list to avoid concurrent modification
         List<NobleHouse> snapshot = new ArrayList<>(houses);
         for (NobleHouse house : snapshot) {
-            List<String> aiLog = NobleAI.tick(house, snapshot, relationships);
-            log.addAll(aiLog);
+            if (!house.isEliminated()) {
+                List<String> aiLog = NobleAI.tick(house, snapshot,
+                    relationships, claimManager);
+                log.addAll(aiLog);
+            }
         }
 
         return log;
@@ -70,8 +75,9 @@ public class NobleHouseManager {
 
     // ─── Accessors ───────────────────────────────────────────────────────────
 
-    public List<NobleHouse>    getHouses()             { return Collections.unmodifiableList(houses); }
-    public RelationshipManager getRelationships()      { return relationships; }
+    public List<NobleHouse>    getHouses()        { return Collections.unmodifiableList(houses); }
+    public RelationshipManager getRelationships() { return relationships; }
+    public ClaimManager        getClaimManager()  { return claimManager; }
 
     public NobleHouse getHouseById(String id) {
         return houses.stream().filter(h -> h.getId().equals(id))
@@ -88,6 +94,7 @@ public class NobleHouseManager {
     public void reset() {
         houses.clear();
         relationships.reset();
+        claimManager.reset();
         buildHouses();
     }
 
@@ -101,13 +108,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Lord Edaran Valdris",
                     "Silver-tongued and patient. Has waited twenty years for his moment.",
-                    Motivation.PRESTIGE, Motivation.WEALTH, 0.7, 0.3),
+                    Motivation.PRESTIGE, Motivation.WEALTH, 0.7, 0.3,
+                    3, 1, 2),
                 new NobleCharacter("Heir Cael Valdris",
                     "Young and ambitious. Wants to prove himself in the field.",
-                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.65, 0.35),
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.65, 0.35,
+                    1, 3, 1),
                 new NobleCharacter("Steward Mira Valdris",
                     "Pragmatic administrator. Believes wars are won by accountants.",
-                    Motivation.WEALTH, Motivation.SECURITY, 0.8, 0.2)
+                    Motivation.WEALTH, Motivation.SECURITY, 0.8, 0.2,
+                    2, 0, 2)
             ),
             120, 60
         ));
@@ -118,13 +128,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Lady Serafin Thornmere",
                     "Cold pragmatist. Commands loyalty through fear dressed as respect.",
-                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3),
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3,
+                    2, 1, 3),
                 new NobleCharacter("Warden Aethos Thornmere",
                     "Isolationist. Wants no part of southern politics.",
-                    Motivation.SECURITY, Motivation.WEALTH, 0.75, 0.25),
+                    Motivation.SECURITY, Motivation.WEALTH, 0.75, 0.25,
+                    1, 1, 1),
                 new NobleCharacter("Scout-Lord Vel Thornmere",
                     "Aggressive expansionist. Eyes the northern passes.",
-                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.8, 0.2)
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.8, 0.2,
+                    0, 3, 1)
             ),
             100, 55
         ));
@@ -135,13 +148,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Warlord Duvrak Ashkar",
                     "Blunt, honourable, and deeply suspicious of paperwork.",
-                    Motivation.EXPANSION, Motivation.SECURITY, 0.75, 0.25),
+                    Motivation.EXPANSION, Motivation.SECURITY, 0.75, 0.25,
+                    1, 3, 1),
                 new NobleCharacter("Champion Brak Ashkar",
                     "Pure warrior. Respects only combat results.",
-                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.85, 0.15),
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.85, 0.15,
+                    0, 3, 0),
                 new NobleCharacter("Elder Gruum Ashkar",
                     "Old and tired. Wants peace before he dies.",
-                    Motivation.SECURITY, Motivation.WEALTH, 0.7, 0.3)
+                    Motivation.SECURITY, Motivation.WEALTH, 0.7, 0.3,
+                    2, 1, 1)
             ),
             80, 45
         ));
@@ -152,13 +168,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Thane Hurga Deepvein",
                     "Meticulous record-keeper. Every favour is logged.",
-                    Motivation.WEALTH, Motivation.SECURITY, 0.8, 0.2),
+                    Motivation.WEALTH, Motivation.SECURITY, 0.8, 0.2,
+                    2, 1, 3),
                 new NobleCharacter("Forgemaster Dolgrin Deepvein",
                     "Industrialist. Wants trade routes above all else.",
-                    Motivation.WEALTH, Motivation.EXPANSION, 0.75, 0.25),
+                    Motivation.WEALTH, Motivation.EXPANSION, 0.75, 0.25,
+                    2, 1, 2),
                 new NobleCharacter("Ironguard Bera Deepvein",
                     "Military pragmatist. Wealth through strength.",
-                    Motivation.SECURITY, Motivation.WEALTH, 0.65, 0.35)
+                    Motivation.SECURITY, Motivation.WEALTH, 0.65, 0.35,
+                    1, 2, 2)
             ),
             90, 65
         ));
@@ -169,13 +188,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Lord Aldric Crestfall",
                     "Jovial on the surface. Underneath: a careful chess player.",
-                    Motivation.PRESTIGE, Motivation.EXPANSION, 0.7, 0.3),
+                    Motivation.PRESTIGE, Motivation.EXPANSION, 0.7, 0.3,
+                    3, 1, 3),
                 new NobleCharacter("Lady Vorn Crestfall",
                     "Diplomatic genius. Builds alliances like fortresses.",
-                    Motivation.PRESTIGE, Motivation.SECURITY, 0.75, 0.25),
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.75, 0.25,
+                    3, 0, 2),
                 new NobleCharacter("Captain Renn Crestfall",
                     "Straightforward soldier. Distrusts politics entirely.",
-                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3)
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3,
+                    1, 3, 0)
             ),
             70, 50
         ));
@@ -186,13 +208,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Archon Thessiel Sylvaine",
                     "Ethereal and unreadable. Speaks in half-sentences.",
-                    Motivation.PRESTIGE, Motivation.WEALTH, 0.75, 0.25),
+                    Motivation.PRESTIGE, Motivation.WEALTH, 0.75, 0.25,
+                    2, 0, 3),
                 new NobleCharacter("Keeper Aevi Sylvaine",
                     "Ancient archivist. Hoards knowledge and leverage equally.",
-                    Motivation.PRESTIGE, Motivation.SECURITY, 0.8, 0.2),
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.8, 0.2,
+                    1, 0, 3),
                 new NobleCharacter("Blade Sorn Sylvaine",
                     "Unconventional warrior. Acts where words fail.",
-                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.7, 0.3)
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.7, 0.3,
+                    1, 3, 2)
             ),
             85, 70
         ));
@@ -203,13 +228,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Baron Orryn Duskmantle",
                     "Paranoid and brilliant. Has contingency plans for everything.",
-                    Motivation.SECURITY, Motivation.WEALTH, 0.75, 0.25),
+                    Motivation.SECURITY, Motivation.WEALTH, 0.75, 0.25,
+                    1, 1, 3),
                 new NobleCharacter("Spy-Master Lira Duskmantle",
                     "Sees conspiracies everywhere. Half of them are real.",
-                    Motivation.SECURITY, Motivation.PRESTIGE, 0.7, 0.3),
+                    Motivation.SECURITY, Motivation.PRESTIGE, 0.7, 0.3,
+                    2, 0, 3),
                 new NobleCharacter("Marshal Dorn Duskmantle",
                     "Aggressive defender. Attack is the best defense.",
-                    Motivation.EXPANSION, Motivation.SECURITY, 0.65, 0.35)
+                    Motivation.EXPANSION, Motivation.SECURITY, 0.65, 0.35,
+                    1, 3, 1)
             ),
             60, 40
         ));
@@ -220,13 +248,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Admiral Vessa Saltborn",
                     "Weathered sailor turned noble. Respects directness.",
-                    Motivation.WEALTH, Motivation.EXPANSION, 0.75, 0.25),
+                    Motivation.WEALTH, Motivation.EXPANSION, 0.75, 0.25,
+                    2, 2, 2),
                 new NobleCharacter("Harbormaster Crul Saltborn",
                     "Trade above all. War is bad for shipping.",
-                    Motivation.WEALTH, Motivation.SECURITY, 0.8, 0.2),
+                    Motivation.WEALTH, Motivation.SECURITY, 0.8, 0.2,
+                    3, 0, 1),
                 new NobleCharacter("Corsair Bren Saltborn",
                     "Pirate heritage never fully left. Raids first, asks later.",
-                    Motivation.EXPANSION, Motivation.WEALTH, 0.7, 0.3)
+                    Motivation.EXPANSION, Motivation.WEALTH, 0.7, 0.3,
+                    0, 2, 3)
             ),
             75, 50
         ));
@@ -237,13 +268,16 @@ public class NobleHouseManager {
             List.of(
                 new NobleCharacter("Matriarch Ysolde Emberveil",
                     "Warm and welcoming until crossed. The smile never leaves.",
-                    Motivation.PRESTIGE, Motivation.SECURITY, 0.7, 0.3),
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.7, 0.3,
+                    3, 0, 3),
                 new NobleCharacter("Oracle Fenn Emberveil",
                     "Mystical and withdrawn. Acts on visions others cannot see.",
-                    Motivation.PRESTIGE, Motivation.WEALTH, 0.75, 0.25),
+                    Motivation.PRESTIGE, Motivation.WEALTH, 0.75, 0.25,
+                    1, 0, 3),
                 new NobleCharacter("Sentinel Dravan Emberveil",
                     "Silent guardian. Speaks through action alone.",
-                    Motivation.SECURITY, Motivation.EXPANSION, 0.8, 0.2)
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.8, 0.2,
+                    0, 3, 1)
             ),
             65, 45
         ));
