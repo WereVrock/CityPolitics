@@ -76,23 +76,25 @@ public MapView(GameState gameState, Runnable onBack) {
         backBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         backBtn.addActionListener(e -> onBack.run());
 
-        JButton politicalBtn = new JButton("⚑ POLITICAL VIEW");
-        politicalBtn.setFont(UITheme.FONT_BUTTON);
-        politicalBtn.setForeground(UITheme.TEXT_SECONDARY);
-        politicalBtn.setBackground(UITheme.BUTTON_BG);
-        politicalBtn.setBorderPainted(false);
-        politicalBtn.setFocusPainted(false);
-        politicalBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        politicalBtn.addActionListener(e -> {
-            mapPanel.togglePoliticalView();
-            boolean active = mapPanel.isPoliticalViewActive();
-            politicalBtn.setForeground(active ? UITheme.TEXT_GOLD : UITheme.TEXT_SECONDARY);
-            politicalBtn.setBackground(active ? new Color(60, 40, 20) : UITheme.BUTTON_BG);
+        JButton viewModeBtn = new JButton(MapViewMode.SETTLEMENT.label());
+        viewModeBtn.setFont(UITheme.FONT_BUTTON);
+        viewModeBtn.setForeground(UITheme.TEXT_GOLD);
+        viewModeBtn.setBackground(new Color(60, 40, 20));
+        viewModeBtn.setBorderPainted(false);
+        viewModeBtn.setFocusPainted(false);
+        viewModeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        viewModeBtn.addActionListener(e -> {
+            mapPanel.cycleViewMode();
+            MapViewMode mode = mapPanel.getViewMode();
+            viewModeBtn.setText(mode.label());
+            boolean active = mode != MapViewMode.SETTLEMENT;
+            viewModeBtn.setForeground(active ? UITheme.TEXT_GOLD : UITheme.TEXT_SECONDARY);
+            viewModeBtn.setBackground(active ? new Color(60, 40, 20) : UITheme.BUTTON_BG);
         });
 
         JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         topRight.setBackground(UITheme.BG_PANEL);
-        topRight.add(politicalBtn);
+        topRight.add(viewModeBtn);
         topRight.add(backBtn);
 
         topBar.add(title,    BorderLayout.WEST);

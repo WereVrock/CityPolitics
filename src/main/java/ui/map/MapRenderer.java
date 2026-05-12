@@ -19,6 +19,15 @@ public class MapRenderer {
     private static final Color COLOR_CAPITAL = new Color(110, 72,  35);
     private static final Color COLOR_TOWN    = new Color(52,  88,  55);
     private static final Color COLOR_VILLAGE = new Color(148, 118, 76);
+
+    private static final Color TERRAIN_NONE     = new Color(148, 118, 76);
+    private static final Color TERRAIN_FOREST   = new Color(55,  100, 50);
+    private static final Color TERRAIN_VOLCANO  = new Color(110, 45,  30);
+    private static final Color TERRAIN_ICE      = new Color(190, 215, 230);
+    private static final Color TERRAIN_FARMLAND = new Color(160, 150, 70);
+    private static final Color TERRAIN_MARSH    = new Color(70,  105, 85);
+    private static final Color TERRAIN_COASTAL  = new Color(90,  130, 140);
+    private static final Color TERRAIN_MOUNTAIN = new Color(120, 105, 90);
     private static final Color COLOR_BORDER  = new Color(32,  20,  8);
     private static final Color COLOR_BORDER_SEL  = new Color(235, 205, 85);
     private static final Color COLOR_HOVER   = new Color(255, 240, 180, 35);
@@ -31,8 +40,8 @@ public class MapRenderer {
     private static final Font FONT_ZONE_STATS = new Font("Serif", Font.ITALIC, 10);
 
     private static final int   ICON_LABEL_OFFSET      = 18;
-    private static final float INNER_GLOW_MAX_WIDTH   = 36f;
-    private static final int   INNER_GLOW_ALPHA_CAP   = 100;
+    private static final float INNER_GLOW_MAX_WIDTH   = 16f;
+    private static final int   INNER_GLOW_ALPHA_CAP   = 120;
     private static final int   INNER_GLOW_LAYERS      = 8;
 
     private final ZoneManager              zoneManager;
@@ -44,7 +53,7 @@ public class MapRenderer {
     private final MountainEdgeRenderer     mountainEdgeRenderer;
     private final TerrainSymbolRenderer    terrainSymbolRenderer;
     private       ArmyRenderer             armyRenderer;
-    private       boolean                  politicalView = false;
+    private MapViewMode viewMode = MapViewMode.SETTLEMENT;
 
     public MapRenderer(ZoneManager zoneManager,
                        ZoneDecorationRegistry decorationRegistry,
@@ -64,8 +73,8 @@ public class MapRenderer {
         this.armyRenderer = armyRenderer;
     }
 
-    public void setPoliticalView(boolean enabled) { this.politicalView = enabled; }
-    public boolean isPoliticalView()              { return politicalView; }
+    public void         setViewMode(MapViewMode mode) { this.viewMode = mode; }
+    public MapViewMode  getViewMode()                 { return viewMode; }
 
     public void render(Graphics2D g2, Zone selected, Zone hovered, Army selectedArmy) {
         drawBackground(g2);
@@ -141,27 +150,42 @@ private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered)
     Polygon   poly  = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
     ZoneState state = zoneManager.getState(zone.getId());
 
-    if (politicalView) {
-        NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
-        Color primary = owner != null
-            ? NobleHouseColors.getPrimary(owner.getId())
-            : new Color(60, 55, 70);
-        Color secondary = owner != null
-            ? NobleHouseColors.getSecondary(owner.getId())
-            : new Color(80, 75, 90);
-        if (zone == selected) { primary = primary.brighter(); secondary = secondary.brighter(); }
-        g2.setColor(primary);
-        g2.fillPolygon(poly);
-        drawInnerGlow(g2, poly, secondary);
-    } else {
-        Color base = switch (zone.getSettlement()) {
-            case CAPITAL -> COLOR_CAPITAL;
-            case TOWN    -> COLOR_TOWN;
-            case VILLAGE -> COLOR_VILLAGE;
-        };
-        if (zone == selected) base = base.brighter();
-        g2.setColor(base);
-        g2.fillPolygon(poly);
+    switch (viewMode) {
+        case POLITICAL -> {
+            NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
+            Color primary   = owner != null ? NobleHouseColors.getPrimary(owner.getId())   : new Color(60, 55, 70);
+            Color secondary = owner != null ? NobleHouseColors.getSecondary(owner.getId()) : new Color(80, 75, 90);
+            if (zone == selected) { primary = primary.brighter(); secondary = secondary.brighter(); }
+            g2.setColor(primary);
+            g2.fillPolygon(poly);
+            drawInnerGlow(g2, poly, secondary);
+        }
+        case PHYSICAL -> {
+            ZoneDecoration dec = decorationRegistry.get(zone.getId());
+            Color base = switch (dec.getSymbol()) {
+                case FOREST   -> TERRAIN_FOREST;
+                case VOLCANO  -> TERRAIN_VOLCANO;
+                case ICE      -> TERRAIN_ICE;
+                case FARMLAND -> TERRAIN_FARMLAND;
+                case MARSH    -> TERRAIN_MARSH;
+                case COASTAL  -> TERRAIN_COASTAL;
+                case MOUNTAIN -> TERRAIN_MOUNTAIN;
+                case NONE     -> TERRAIN_NONE;
+            };
+            if (zone == selected) base = base.brighter();
+            g2.setColor(base);
+            g2.fillPolygon(poly);
+        }
+        case SETTLEMENT -> {
+            Color base = switch (zone.getSettlement()) {
+                case CAPITAL -> COLOR_CAPITAL;
+                case TOWN    -> COLOR_TOWN;
+                case VILLAGE -> COLOR_VILLAGE;
+            };
+            if (zone == selected) base = base.brighter();
+            g2.setColor(base);
+            g2.fillPolygon(poly);
+        }
     }
 
     if (zone == hovered && zone != selected) {

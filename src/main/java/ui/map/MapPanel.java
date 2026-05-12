@@ -78,13 +78,13 @@ public class MapPanel extends JPanel implements DropTargetListener, DragGestureL
         repaint();
     }
 
-    public void togglePoliticalView() {
-        renderer.setPoliticalView(!renderer.isPoliticalView());
+    public void cycleViewMode() {
+        renderer.setViewMode(renderer.getViewMode().next());
         repaint();
     }
 
-    public boolean isPoliticalViewActive() {
-        return renderer.isPoliticalView();
+    public MapViewMode getViewMode() {
+        return renderer.getViewMode();
     }
 
     private void setupMouseHandlers() {
