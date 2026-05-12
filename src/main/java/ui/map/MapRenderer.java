@@ -30,7 +30,10 @@ public class MapRenderer {
     private static final Font FONT_ZONE_NAME  = new Font("Serif", Font.BOLD,   13);
     private static final Font FONT_ZONE_STATS = new Font("Serif", Font.ITALIC, 10);
 
-    private static final int ICON_LABEL_OFFSET = 18;
+    private static final int   ICON_LABEL_OFFSET      = 18;
+    private static final float INNER_GLOW_MAX_WIDTH   = 36f;
+    private static final int   INNER_GLOW_ALPHA_CAP   = 100;
+    private static final int   INNER_GLOW_LAYERS      = 8;
 
     private final ZoneManager              zoneManager;
     private final ZoneDecorationRegistry   decorationRegistry;
@@ -105,7 +108,23 @@ public class MapRenderer {
         }
     }
 
-    public Zone hitTest(Point world) {
+private void drawInnerGlow(Graphics2D g2, Polygon poly, Color color) {
+    Shape old = g2.getClip();
+    g2.setClip(poly);
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    for (int i = 0; i < INNER_GLOW_LAYERS; i++) {
+        float t     = (float) i / INNER_GLOW_LAYERS;
+        int   alpha = (int) (INNER_GLOW_ALPHA_CAP * (1f - t));
+        float width = INNER_GLOW_MAX_WIDTH * (1f - t);
+        g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
+        g2.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.drawPolygon(poly);
+    }
+    g2.setStroke(new BasicStroke(1f));
+    g2.setClip(old);
+}
+
+public Zone hitTest(Point world) {
         for (Zone zone : zoneManager.getZones()) {
             Polygon p = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
             if (p.contains(world)) return zone;
@@ -122,42 +141,27 @@ private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered)
     Polygon   poly  = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
     ZoneState state = zoneManager.getState(zone.getId());
 
-    Color base;
     if (politicalView) {
         NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
-        base = owner != null
+        Color primary = owner != null
             ? NobleHouseColors.getPrimary(owner.getId())
             : new Color(60, 55, 70);
+        Color secondary = owner != null
+            ? NobleHouseColors.getSecondary(owner.getId())
+            : new Color(80, 75, 90);
+        if (zone == selected) { primary = primary.brighter(); secondary = secondary.brighter(); }
+        g2.setColor(primary);
+        g2.fillPolygon(poly);
+        drawInnerGlow(g2, poly, secondary);
     } else {
-        base = switch (zone.getSettlement()) {
+        Color base = switch (zone.getSettlement()) {
             case CAPITAL -> COLOR_CAPITAL;
             case TOWN    -> COLOR_TOWN;
             case VILLAGE -> COLOR_VILLAGE;
         };
-    }
-
-    if (zone == selected) base = base.brighter();
-    g2.setColor(base);
-    g2.fillPolygon(poly);
-
-    if (politicalView) {
-        NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
-        if (owner != null) {
-            // Secondary color as a diagonal stripe overlay
-            Color sec = NobleHouseColors.getSecondary(owner.getId());
-            g2.setColor(new Color(sec.getRed(), sec.getGreen(), sec.getBlue(), 80));
-            int s = 18;
-            Shape old = g2.getClip();
-            g2.setClip(poly);
-            for (int x = -200; x < 1400; x += s) {
-                g2.fillPolygon(
-                    new int[]{x, x+s, x+s*2, x+s},
-                    new int[]{0, 0,   800,    800},
-                    4
-                );
-            }
-            g2.setClip(old);
-        }
+        if (zone == selected) base = base.brighter();
+        g2.setColor(base);
+        g2.fillPolygon(poly);
     }
 
     if (zone == hovered && zone != selected) {
