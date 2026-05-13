@@ -47,7 +47,7 @@ private void build() {
     put("stonepass",      ZoneDecoration.TerrainSymbol.MOUNTAIN,
         List.of(new int[]{0, 1}, new int[]{1, 2}, new int[]{2, 3}));
     put("highland_gap",   ZoneDecoration.TerrainSymbol.MOUNTAIN,
-        List.of(new int[]{0, 1}, new int[]{4, 0}));
+        List.of(new int[]{5, 0}, new int[]{0, 1}));
     put("far_east",       ZoneDecoration.TerrainSymbol.COASTAL);
     put("greenvale",      ZoneDecoration.TerrainSymbol.FARMLAND);
     put("river_bend",     ZoneDecoration.TerrainSymbol.MARSH);

@@ -44,65 +44,63 @@ public class MountainEdgeRenderer {
         }
     }
 
-    private void drawMountainEdge(Graphics2D g2, int ax, int ay, int bx, int by) {
-        double dx     = bx - ax;
-        double dy     = by - ay;
-        double length = Math.sqrt(dx * dx + dy * dy);
-        if (length < 1) return;
+private void drawMountainEdge(Graphics2D g2, int ax, int ay, int bx, int by) {
+    double dx     = bx - ax;
+    double dy     = by - ay;
+    double length = Math.sqrt(dx * dx + dy * dy);
+    if (length < 1) return;
 
-        // Unit vector along edge and perpendicular (inward)
-        double ux = dx / length;
-        double uy = dy / length;
-        double nx = -uy; // perpendicular
-        double ny =  ux;
+    double ux = dx / length;
+    double uy = dy / length;
 
-        int peakCount = Math.max(2, (int) (length / PEAK_SPACING));
+    // Perpendicular — pick whichever direction has negative Y (upward on screen)
+    double nx = -uy;
+    double ny =  ux;
+    if (ny > 0) { nx = -nx; ny = -ny; }
 
-        for (int i = 0; i < peakCount; i++) {
-            double t  = (i + 0.5) / peakCount;
-            double cx = ax + t * dx;
-            double cy = ay + t * dy;
+    int peakCount = Math.max(2, (int) (length / PEAK_SPACING));
 
-            // Vary peak heights slightly
-            double peakH  = 14 + (i % 3) * 4;
-            double baseW  = 10;
+    for (int i = 0; i < peakCount; i++) {
+        double t  = (i + 0.5) / peakCount;
+        double cx = ax + t * dx;
+        double cy = ay + t * dy;
 
-            int px  = (int) cx;
-            int py  = (int) cy;
-            int tip = (int) peakH;
+        double peakH = 14 + (i % 3) * 4;
+        double baseW = 10;
 
-            int[] mountX = {
-                (int)(cx - ux * baseW / 2 + nx * 2),
-                (int)(cx + ux * baseW / 2 + nx * 2),
-                (int)(cx + nx * tip)
-            };
-            int[] mountY = {
-                (int)(cy - uy * baseW / 2 + ny * 2),
-                (int)(cy + uy * baseW / 2 + ny * 2),
-                (int)(cy + ny * tip)
-            };
+        int[] mountX = {
+            (int)(cx - ux * baseW / 2),
+            (int)(cx + ux * baseW / 2),
+            (int)(cx + nx * peakH)
+        };
+        int[] mountY = {
+            (int)(cy - uy * baseW / 2),
+            (int)(cy + uy * baseW / 2),
+            (int)(cy + ny * peakH)
+        };
 
-            g2.setColor(COLOR_MOUNTAIN_MID);
-            g2.fillPolygon(mountX, mountY, 3);
+        g2.setColor(COLOR_MOUNTAIN_MID);
+        g2.fillPolygon(mountX, mountY, 3);
 
-            // Snow cap — top third
-            int[] snowX = {
-                (int)(cx - ux * baseW / 6 + nx * (tip * 0.55)),
-                (int)(cx + ux * baseW / 6 + nx * (tip * 0.55)),
-                (int)(cx + nx * tip)
-            };
-            int[] snowY = {
-                (int)(cy - uy * baseW / 6 + ny * (tip * 0.55)),
-                (int)(cy + uy * baseW / 6 + ny * (tip * 0.55)),
-                (int)(cy + ny * tip)
-            };
-            g2.setColor(COLOR_MOUNTAIN_SNOW);
-            g2.fillPolygon(snowX, snowY, 3);
+        int[] snowX = {
+            (int)(cx - ux * baseW / 6 + nx * (peakH * 0.55)),
+            (int)(cx + ux * baseW / 6 + nx * (peakH * 0.55)),
+            (int)(cx + nx * peakH)
+        };
+        int[] snowY = {
+            (int)(cy - uy * baseW / 6 + ny * (peakH * 0.55)),
+            (int)(cy + uy * baseW / 6 + ny * (peakH * 0.55)),
+            (int)(cy + ny * peakH)
+        };
 
-            g2.setColor(COLOR_MOUNTAIN_DARK);
-            g2.setStroke(new BasicStroke(0.8f));
-            g2.drawPolygon(mountX, mountY, 3);
-            g2.setStroke(new BasicStroke(1f));
-        }
+        g2.setColor(COLOR_MOUNTAIN_SNOW);
+        g2.fillPolygon(snowX, snowY, 3);
+
+        g2.setColor(COLOR_MOUNTAIN_DARK);
+        g2.setStroke(new BasicStroke(0.8f));
+        g2.drawPolygon(mountX, mountY, 3);
+        g2.setStroke(new BasicStroke(1f));
     }
+}
+
 }
