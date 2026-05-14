@@ -39,6 +39,8 @@ private final JTextArea adjacentArea;
 private final JLabel armyTitleLabel;
 private final JLabel armyZoneLabel;
 private final JLabel armyStatusLabel;
+private final JLabel armySizeLabel;
+private final JLabel armyUpkeepLabel;
 
 public MapInfoPanel(ZoneManager zoneManager, main.nobles.NobleHouseManager nobleHouseManager) {
 this.zoneManager       = zoneManager;
@@ -118,6 +120,8 @@ cards.add(zoneCard, CARD_ZONE);
 armyTitleLabel  = makeLabel("", UITheme.ACCENT_FROST,   UITheme.FONT_HEADER);
 armyZoneLabel   = makeLabel("", UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
 armyStatusLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
+armySizeLabel   = makeLabel("", UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
+armyUpkeepLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
 
 JPanel armyCard = new JPanel(new GridBagLayout());
 armyCard.setBackground(UITheme.BG_PANEL);
@@ -126,8 +130,10 @@ ac.gridx = 0; ac.weightx = 1.0; ac.fill = GridBagConstraints.HORIZONTAL;
 ac.insets = new Insets(2, 0, 2, 0);
 ac.gridy = 0; armyCard.add(armyTitleLabel,  ac);
 ac.gridy = 1; armyCard.add(armyZoneLabel,   ac);
-ac.gridy = 2; armyCard.add(armyStatusLabel, ac);
-ac.gridy = 3; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
+ac.gridy = 2; armyCard.add(armySizeLabel,   ac);
+ac.gridy = 3; armyCard.add(armyUpkeepLabel, ac);
+ac.gridy = 4; armyCard.add(armyStatusLabel, ac);
+ac.gridy = 5; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
 armyCard.add(Box.createVerticalGlue(), ac);
 
 cards.add(armyCard, CARD_ARMY);
@@ -182,6 +188,8 @@ Zone zone = zm.getZone(army.getZoneId());
 armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
 armyStatusLabel.setText("Status: Deployed");
 }
+armySizeLabel.setText("");
+armyUpkeepLabel.setText("");
 cardLayout.show(cards, CARD_ARMY);
 }
 
@@ -192,13 +200,30 @@ String houseName = owner != null ? owner.getName() : army.getHouseId();
 armyTitleLabel.setText("🏰 " + houseName + " Army");
 Zone zone = zm.getZone(army.getZoneId());
 armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+armySizeLabel.setText("Size: " + army.getSize() + " soldiers");
+int baseUpkeep = army.getSize() * main.parameters.GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+if (owner != null && owner.getZoneIds().contains(army.getZoneId()) && !army.hasPendingOrder()) {
+int discounted = (int)(baseUpkeep * (1.0 - main.parameters.GameParameters.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
+if (discounted < 1) discounted = 1;
+armyUpkeepLabel.setText("Upkeep: " + discounted + " gold/turn (defending discount)");
+} else {
+armyUpkeepLabel.setText("Upkeep: " + baseUpkeep + " gold/turn");
+}
 String order = army.hasPendingOrder() ? army.getPendingOrder().name() + " → " + army.getPendingTargetZoneId() : "Idle";
-armyStatusLabel.setText("Size: " + army.getSize() + "  Order: " + order);
+armyStatusLabel.setText("Order: " + order);
 cardLayout.show(cards, CARD_ARMY);
 }
 
+
 public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
-public void clearArmy() { cardLayout.show(cards, CARD_EMPTY); }
+public void clearArmy() {
+armyTitleLabel.setText("");
+armyZoneLabel.setText("");
+armySizeLabel.setText("");
+armyUpkeepLabel.setText("");
+armyStatusLabel.setText("");
+cardLayout.show(cards, CARD_EMPTY);
+}
 
 private JLabel makeLabel(String text, Color color, Font font) {
 JLabel l = new JLabel(text);
@@ -313,4 +338,9 @@ if (v <= 30) return UITheme.TEXT_RED;
 return UITheme.TEXT_PRIMARY;
 }
 }
+
+
+
+
+
 
