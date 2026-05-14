@@ -8,6 +8,7 @@ import main.nobles.NobleHouseManager;
 
 import java.awt.*;
 import main.army.Army;
+import main.nobles.NobleArmy;
 
 /**
  * Orchestrates all map rendering in correct layer order.
@@ -53,6 +54,8 @@ public class MapRenderer {
     private final MountainEdgeRenderer     mountainEdgeRenderer;
     private final TerrainSymbolRenderer    terrainSymbolRenderer;
     private       ArmyRenderer             armyRenderer;
+    private       NobleArmyRenderer        nobleArmyRenderer;
+    private       NobleArmy                selectedNobleArmy = null;
     private MapViewMode viewMode = MapViewMode.SETTLEMENT;
 
     public MapRenderer(ZoneManager zoneManager,
@@ -71,6 +74,18 @@ public class MapRenderer {
 
     public void setArmyRenderer(ArmyRenderer armyRenderer) {
         this.armyRenderer = armyRenderer;
+    }
+
+    public void setNobleArmyRenderer(NobleArmyRenderer nobleArmyRenderer) {
+        this.nobleArmyRenderer = nobleArmyRenderer;
+    }
+
+    public void setSelectedNobleArmy(NobleArmy army) {
+        this.selectedNobleArmy = army;
+    }
+
+    public NobleArmyRenderer getNobleArmyRenderer() {
+        return nobleArmyRenderer;
     }
 
     public void         setViewMode(MapViewMode mode) { this.viewMode = mode; }
@@ -111,9 +126,14 @@ public class MapRenderer {
             drawZoneBorder(g2, zone, selected);
         }
 
-        // Layer 8 — armies
+        // Layer 8 — player armies
         if (armyRenderer != null) {
             armyRenderer.render(g2, selectedArmy);
+        }
+
+        // Layer 9 — noble armies
+        if (nobleArmyRenderer != null) {
+            nobleArmyRenderer.render(g2, selectedNobleArmy);
         }
     }
 

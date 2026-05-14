@@ -150,8 +150,20 @@ private JPanel buildPortrait(NobleHouse house) {
         zones.setFont(UITheme.FONT_SMALL);
         zones.setForeground(UITheme.TEXT_PRIMARY);
 
-        JLabel army = new JLabel("Standing army: " + house.getStandingArmySize()
-            + "  Raised: " + house.getRaisedArmySize());
+        String capitalName = house.getCapitalZoneId() != null
+            ? house.getCapitalZoneId().replace("_", " ") : "None";
+        JLabel capital = new JLabel("Capital: " + capitalName);
+        capital.setFont(UITheme.FONT_SMALL);
+        capital.setForeground(new Color(255, 210, 80));
+
+        int totalGarrison  = house.getTotalGarrisonSize();
+        int recruitedTotal = gameState.getNobleArmyManager()
+            .getArmiesForHouse(house.getId())
+            .stream().mapToInt(main.nobles.NobleArmy::getSize).sum();
+        JLabel army = new JLabel("Garrison: " + totalGarrison
+            + "  Armies: " + recruitedTotal
+            + "  Pool: " + house.getNobleManpower());
+        army.setToolTipText("Garrison = zone defenders. Armies = raised field armies. Pool = available manpower.");
         army.setFont(UITheme.FONT_SMALL);
         army.setForeground(UITheme.TEXT_PRIMARY);
 
@@ -184,6 +196,7 @@ private JPanel buildPortrait(NobleHouse house) {
         panel.add(leader);
         panel.add(Box.createVerticalStrut(2));
         panel.add(zones);
+        panel.add(capital);
         panel.add(army);
         panel.add(Box.createVerticalStrut(4));
         panel.add(personality);

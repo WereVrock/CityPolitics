@@ -366,9 +366,48 @@ public final class GameParameters {
     public static final int    AI_INFLUENCE_COST_SUPPORT             = 2;
 
     // =========================================================
+    // NOBLE GARRISON
+    // =========================================================
+    /** Garrison size at capital = manpower-per-turn × this multiplier. */
+    public static final int    GARRISON_CAPITAL_MULTIPLIER              = 3;
+    /** Garrison size at other zones = manpower-per-turn × this multiplier. */
+    public static final int    GARRISON_OTHER_MULTIPLIER                = 1;
+
+    // =========================================================
+    // NOBLE ARMY RECRUITMENT
+    // =========================================================
+    /** Minimum army size the AI will recruit. */
+    public static final int    NOBLE_ARMY_MIN_RECRUIT_SIZE              = 5;
+    /** AI recruits this fraction of available noble manpower per turn. */
+    public static final double NOBLE_ARMY_RECRUIT_FRACTION              = 0.5;
+    /** AI won't recruit if gold below this threshold. */
+    public static final int    NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD        = 30;
+    /** AI disbands army if gold below this threshold (to avoid forced disband). */
+    public static final int    NOBLE_ARMY_DISBAND_GOLD_THRESHOLD        = 15;
+
+    // =========================================================
+    // NOBLE FORTIFICATION
+    // =========================================================
+    /** Fortification gained per FORTIFY action. */
+    public static final int    NOBLE_FORTIFY_GAIN                       = 10;
+    /** Gold cost per FORTIFY action. */
+    public static final int    NOBLE_FORTIFY_GOLD_COST                  = 20;
+
+    // =========================================================
+    // RAID INTERCEPT
+    // =========================================================
+    /** Base chance defender army intercepts a raid (20%). */
+    public static final double RAID_INTERCEPT_BASE_CHANCE               = 0.20;
+    /** Per military skill point bonus to intercept chance. */
+    public static final double RAID_INTERCEPT_MILITARY_BONUS            = 0.05;
+    /** Gold stolen per raiding soldier. */
+    public static final double RAID_GOLD_PER_SOLDIER                    = 0.5;
+    /** Max gold stolen = zone gold production × this multiplier. */
+    public static final double RAID_GOLD_ZONE_MULTIPLIER                = 3.0;
+
+    // =========================================================
     // ARMY
     // =========================================================
-    /** Zones an army can traverse per turn once orders arrive. */
     // =========================================================
     // MAP CANVAS
     // =========================================================

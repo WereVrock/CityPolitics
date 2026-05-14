@@ -76,6 +76,7 @@ public class GameState {
     public main.map.WorldGeography       getWorldGeography()     { return worldGeography; }
     public main.map.ZoneDecorationRegistry getDecorationRegistry(){ return decorationRegistry; }
     public NobleHouseManager               getNobleHouseManager()  { return nobleHouseManager; }
+    public main.nobles.NobleArmyManager    getNobleArmyManager()   { return nobleHouseManager.getArmyManager(); }
     public VotingSession       getActiveSession()         { return pendingSessions.isEmpty() ? null : pendingSessions.get(0); }
     public void                addSession(VotingSession s){ pendingSessions.add(s); }
     public void                clearActiveSession()       { if (!pendingSessions.isEmpty()) pendingSessions.remove(0); }

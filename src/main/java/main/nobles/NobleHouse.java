@@ -1,14 +1,16 @@
+// NobleHouse.java
 package main.nobles;
 
 import main.parameters.GameParameters;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
  * A noble house with territory, resources, opinion, army, prestige,
- * defense, threatened status, and an active character.
+ * capital tracking, per-zone fortification, garrison, and noble-side manpower pool.
+ *
+ * Noble manpower is SEPARATE from player manpower (ResourcePool).
+ * It accumulates each turn from zones and is spent to recruit noble armies.
  */
 public class NobleHouse {
 
@@ -22,14 +24,18 @@ public class NobleHouse {
     private final int                  activeCharacterIndex;
 
     private int     gold;
-    private int     manpower;
+    private int     nobleManpower;   // house-side pool, NOT player manpower
     private int     influence;
     private int     playerOpinion;
     private int     prestige;
-    private int     defense;
-    private int     standingArmySize;
-    private int     raisedArmySize;
     private boolean threatened;
+
+    // Per-zone fortification level (0–100) and garrison size
+    private final Map<String, Integer> fortifications = new LinkedHashMap<>();
+    private final Map<String, Integer> garrisons      = new LinkedHashMap<>();
+
+    // Capital zone — recalculated when zones change
+    private String capitalZoneId;
 
     public NobleHouse(String id, String name, Race race,
                       List<String> zoneIds,
@@ -42,62 +48,144 @@ public class NobleHouse {
         this.characters           = new ArrayList<>(characters);
         this.activeCharacterIndex = 0;
         this.gold                 = startingGold;
-        this.manpower             = 0;
+        this.nobleManpower        = 0;
         this.influence            = GameParameters.NOBLE_HOUSE_STARTING_INFLUENCE;
         this.playerOpinion        = GameParameters.NOBLE_HOUSE_STARTING_OPINION;
         this.prestige             = startingPrestige;
-        this.defense              = GameParameters.NOBLE_STARTING_DEFENSE;
-        this.raisedArmySize       = 0;
         this.threatened           = false;
-        this.standingArmySize     = computeStandingArmySize();
+
+        for (String z : zoneIds) {
+            fortifications.put(z, 0);
+            garrisons.put(z, 0);
+        }
+        recalculateCapital();
     }
 
-    // ─── Elimination ─────────────────────────────────────────────────────────
+    // ─── Capital ─────────────────────────────────────────────────────────────
 
-    public boolean isEliminated() { return zoneIds.isEmpty(); }
+    /**
+     * Capital = zone with highest fortification.
+     * Tie → highest gold production proxy (we use garrison as proxy since zone data
+     * is not held here; caller should use the overload that passes zone data).
+     * Recalculated whenever zones change.
+     */
+    public void recalculateCapital() {
+        if (zoneIds.isEmpty()) { capitalZoneId = null; return; }
+        String best     = zoneIds.get(0);
+        int    bestFort = fortifications.getOrDefault(best, 0);
+        int    bestGarr = garrisons.getOrDefault(best, 0);
 
-    // ─── Threatened ──────────────────────────────────────────────────────────
-
-    public boolean isThreatened()          { return threatened; }
-    public void    setThreatened(boolean v){ this.threatened = v; }
-
-    // ─── Military score ──────────────────────────────────────────────────────
-
-    public int getMilitaryScore() {
-        NobleCharacter c = getActiveCharacter();
-        int skill = c != null ? c.getMilitary() : 0;
-        return (int)(getTotalArmySize() * (1.0 + skill
-            * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
+        for (String z : zoneIds) {
+            int fort = fortifications.getOrDefault(z, 0);
+            int garr = garrisons.getOrDefault(z, 0);
+            if (fort > bestFort || (fort == bestFort && garr > bestGarr)) {
+                best     = z;
+                bestFort = fort;
+                bestGarr = garr;
+            }
+        }
+        capitalZoneId = best;
     }
 
-    // ─── Character ───────────────────────────────────────────────────────────
+    /**
+     * Capital selection using external zone gold/food as tiebreakers.
+     * Preferred overload — pass zone gold and food maps.
+     */
+    public void recalculateCapital(Map<String, Integer> zoneGold,
+                                    Map<String, Integer> zoneFood) {
+        if (zoneIds.isEmpty()) { capitalZoneId = null; return; }
+        String best     = zoneIds.get(0);
+        int    bestFort = fortifications.getOrDefault(best, 0);
+        int    bestGold = zoneGold.getOrDefault(best, 0);
+        int    bestFood = zoneFood.getOrDefault(best, 0);
 
-    public NobleCharacter getActiveCharacter() {
-        if (characters.isEmpty()) return null;
-        return characters.get(activeCharacterIndex);
+        for (String z : zoneIds) {
+            int fort = fortifications.getOrDefault(z, 0);
+            int gold = zoneGold.getOrDefault(z, 0);
+            int food = zoneFood.getOrDefault(z, 0);
+            if (fort > bestFort
+                || (fort == bestFort && gold > bestGold)
+                || (fort == bestFort && gold == bestGold && food > bestFood)) {
+                best     = z;
+                bestFort = fort;
+                bestGold = gold;
+                bestFood = food;
+            }
+        }
+        capitalZoneId = best;
     }
 
-    public List<NobleCharacter> getCharacters() {
-        return Collections.unmodifiableList(characters);
+    public String getCapitalZoneId() { return capitalZoneId; }
+    public boolean isCapital(String zoneId) {
+        return zoneId != null && zoneId.equals(capitalZoneId);
     }
 
-    // ─── Prestige ────────────────────────────────────────────────────────────
+    // ─── Fortification ───────────────────────────────────────────────────────
 
-    public int     getPrestige()       { return prestige; }
-    public Prestige getPrestigeLevel() { return Prestige.fromValue(prestige); }
-    public void addPrestige(int delta) {
-        prestige = Math.max(0, Math.min(100, prestige + delta));
+    public int getFortificationFor(String zoneId) {
+        return fortifications.getOrDefault(zoneId, 0);
     }
 
-    // ─── Defense ─────────────────────────────────────────────────────────────
-
-    public int  getDefense()          { return defense; }
-    public void addDefense(int delta) {
-        defense = Math.max(0, Math.min(100, defense + delta));
+    public void addFortification(String zoneId, int amount) {
+        if (!zoneIds.contains(zoneId)) return;
+        int current = fortifications.getOrDefault(zoneId, 0);
+        fortifications.put(zoneId, Math.max(0, Math.min(100, current + amount)));
+        recalculateCapital();
     }
 
-    // ─── Manpower ────────────────────────────────────────────────────────────
+    // ─── Garrison ────────────────────────────────────────────────────────────
 
+    /**
+     * Maximum garrison for a zone = capital gets GARRISON_CAPITAL_MULTIPLIER × manpower/turn,
+     * others get GARRISON_OTHER_MULTIPLIER × manpower/turn.
+     */
+    public int getMaxGarrisonFor(String zoneId) {
+        int manpowerPerTurn = GameParameters.NOBLE_ZONE_MANPOWER_PER_TURN;
+        if (zoneId.equals(capitalZoneId)) {
+            return manpowerPerTurn * GameParameters.GARRISON_CAPITAL_MULTIPLIER;
+        }
+        return manpowerPerTurn * GameParameters.GARRISON_OTHER_MULTIPLIER;
+    }
+
+    public int getGarrisonFor(String zoneId) {
+        return garrisons.getOrDefault(zoneId, 0);
+    }
+
+    /**
+     * Tick garrison — fill toward max using retained noble manpower.
+     * Called every turn after manpower accrues.
+     */
+    public void tickGarrisons() {
+        for (String z : new ArrayList<>(zoneIds)) {
+            int current = garrisons.getOrDefault(z, 0);
+            int max     = getMaxGarrisonFor(z);
+            if (current < max) {
+                int refill = Math.min(max - current, nobleManpower);
+                garrisons.put(z, current + refill);
+                nobleManpower = Math.max(0, nobleManpower - refill);
+            }
+        }
+    }
+
+    public void damageGarrison(String zoneId, int losses) {
+        int current = garrisons.getOrDefault(zoneId, 0);
+        garrisons.put(zoneId, Math.max(0, current - losses));
+    }
+
+    public void resetGarrison(String zoneId) {
+        garrisons.put(zoneId, 0);
+    }
+
+    // ─── Noble manpower (house-side, NOT player resource) ────────────────────
+
+    public int  getNobleManpower()          { return nobleManpower; }
+    public void addNobleManpower(int v)     { nobleManpower = Math.max(0, nobleManpower + v); }
+    public void spendNobleManpower(int v)   { nobleManpower = Math.max(0, nobleManpower - v); }
+
+    /**
+     * Manpower generated per turn from all zones (goes to noble pool).
+     * Player receives a fraction based on opinion — handled in NobleHouseManager.
+     */
     public int getManpowerPerTurn() {
         return zoneIds.size() * GameParameters.NOBLE_ZONE_MANPOWER_PER_TURN;
     }
@@ -119,11 +207,53 @@ public class NobleHouse {
         return playerOpinion > GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD;
     }
 
+    // ─── Elimination ─────────────────────────────────────────────────────────
+
+    public boolean isEliminated() { return zoneIds.isEmpty(); }
+
+    // ─── Threatened ──────────────────────────────────────────────────────────
+
+    public boolean isThreatened()           { return threatened; }
+    public void    setThreatened(boolean v) { this.threatened = v; }
+
+    // ─── Military score ──────────────────────────────────────────────────────
+
+    public int getMilitaryScore() {
+        NobleCharacter c = getActiveCharacter();
+        int skill = c != null ? c.getMilitary() : 0;
+        return (int)(getTotalGarrisonSize() * (1.0 + skill
+            * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
+    }
+
+    public int getTotalGarrisonSize() {
+        int total = 0;
+        for (int g : garrisons.values()) total += g;
+        return total;
+    }
+
+    // ─── Character ───────────────────────────────────────────────────────────
+
+    public NobleCharacter getActiveCharacter() {
+        if (characters.isEmpty()) return null;
+        return characters.get(activeCharacterIndex);
+    }
+
+    public List<NobleCharacter> getCharacters() {
+        return Collections.unmodifiableList(characters);
+    }
+
+    // ─── Prestige ────────────────────────────────────────────────────────────
+
+    public int      getPrestige()      { return prestige; }
+    public Prestige getPrestigeLevel() { return Prestige.fromValue(prestige); }
+    public void addPrestige(int delta) {
+        prestige = Math.max(0, Math.min(100, prestige + delta));
+    }
+
     // ─── Influence ───────────────────────────────────────────────────────────
 
     public int getInfluencePerTurn() {
-        int prestigeBonus = (int)(prestige
-            * GameParameters.NOBLE_INFLUENCE_PRESTIGE_FACTOR);
+        int prestigeBonus = (int)(prestige * GameParameters.NOBLE_INFLUENCE_PRESTIGE_FACTOR);
         return (int) Math.floor(
             GameParameters.NOBLE_INFLUENCE_BASE_PER_TURN
             + GameParameters.NOBLE_INFLUENCE_PER_ZONE * zoneIds.size()
@@ -131,64 +261,22 @@ public class NobleHouse {
         );
     }
 
-    // ─── Army ────────────────────────────────────────────────────────────────
-
-    private int computeStandingArmySize() {
-        return zoneIds.size()
-            * GameParameters.NOBLE_ZONE_MANPOWER_PER_TURN
-            * GameParameters.NOBLE_STANDING_ARMY_MANPOWER_MULTIPLIER;
-    }
-
-    public int getStandingArmySize()  { return standingArmySize; }
-    public int getRaisedArmySize()    { return raisedArmySize; }
-    public int getTotalArmySize()     { return standingArmySize + raisedArmySize; }
-
-    public void setTotalArmySize(int size) {
-        int total = Math.max(0, size);
-        if (total >= standingArmySize) {
-            raisedArmySize = total - standingArmySize;
-        } else {
-            standingArmySize = total;
-            raisedArmySize   = 0;
-        }
-    }
-
-    public void addToRaisedArmy(int soldiers) {
-        raisedArmySize = Math.max(0, raisedArmySize + soldiers);
-    }
-
-    public int raiseArmy(int soldiers) {
-        int affordable = gold / GameParameters.NOBLE_RECRUIT_COST_PER_SOLDIER;
-        int toRaise    = Math.min(soldiers, affordable);
-        gold          -= toRaise * GameParameters.NOBLE_RECRUIT_COST_PER_SOLDIER;
-        raisedArmySize += toRaise;
-        return toRaise;
-    }
-
-    public void payUpkeep() {
-        int cost = raisedArmySize * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-        if (gold >= cost) {
-            gold -= cost;
-        } else {
-            int canAfford  = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-            raisedArmySize = canAfford;
-            gold           = gold
-                - canAfford * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-        }
-    }
-
     // ─── Zone management ─────────────────────────────────────────────────────
 
     public void addZone(String zoneId) {
         if (!zoneIds.contains(zoneId)) {
             zoneIds.add(zoneId);
-            standingArmySize = computeStandingArmySize();
+            fortifications.put(zoneId, 0);
+            garrisons.put(zoneId, 0);
+            recalculateCapital();
         }
     }
 
     public void removeZone(String zoneId) {
         zoneIds.remove(zoneId);
-        standingArmySize = computeStandingArmySize();
+        fortifications.remove(zoneId);
+        garrisons.remove(zoneId);
+        recalculateCapital();
     }
 
     // ─── Accessors ───────────────────────────────────────────────────────────
@@ -209,12 +297,10 @@ public class NobleHouse {
 
     public List<String> getZoneIds()       { return Collections.unmodifiableList(zoneIds); }
     public int          getGold()          { return gold; }
-    public int          getManpower()      { return manpower; }
     public int          getInfluence()     { return influence; }
     public int          getPlayerOpinion() { return playerOpinion; }
 
-    public void addGold(int v)      { gold      = Math.max(0, gold      + v); }
-    public void addManpower(int v)  { manpower  = Math.max(0, manpower  + v); }
+    public void addGold(int v)      { gold      = Math.max(0, gold + v); }
     public void addInfluence(int v) { influence = Math.max(0, influence + v); }
 
     public void setPlayerOpinion(int v) {
@@ -225,4 +311,24 @@ public class NobleHouse {
     public void adjustPlayerOpinion(int delta) {
         setPlayerOpinion(playerOpinion + delta);
     }
+
+    // ─── Legacy compatibility (army size for AI combat scoring) ──────────────
+
+    /** Used by coalition/demand AI that still references army size. Returns total garrison. */
+    public int getTotalArmySize() { return getTotalGarrisonSize(); }
+
+    /** No-op kept for save compatibility — noble armies are now separate objects. */
+    public void setTotalArmySize(int size) { /* handled by NobleArmyManager */ }
+    public void addToRaisedArmy(int soldiers) { addNobleManpower(soldiers); }
+
+    // ─── Kept for NobleHousesPanel / MapInfoPanel display ────────────────────
+
+    public int getStandingArmySize() { return getTotalGarrisonSize(); }
+    /** @deprecated Returns manpower pool, not field armies. Use NobleHouseManager.getRaisedArmyTotal() instead. */
+    @Deprecated
+    public int getRaisedArmySize()   { return nobleManpower; }
+    public int getManpower()         { return nobleManpower; }
+    public int getDefense()          { return getFortificationFor(capitalZoneId != null ? capitalZoneId : ""); }
+    public void addDefense(int delta){ if (capitalZoneId != null) addFortification(capitalZoneId, delta); }
 }
+

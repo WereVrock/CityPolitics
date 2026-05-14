@@ -1,18 +1,19 @@
+// NobleHouseManager.java
 package main.nobles;
 
+import main.map.Zone;
 import main.map.ZoneManager;
 import main.map.ZoneState;
 import main.nobles.ai.NobleAI;
+import main.nobles.NobleArmyManager;
 import main.parameters.GameParameters;
 import main.resources.ResourcePool;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 /**
- * Owns all noble houses, claims, relationships.
- * Drives per-turn economy, AI ticks, zone state ticks,
+ * Owns all noble houses, claims, relationships, and noble armies.
+ * Drives per-turn economy, AI ticks, garrison ticks,
  * conquest malus costs, and coalition checks.
  */
 public class NobleHouseManager {
@@ -21,53 +22,89 @@ public class NobleHouseManager {
     private final RelationshipManager relationships = new RelationshipManager();
     private final ClaimManager        claimManager  = new ClaimManager();
     private final ZoneManager         zoneManager;
+    private final NobleArmyManager    armyManager;
+
+    // Prebuilt zone gold/food maps for capital tiebreaker
+    private Map<String, Integer> zoneGoldMap = new HashMap<>();
+    private Map<String, Integer> zoneFoodMap = new HashMap<>();
 
     public NobleHouseManager(ZoneManager zoneManager) {
-        this.zoneManager = zoneManager;
+        this.zoneManager  = zoneManager;
+        this.armyManager  = new NobleArmyManager(zoneManager, relationships);
+        buildZoneMaps();
         buildHouses();
+    }
+
+    private void buildZoneMaps() {
+        zoneGoldMap.clear();
+        zoneFoodMap.clear();
+        for (Zone z : zoneManager.getZones()) {
+            zoneGoldMap.put(z.getId(), z.getGoldProduction());
+            zoneFoodMap.put(z.getId(), z.getFoodProduction());
+        }
     }
 
     // ─── Turn processing ──────────────────────────────────────────────────────
 
-    public List<String> processTurn(ResourcePool playerResources) {
+public List<String> processTurn(ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
 
-        // Tick zone states first
-        tickZoneStates(log);
+        tickZoneStates();
 
-        // Economy
+        // Step 1 — economy (manpower accrues to noble pool, NO garrison tick yet)
         for (NobleHouse house : houses) {
             if (!house.isEliminated()) {
                 processEconomy(house, playerResources, log);
             }
         }
 
-        // Conquest malus costs to conqueror houses
-        processConquestCosts(log);
+        processConquestCosts();
 
-        // Threatened decay
+        // Step 2 — resolve orders that were issued LAST turn (already ticked)
+        log.addAll(armyManager.resolveOrders(new ArrayList<>(houses), claimManager));
+
+        // Step 3 — upkeep for existing raised armies (after resolution, before new orders)
+        for (NobleHouse house : houses) {
+            if (!house.isEliminated()) {
+                armyManager.payUpkeep(house);
+            }
+        }
+
+        // Step 4 — AI decides actions (recruit, issue new orders, diplomacy)
         NobleAI.tickThreatenedDecay(houses);
-
-        // AI ticks
         List<NobleHouse> snapshot = new ArrayList<>(houses);
         for (NobleHouse house : snapshot) {
             if (!house.isEliminated()) {
-                List<String> aiLog = NobleAI.tick(house, snapshot,
-                    relationships, claimManager, zoneManager);
+                List<String> aiLog = NobleAI.tick(
+                    house, snapshot, relationships, claimManager, zoneManager, armyManager);
                 log.addAll(aiLog);
             }
         }
 
-        // Coalition check after all individual actions
-        log.addAll(NobleAI.checkCoalition(new ArrayList<>(houses),
-            relationships, claimManager, zoneManager));
+        log.addAll(NobleAI.checkCoalition(
+            new ArrayList<>(houses), relationships, claimManager, zoneManager, armyManager));
+
+        // Step 5 — tick orders issued this turn so they resolve NEXT turn
+        armyManager.tickOrders();
+
+        // Step 6 — garrison tick AFTER AI recruits (leftover manpower fills garrisons)
+        for (NobleHouse house : houses) {
+            if (!house.isEliminated()) {
+                house.tickGarrisons();
+            }
+        }
+
+        // Step 7 — recalculate capitals
+        for (NobleHouse house : houses) {
+            house.recalculateCapital(zoneGoldMap, zoneFoodMap);
+        }
 
         return log;
     }
 
-    // ─── Zone state tick ─────────────────────────────────────────────────────
+// ─── Zone state tick ─────────────────────────────────────────────────────
 
-    private void tickZoneStates(List<String> log) {
+    private void tickZoneStates() {
         for (NobleHouse house : houses) {
             for (String zoneId : house.getZoneIds()) {
                 ZoneState state = zoneManager.getState(zoneId);
@@ -78,36 +115,32 @@ public class NobleHouseManager {
 
     // ─── Conquest malus costs ─────────────────────────────────────────────────
 
-    private void processConquestCosts(List<String> log) {
+    private void processConquestCosts() {
         for (NobleHouse house : houses) {
             if (house.isEliminated()) continue;
             for (String zoneId : house.getZoneIds()) {
                 ZoneState state = zoneManager.getState(zoneId);
                 if (state == null || !state.hasConquestMalus()) continue;
-
-                int malus = state.getConquestMalus();
-                int goldCost = (int)(malus
-                    * GameParameters.CONQUEST_MALUS_GOLD_COST_PER_PERCENT);
-                int influenceCost = (int)(malus
-                    * GameParameters.CONQUEST_MALUS_INFLUENCE_COST_PER_PERCENT);
-
+                int malus         = state.getConquestMalus();
+                int goldCost      = (int)(malus * GameParameters.CONQUEST_MALUS_GOLD_COST_PER_PERCENT);
+                int influenceCost = (int)(malus * GameParameters.CONQUEST_MALUS_INFLUENCE_COST_PER_PERCENT);
                 if (goldCost > 0) house.addGold(-Math.min(goldCost, house.getGold()));
-                if (influenceCost > 0) {
-                    house.addInfluence(-Math.min(influenceCost, house.getInfluence()));
-                }
+                if (influenceCost > 0) house.addInfluence(-Math.min(influenceCost, house.getInfluence()));
             }
         }
     }
 
     // ─── Economy ─────────────────────────────────────────────────────────────
 
-    private void processEconomy(NobleHouse house, ResourcePool playerResources,
+private void processEconomy(NobleHouse house, ResourcePool playerResources,
                                  List<String> log) {
-        int sentManpower = house.computeManpowerSentToPlayer();
-        int keptManpower = house.computeManpowerRetained();
+        // Manpower: split between player and house noble pool
+        int sentManpower  = house.computeManpowerSentToPlayer();
+        int keptManpower  = house.computeManpowerRetained();
         if (sentManpower > 0) playerResources.addManpower(sentManpower);
-        house.addManpower(keptManpower);
+        house.addNobleManpower(keptManpower);
 
+        // Gold
         if (house.sendsResourcesToPlayer()) {
             int zoneGold = computeHouseGold(house);
             playerResources.addMoney(zoneGold);
@@ -119,17 +152,14 @@ public class NobleHouseManager {
         }
 
         house.addInfluence(house.getInfluencePerTurn());
-        house.payUpkeep();
 
         if (sentManpower > 0) {
-            log.add(house.getName() + " sent " + sentManpower + " manpower.");
+            log.add(house.getName() + " sent " + sentManpower + " manpower to player.");
         }
+        // NOTE: garrison tick intentionally moved to AFTER AI recruits in processTurn
     }
 
-    /**
-     * Computes gold from zones applying production multiplier from ZoneState.
-     */
-    private int computeHouseGold(NobleHouse house) {
+private int computeHouseGold(NobleHouse house) {
         int total = 0;
         for (String zoneId : house.getZoneIds()) {
             ZoneState state = zoneManager.getState(zoneId);
@@ -144,10 +174,16 @@ public class NobleHouseManager {
     public List<NobleHouse>    getHouses()        { return Collections.unmodifiableList(houses); }
     public RelationshipManager getRelationships() { return relationships; }
     public ClaimManager        getClaimManager()  { return claimManager; }
+    public NobleArmyManager    getArmyManager()   { return armyManager; }
 
     public NobleHouse getHouseById(String id) {
-        return houses.stream().filter(h -> h.getId().equals(id))
-                     .findFirst().orElse(null);
+        for (NobleHouse h : houses) if (h.getId().equals(id)) return h;
+        return null;
+    }
+
+    public int getRaisedArmyTotal(String houseId) {
+        return armyManager.getArmiesForHouse(houseId)
+            .stream().mapToInt(NobleArmy::getSize).sum();
     }
 
     public NobleHouse getOwnerOfZone(String zoneId) {
@@ -161,6 +197,7 @@ public class NobleHouseManager {
         houses.clear();
         relationships.reset();
         claimManager.reset();
+        armyManager.reset();
         buildHouses();
     }
 
@@ -303,3 +340,4 @@ public class NobleHouseManager {
             ), 65, 45));
     }
 }
+
