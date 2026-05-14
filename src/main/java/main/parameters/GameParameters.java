@@ -226,6 +226,8 @@ public final class GameParameters {
 
     /** Gold cost per soldier per turn to maintain the raised army. */
     public static final int    NOBLE_UPKEEP_COST_PER_SOLDIER         = 1;
+    /** Discount multiplier for armies that are defending (no pending attack/raid order and in friendly zone). */
+    public static final double NOBLE_UPKEEP_DEFENSE_DISCOUNT         = 0.25;
 
     // =========================================================
     // NOBLE HOUSE — PRESTIGE & DEFENSE

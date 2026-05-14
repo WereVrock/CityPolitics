@@ -28,6 +28,7 @@ private final ZoneManager    zoneManager;
 private final ArmyManager    armyManager;
 private final Consumer<Zone> onZoneSelected;
 private final Consumer<Army> onArmySelected;
+private final Consumer<main.nobles.NobleArmy> onNobleArmySelected;
 private final ArmyListPanel  armyListPanel;
 
 private final MapCamera    camera;
@@ -47,6 +48,7 @@ private final main.core.GameState gameState;
 
 public MapPanel(main.core.GameState gameState,
 Consumer<Zone> onZoneSelected, Consumer<Army> onArmySelected,
+Consumer<main.nobles.NobleArmy> onNobleArmySelected,
 ArmyListPanel armyListPanel,
 main.nobles.NobleHouseManager nobleHouseManager) {
 this.gameState      = gameState;
@@ -54,6 +56,7 @@ this.zoneManager    = gameState.getZoneManager();
 this.armyManager    = gameState.getArmyManager();
 this.onZoneSelected = onZoneSelected;
 this.onArmySelected = onArmySelected;
+this.onNobleArmySelected = onNobleArmySelected;
 this.armyListPanel  = armyListPanel;
 
 this.camera       = new MapCamera();
@@ -168,7 +171,9 @@ selectedZone      = null;
 renderer.setSelectedNobleArmy(selectedNobleArmy);
 repaint();
 onArmySelected.accept(null);
-onNobleArmySelected(selectedNobleArmy);
+if (onNobleArmySelected != null) {
+onNobleArmySelected.accept(selectedNobleArmy);
+}
 return;
 }
 }
@@ -185,20 +190,8 @@ onZoneSelected.accept(hit);
 
 
 private void onNobleArmySelected(NobleArmy army) {
-if (army == null) return;
-main.nobles.NobleHouse house =
-gameState.getNobleHouseManager().getHouseById(army.getHouseId());
-String houseName = house != null ? house.getName() : army.getHouseId();
-String order = army.hasPendingOrder()
-? army.getPendingOrder().name() + " → " + army.getPendingTargetZoneId()
-: "None";
-javax.swing.JOptionPane.showMessageDialog(this,
-houseName + " Army\n"
-+ "Size: " + army.getSize() + "\n"
-+ "Zone: " + army.getZoneId() + "\n"
-+ "Pending order: " + order,
-houseName + " Army",
-javax.swing.JOptionPane.PLAIN_MESSAGE);
+// This method is now obsolete – the callback handles it.
+// Keep empty to avoid errors.
 }
 
 private void handleRightClick(Point screenPt) {
@@ -311,5 +304,9 @@ renderer.render(g2, selectedZone, hoveredZone, selectedArmy);
 g2.dispose();
 }
 }
+
+
+
+
 
 

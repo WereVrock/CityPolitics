@@ -31,25 +31,40 @@ public static List<String> tick(NobleHouse actor,
         relationships.tickDecay(allHouseIds(allHouses));
         considerBreakingAlliances(actor, allHouses, relationships, log);
 
-        // Proactive recruitment — top up existing army or create one if none exists
+        // Proactive recruitment: reinforce existing idle army or create one if none exists.
         List<NobleArmy> existingArmies = new ArrayList<>(armyManager.getArmiesForHouse(actor.getId()));
-        boolean hasIdleArmy = existingArmies.stream().anyMatch(a -> !a.hasPendingOrder());
+        NobleArmy idleArmy = existingArmies.stream().filter(a -> !a.hasPendingOrder()).findFirst().orElse(null);
 
-        if (actor.getNobleManpower() >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE
-                && actor.getGold() >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-            if (!hasIdleArmy) {
-                // No idle army — recruit a fresh one (merges automatically at capital)
-                int recruitSize = Math.max(
-                    GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE,
-                    (int)(actor.getNobleManpower()
-                        * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
+        int manpower = actor.getNobleManpower();
+        int gold = actor.getGold();
+        int minSize = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
+        int maxSustainableSize = (int)(gold / (GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER * 2.0)); // enough for 2 turns
+
+        // Only act if we have enough manpower and gold for at least a small reinforcement/recruitment.
+        if (manpower >= minSize && gold >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
+            if (idleArmy == null) {
+                // No idle army: recruit a new one, capped at sustainable size.
+                int rawSize = Math.max(minSize, (int)(manpower * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
+                int recruitSize = Math.min(rawSize, maxSustainableSize);
+                recruitSize = Math.max(minSize, recruitSize);
                 NobleArmy recruited = armyManager.recruit(actor, recruitSize);
                 if (recruited != null) {
-                    log.add(actor.getName() + " recruits an army of "
-                        + recruited.getSize() + ".");
+                    log.add(actor.getName() + " recruits an army of " + recruited.getSize() + ".");
+                }
+            } else {
+                // Reinforce existing idle army, but do not exceed sustainable size.
+                int currentSize = idleArmy.getSize();
+                int desiredIncrease = (int)(manpower * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION);
+                int targetSize = Math.min(currentSize + desiredIncrease, maxSustainableSize);
+                if (targetSize > currentSize) {
+                    int reinforceAmount = targetSize - currentSize;
+                    boolean success = armyManager.reinforceArmy(actor, idleArmy, reinforceAmount);
+                    if (success) {
+                        log.add(actor.getName() + " reinforces its army by " + reinforceAmount
+                                + " (now " + targetSize + ").");
+                    }
                 }
             }
-            // If idle army exists, recruit() will merge reinforcements into it automatically
         }
 
         // Disband idle armies if gold is critically low
@@ -154,11 +169,27 @@ public static List<String> tick(NobleHouse actor,
 
         if (members.isEmpty()) return log;
 
-        // Check combined army >= 90% of threat
-        int combinedArmy = 0;
-        for (NobleHouse m : members) combinedArmy += m.getTotalArmySize();
+        // Require at least one member to have a field army (non-zero NobleArmy)
+        boolean hasFieldArmy = false;
+        for (NobleHouse m : members) {
+            List<NobleArmy> armies = armyManager.getArmiesForHouse(m.getId());
+            if (armies.stream().anyMatch(a -> a.getSize() > 0 && !a.hasPendingOrder())) {
+                hasFieldArmy = true;
+                break;
+            }
+        }
+        if (!hasFieldArmy) {
+            log.add("Coalition against " + threat.getName() + " fails: no member has a field army.");
+            return log;
+        }
 
-        double ratio = (double) combinedArmy / Math.max(1, threat.getTotalArmySize());
+        // Check combined field army size >= 90% of threat's field army size
+        int combinedFieldArmy = 0;
+        for (NobleHouse m : members) {
+            combinedFieldArmy += armyManager.getArmiesForHouse(m.getId()).stream().mapToInt(NobleArmy::getSize).sum();
+        }
+        int threatFieldArmy = armyManager.getArmiesForHouse(threat.getId()).stream().mapToInt(NobleArmy::getSize).sum();
+        double ratio = (double) combinedFieldArmy / Math.max(1, threatFieldArmy);
         if (ratio < GameParameters.COALITION_ARMY_THRESHOLD) return log;
 
         // Find coordinator — highest prestige among members

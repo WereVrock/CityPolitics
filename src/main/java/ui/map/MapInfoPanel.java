@@ -185,6 +185,18 @@ armyStatusLabel.setText("Status: Deployed");
 cardLayout.show(cards, CARD_ARMY);
 }
 
+public void showNobleArmy(main.nobles.NobleArmy army, ZoneManager zm, main.nobles.NobleHouseManager houseManager) {
+if (army == null) { clearArmy(); return; }
+main.nobles.NobleHouse owner = houseManager.getHouseById(army.getHouseId());
+String houseName = owner != null ? owner.getName() : army.getHouseId();
+armyTitleLabel.setText("🏰 " + houseName + " Army");
+Zone zone = zm.getZone(army.getZoneId());
+armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+String order = army.hasPendingOrder() ? army.getPendingOrder().name() + " → " + army.getPendingTargetZoneId() : "Idle";
+armyStatusLabel.setText("Size: " + army.getSize() + "  Order: " + order);
+cardLayout.show(cards, CARD_ARMY);
+}
+
 public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
 public void clearArmy() { cardLayout.show(cards, CARD_EMPTY); }
 
@@ -301,3 +313,4 @@ if (v <= 30) return UITheme.TEXT_RED;
 return UITheme.TEXT_PRIMARY;
 }
 }
+

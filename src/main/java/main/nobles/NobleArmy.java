@@ -18,6 +18,7 @@ public class NobleArmy {
     private OrderType    pendingOrder    = OrderType.NONE;
     private String       pendingTargetZoneId = null; // zone to attack/raid (army is already there)
     private boolean      orderReadyToResolve = false; // true after 1 turn wait
+    private String       previousZoneId = null;  // used for supporters to return after battle
 
     public NobleArmy(String id, String houseId, int size, String zoneId) {
         this.id     = id;
@@ -51,7 +52,11 @@ public class NobleArmy {
         pendingOrder         = OrderType.NONE;
         pendingTargetZoneId  = null;
         orderReadyToResolve  = false;
+        previousZoneId       = null;
     }
+
+    public void setPreviousZoneId(String zoneId) { this.previousZoneId = zoneId; }
+    public String getPreviousZoneId() { return previousZoneId; }
 
     // ─── Accessors ───────────────────────────────────────────────────────────
 

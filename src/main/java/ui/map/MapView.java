@@ -32,6 +32,13 @@ public MapView(GameState gameState, Runnable onBack) {
             gameState,
             zone -> { infoPanel.showZone(zone); },
             army -> { if (army != null) infoPanel.showArmy(army, zoneManager); else infoPanel.clearArmy(); },
+            nobleArmy -> {
+                if (nobleArmy != null) {
+                    infoPanel.showNobleArmy(nobleArmy, zoneManager, gameState.getNobleHouseManager());
+                } else {
+                    infoPanel.clearArmy();
+                }
+            },
             armyListPanel,
             gameState.getNobleHouseManager()
         );

@@ -128,4 +128,57 @@ public class CombatResolver {
         double rate     = Math.max(0.05, Math.min(0.6, baseRate * ratio + variance));
         return (int) Math.ceil(targetSize * rate);
     }
+
+    /**
+     * Resolve a battle with multiple attacker armies and multiple defender armies.
+     * Returns a CombatResult where winnerId is the side that won.
+     */
+    public static CombatResult resolveMultiSideBattle(
+            List<ArmyForce> attackers,
+            List<ArmyForce> defenders,
+            String attackerCoordinatorId,
+            String defenderHouseId,
+            int defenderFortification
+    ) {
+        List<String> log = new ArrayList<>();
+
+        int totalAttackerPower = 0;
+        for (ArmyForce a : attackers) totalAttackerPower += a.getArmySize();
+
+        double defenseMultiplier = 1.0 - (defenderFortification / 100.0)
+                * GameParameters.COMBAT_DEFENSE_REDUCTION;
+        int totalDefenderPower = 0;
+        for (ArmyForce d : defenders) {
+            int effective = (int)(d.getArmySize() * defenseMultiplier);
+            totalDefenderPower += effective;
+        }
+
+        int defenderLossesTotal = resolveCasualties(totalAttackerPower, totalDefenderPower);
+        int attackerLossesTotal = resolveCasualties(totalDefenderPower, totalAttackerPower);
+
+        log.add("Multi‑side battle: Attackers power " + totalAttackerPower
+                + " vs Defenders power " + totalDefenderPower);
+
+        for (ArmyForce a : attackers) {
+            double fraction = (double) a.getArmySize() / Math.max(1, totalAttackerPower);
+            int losses = (int) Math.ceil(attackerLossesTotal * fraction);
+            a.applyLosses(losses);
+        }
+        for (ArmyForce d : defenders) {
+            double fraction = (double) d.getArmySize() / Math.max(1, totalDefenderPower);
+            int losses = (int) Math.ceil(defenderLossesTotal * fraction);
+            d.applyLosses(losses);
+        }
+
+        boolean attackersWin = (totalAttackerPower - attackerLossesTotal)
+                > (totalDefenderPower - defenderLossesTotal);
+        String winnerId = attackersWin ? attackerCoordinatorId : defenderHouseId;
+        String loserId  = attackersWin ? defenderHouseId : attackerCoordinatorId;
+        log.add(attackersWin ? "Attacker coalition wins." : "Defender coalition wins.");
+
+        return new CombatResult(winnerId, loserId,
+                attackerLossesTotal, defenderLossesTotal, log);
+    }
+
+   
 }
