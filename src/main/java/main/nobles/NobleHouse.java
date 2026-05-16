@@ -133,8 +133,10 @@ public class NobleHouse {
         int current = fortifications.getOrDefault(zoneId, 0);
         fortifications.put(zoneId, Math.max(0, Math.min(100, current + amount)));
         if (amount > 0) {
-            int bonus = garrisonMaxBonus.getOrDefault(zoneId, 0);
-            garrisonMaxBonus.put(zoneId, bonus + GameParameters.FORTIFY_GARRISON_GAIN);
+            int bonus    = garrisonMaxBonus.getOrDefault(zoneId, 0);
+            int newBonus = Math.min(bonus + GameParameters.FORTIFY_GARRISON_GAIN,
+                                    GameParameters.FORTIFY_GARRISON_MAX_BONUS);
+            garrisonMaxBonus.put(zoneId, newBonus);
         }
         recalculateCapital();
     }
@@ -176,6 +178,14 @@ public class NobleHouse {
     public void damageGarrison(String zoneId, int losses) {
         int current = garrisons.getOrDefault(zoneId, 0);
         garrisons.put(zoneId, Math.max(0, current - losses));
+    }
+
+    /** Directly add soldiers to garrison, clamped to max. */
+    public void addGarrison(String zoneId, int amount) {
+        if (amount <= 0) return;
+        int current = garrisons.getOrDefault(zoneId, 0);
+        int max     = getMaxGarrisonFor(zoneId);
+        garrisons.put(zoneId, Math.min(max, current + amount));
     }
 
     public void resetGarrison(String zoneId) {

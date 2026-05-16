@@ -370,10 +370,7 @@ public class NobleAI {
                 actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
                 String fortZone = actor.getCapitalZoneId();
                 if (fortZone != null) {
-                    int current = actor.getGarrisonFor(fortZone);
-                    int max     = actor.getMaxGarrisonFor(fortZone);
-                    int gain    = Math.min(GameParameters.FORTIFY_GARRISON_GAIN, max - current);
-                    if (gain > 0) actor.damageGarrison(fortZone, -gain);
+                    actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
                 }
                 log.add(actor.getName() + " fortifies. Defense +"
                     + GameParameters.AI_FORTIFY_DEFENSE_GAIN

@@ -408,6 +408,8 @@ public final class GameParameters {
     public static final int    NOBLE_FORTIFY_GAIN                       = 10;
     /** Garrison soldiers added per FORTIFY action. */
     public static final int    FORTIFY_GARRISON_GAIN                    = 5;
+    /** Maximum total garrison bonus that can be accumulated from fortifying. */
+    public static final int    FORTIFY_GARRISON_MAX_BONUS               = 50;
     /** Gold cost per FORTIFY action. */
     public static final int    NOBLE_FORTIFY_GOLD_COST                  = 20;
 
