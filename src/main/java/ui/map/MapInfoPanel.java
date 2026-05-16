@@ -168,6 +168,17 @@ popsLabel.setText("Pops:       " + zone.getZonePops());
 supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%");
 damageLabel.setText("Damage:     " + state.getDamage() + "%");
 
+main.nobles.NobleHouse zoneOwner = nobleHouseManager.getOwnerOfZone(zone.getId());
+if (zoneOwner != null) {
+    int fort     = zoneOwner.getFortificationFor(zone.getId());
+    int garrison = zoneOwner.getGarrisonFor(zone.getId());
+    int maxGarr  = zoneOwner.getMaxGarrisonFor(zone.getId());
+    supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%"
+        + "   Fort: " + fort);
+    damageLabel.setText("Damage:     " + state.getDamage() + "%"
+        + "   Garrison: " + garrison + "/" + maxGarr);
+}
+
 StringBuilder sb = new StringBuilder();
 for (String adjId : zone.getAdjacentIds()) {
 Zone adj = zoneManager.getZone(adjId);

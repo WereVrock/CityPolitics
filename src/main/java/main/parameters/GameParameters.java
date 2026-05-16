@@ -392,6 +392,8 @@ public final class GameParameters {
     // =========================================================
     /** Fortification gained per FORTIFY action. */
     public static final int    NOBLE_FORTIFY_GAIN                       = 10;
+    /** Garrison soldiers added per FORTIFY action. */
+    public static final int    FORTIFY_GARRISON_GAIN                    = 5;
     /** Gold cost per FORTIFY action. */
     public static final int    NOBLE_FORTIFY_GOLD_COST                  = 20;
 

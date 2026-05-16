@@ -82,13 +82,15 @@ DragSource.getDefaultDragSource()
 setupMouseHandlers();
 }
 
-public void clearSelection() {
-selectedZone      = null;
-selectedArmy      = null;
-selectedNobleArmy = null;
-renderer.setSelectedNobleArmy(null);
-repaint();
-}
+    public void clearSelection() {
+        selectedZone      = null;
+        selectedArmy      = null;
+        selectedNobleArmy = null;
+        renderer.setSelectedNobleArmy(null);
+        repaint();
+    }
+
+    public Zone getSelectedZone() { return selectedZone; }
 
 public void cycleViewMode() {
 renderer.setViewMode(renderer.getViewMode().next());

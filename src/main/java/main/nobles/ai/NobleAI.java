@@ -6,6 +6,7 @@ import main.nobles.combat.CombatResolver;
 import main.nobles.combat.CombatResult;
 import main.map.ZoneState;
 import main.parameters.GameParameters;
+import main.rules.NobleRules;
 
 import java.util.*;
 
@@ -169,24 +170,17 @@ public static List<String> tick(NobleHouse actor,
 
         if (members.isEmpty()) return log;
 
-        // Require at least one member to have a field army (non-zero NobleArmy)
-        boolean hasFieldArmy = false;
-        for (NobleHouse m : members) {
-            List<NobleArmy> armies = armyManager.getArmiesForHouse(m.getId());
-            if (armies.stream().anyMatch(a -> a.getSize() > 0 && !a.hasPendingOrder())) {
-                hasFieldArmy = true;
-                break;
-            }
-        }
-        if (!hasFieldArmy) {
-            log.add("Coalition against " + threat.getName() + " fails: no member has a field army.");
-            return log;
-        }
+        // Require at least one member to have a non-zero idle field army
+        members.removeIf(m -> armyManager.getArmiesForHouse(m.getId()).stream()
+                .noneMatch(a -> a.getSize() > 0 && !a.hasPendingOrder()));
+        if (members.isEmpty()) return log;
 
         // Check combined field army size >= 90% of threat's field army size
         int combinedFieldArmy = 0;
         for (NobleHouse m : members) {
-            combinedFieldArmy += armyManager.getArmiesForHouse(m.getId()).stream().mapToInt(NobleArmy::getSize).sum();
+            combinedFieldArmy += armyManager.getArmiesForHouse(m.getId()).stream()
+                    .filter(a -> !a.hasPendingOrder())
+                    .mapToInt(NobleArmy::getSize).sum();
         }
         int threatFieldArmy = armyManager.getArmiesForHouse(threat.getId()).stream().mapToInt(NobleArmy::getSize).sum();
         double ratio = (double) combinedFieldArmy / Math.max(1, threatFieldArmy);
@@ -208,14 +202,19 @@ public static List<String> tick(NobleHouse actor,
             + " ===  Coordinator: " + coordinator.getName()
             + "  Members: " + memberNames);
 
-        // Build combined force
+        // Build combined force — only members with a non-zero idle army contribute
         List<ArmyForce> attackers = new ArrayList<>();
         for (NobleHouse m : members) {
+            int power = armyManager.getArmiesForHouse(m.getId()).stream()
+                    .filter(a -> !a.hasPendingOrder() && a.getSize() > 0)
+                    .mapToInt(NobleArmy::getSize).sum();
+            if (power <= 0) continue;
             int military = m.getActiveCharacter() != null
                 ? m.getActiveCharacter().getMilitary() : 0;
             attackers.add(new ArmyForce(m.getId(),
-                (int)(m.getTotalArmySize() * militaryMultiplier(military)), 0));
+                (int)(power * militaryMultiplier(military)), 0));
         }
+        if (attackers.isEmpty()) return log;
 
         int defMilitary = threat.getActiveCharacter() != null
             ? threat.getActiveCharacter().getMilitary() : 0;
@@ -407,6 +406,7 @@ private static List<String> execute(NobleHouse actor, NobleAction action,
             }
 
             case ATTACK -> {
+                if (!NobleRules.WAR_DECLARATION_ALLOWED) break;
                 NobleHouse target = findAttackTarget(actor, allHouses,
                     relationships, claimManager);
                 if (target == null) break;
@@ -443,7 +443,7 @@ private static List<String> execute(NobleHouse actor, NobleAction action,
                     }
                 }
 
-                if (army != null && !army.hasPendingOrder()) {
+                if (army != null && !army.hasPendingOrder() && army.getSize() > 0) {
                     armyManager.moveArmy(army, attackTargetZone);
                     army.issueOrder(NobleArmy.OrderType.ATTACK, attackTargetZone);
                     log.add(actor.getName() + " marches on " + attackTargetZone + ".");
@@ -487,7 +487,7 @@ private static List<String> execute(NobleHouse actor, NobleAction action,
                     }
                 }
 
-                if (raidArmy != null && !raidArmy.hasPendingOrder()) {
+                if (raidArmy != null && !raidArmy.hasPendingOrder() && raidArmy.getSize() > 0) {
                     armyManager.moveArmy(raidArmy, raidedZone);
                     raidArmy.issueOrder(NobleArmy.OrderType.RAID, raidedZone);
                     log.add(actor.getName() + " sends raiders toward " + raidedZone + ".");
@@ -568,8 +568,18 @@ private static List<String> execute(NobleHouse actor, NobleAction action,
                 if (actor.getGold() < cost) break;
                 actor.addGold(-cost);
                 actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
+                String fortZone = actor.getCapitalZoneId();
+                if (fortZone != null) {
+                    int current = actor.getGarrisonFor(fortZone);
+                    int max     = actor.getMaxGarrisonFor(fortZone);
+                    int gain    = Math.min(GameParameters.FORTIFY_GARRISON_GAIN, max - current);
+                    if (gain > 0) {
+                        actor.damageGarrison(fortZone, -gain); // negative damage = heal/add
+                    }
+                }
                 log.add(actor.getName() + " fortifies. Defense +"
-                    + GameParameters.AI_FORTIFY_DEFENSE_GAIN + ".");
+                    + GameParameters.AI_FORTIFY_DEFENSE_GAIN
+                    + ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
             }
 
             case ALLY -> {

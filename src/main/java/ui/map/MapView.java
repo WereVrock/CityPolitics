@@ -8,6 +8,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import main.army.Army;
+import main.map.Zone;
 import ui.UITheme;
 
 /**
@@ -112,11 +113,17 @@ public MapView(GameState gameState, Runnable onBack) {
         add(rightPanel, BorderLayout.EAST);
     }
 
-public void refresh() {
+    public void refresh() {
         mapPanel.clearSelection();
         infoPanel.clearZone();
         infoPanel.clearArmy();
         armyListPanel.refresh();
         mapPanel.repaint();
+    }
+
+    /** Re-shows the currently selected zone (if any) after data changes like end turn. */
+    public void refreshSelectedZone() {
+        Zone zone = mapPanel.getSelectedZone();
+        if (zone != null) infoPanel.showZone(zone);
     }
 }

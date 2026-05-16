@@ -30,9 +30,10 @@ public class NobleHouse {
     private int     prestige;
     private boolean threatened;
 
-    // Per-zone fortification level (0–100) and garrison size
-    private final Map<String, Integer> fortifications = new LinkedHashMap<>();
-    private final Map<String, Integer> garrisons      = new LinkedHashMap<>();
+    // Per-zone fortification level (0–100), garrison size, and garrison cap bonus from fortifying
+    private final Map<String, Integer> fortifications   = new LinkedHashMap<>();
+    private final Map<String, Integer> garrisons        = new LinkedHashMap<>();
+    private final Map<String, Integer> garrisonMaxBonus = new LinkedHashMap<>();
 
     // Capital zone — recalculated when zones change
     private String capitalZoneId;
@@ -57,6 +58,7 @@ public class NobleHouse {
         for (String z : zoneIds) {
             fortifications.put(z, 0);
             garrisons.put(z, 0);
+            garrisonMaxBonus.put(z, 0);
         }
         recalculateCapital();
     }
@@ -130,6 +132,10 @@ public class NobleHouse {
         if (!zoneIds.contains(zoneId)) return;
         int current = fortifications.getOrDefault(zoneId, 0);
         fortifications.put(zoneId, Math.max(0, Math.min(100, current + amount)));
+        if (amount > 0) {
+            int bonus = garrisonMaxBonus.getOrDefault(zoneId, 0);
+            garrisonMaxBonus.put(zoneId, bonus + GameParameters.FORTIFY_GARRISON_GAIN);
+        }
         recalculateCapital();
     }
 
@@ -141,10 +147,10 @@ public class NobleHouse {
      */
     public int getMaxGarrisonFor(String zoneId) {
         int manpowerPerTurn = GameParameters.NOBLE_ZONE_MANPOWER_PER_TURN;
-        if (zoneId.equals(capitalZoneId)) {
-            return manpowerPerTurn * GameParameters.GARRISON_CAPITAL_MULTIPLIER;
-        }
-        return manpowerPerTurn * GameParameters.GARRISON_OTHER_MULTIPLIER;
+        int base = zoneId.equals(capitalZoneId)
+            ? manpowerPerTurn * GameParameters.GARRISON_CAPITAL_MULTIPLIER
+            : manpowerPerTurn * GameParameters.GARRISON_OTHER_MULTIPLIER;
+        return base + garrisonMaxBonus.getOrDefault(zoneId, 0);
     }
 
     public int getGarrisonFor(String zoneId) {
@@ -268,6 +274,7 @@ public class NobleHouse {
             zoneIds.add(zoneId);
             fortifications.put(zoneId, 0);
             garrisons.put(zoneId, 0);
+            garrisonMaxBonus.put(zoneId, 0);
             recalculateCapital();
         }
     }
@@ -276,6 +283,7 @@ public class NobleHouse {
         zoneIds.remove(zoneId);
         fortifications.remove(zoneId);
         garrisons.remove(zoneId);
+        garrisonMaxBonus.remove(zoneId);
         recalculateCapital();
     }
 

@@ -259,8 +259,8 @@ private void endTurn() {
         popPanel.refresh();
         actionsPanel.refresh();
 
-        // Force repaint of map if it is currently visible
         if (centerPanel.getComponentCount() > 0 && centerPanel.getComponent(0) == mapView) {
+            mapView.refreshSelectedZone();
             mapView.repaint();
         }
 
