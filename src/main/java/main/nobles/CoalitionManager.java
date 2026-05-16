@@ -19,6 +19,9 @@ public class CoalitionManager {
     private final ClaimManager        claimManager;
     private final NobleArmyManager    armyManager;
 
+    // key = "threatId:coordinatorId", value = set of zoneIds routed for that coalition
+    private final Map<String, Set<String>> routedZones = new HashMap<>();
+
     public CoalitionManager(ZoneManager zoneManager,
                             RelationshipManager relationships,
                             ClaimManager claimManager,
@@ -66,9 +69,17 @@ public class CoalitionManager {
         NobleArmy coordArmy = getOrRecruitIdleArmy(coordinator);
         if (coordArmy == null) return log;
 
-        // Pick target zone
-        String targetZone = pickTargetZone(coordinator, members, threat, allHouses);
-        if (targetZone == null) return log;
+        // Determine routed zones for this coalition (threat + coordinator)
+        String routeKey = threat.getId() + ":" + coordinator.getId();
+        Set<String> routed = routedZones.getOrDefault(routeKey, Collections.emptySet());
+
+        // Pick target zone, skipping routed ones
+        String targetZone = pickTargetZone(coordinator, members, threat, allHouses, routed);
+        if (targetZone == null) {
+            log.add("=== Coalition against " + threat.getName()
+                    + " disbands — no viable targets remain. ===");
+            return log;
+        }
 
         // Recruit for other members who can afford it
         for (NobleHouse m : members) {
@@ -127,19 +138,21 @@ public class CoalitionManager {
      * 3. Other members' claims on threat zones, preferred by relationship (allied→friendly→neutral→…)
      * 4. Any threat zone
      */
-    private String pickTargetZone(NobleHouse coordinator,
+
+private String pickTargetZone(NobleHouse coordinator,
                                    List<NobleHouse> members,
                                    NobleHouse threat,
-                                   List<NobleHouse> allHouses) {
+                                   List<NobleHouse> allHouses,
+                                   Set<String> routedZones) {
         List<String> threatZones = new ArrayList<>(threat.getZoneIds());
         if (threatZones.isEmpty()) return null;
 
-        // 1. Landless member claims
+        // 1. Landless member claims (excluding routed)
         List<String> landlessClaimed = new ArrayList<>();
         for (NobleHouse m : members) {
             if (!m.getZoneIds().isEmpty()) continue;
             for (Claim c : claimManager.getClaimsFor(m.getId())) {
-                if (threatZones.contains(c.getZoneId())) {
+                if (threatZones.contains(c.getZoneId()) && !routedZones.contains(c.getZoneId())) {
                     landlessClaimed.add(c.getZoneId());
                 }
             }
@@ -148,27 +161,35 @@ public class CoalitionManager {
             return landlessClaimed.get(RNG.nextInt(landlessClaimed.size()));
         }
 
-        // 2. Coordinator's own claims
+        // 2. Coordinator's own claims (excluding routed)
         for (Claim c : claimManager.getClaimsFor(coordinator.getId())) {
-            if (threatZones.contains(c.getZoneId())) return c.getZoneId();
+            if (threatZones.contains(c.getZoneId()) && !routedZones.contains(c.getZoneId())) {
+                return c.getZoneId();
+            }
         }
 
-        // 3. Other members' claims, ordered by coordinator's relationship to claimant
+        // 3. Other members' claims, ordered by coordinator's relationship to claimant (excluding routed)
         List<NobleHouse> claimantsByRelation = new ArrayList<>(members);
         claimantsByRelation.remove(coordinator);
         claimantsByRelation.sort(Comparator.comparingInt(
                 m -> relationshipOrder(relationships.get(coordinator.getId(), m.getId()))));
         for (NobleHouse m : claimantsByRelation) {
             for (Claim c : claimManager.getClaimsFor(m.getId())) {
-                if (threatZones.contains(c.getZoneId())) return c.getZoneId();
+                if (threatZones.contains(c.getZoneId()) && !routedZones.contains(c.getZoneId())) {
+                    return c.getZoneId();
+                }
             }
         }
 
-        // 4. Fallback: any threat zone
-        return threatZones.get(0);
+        // 4. Fallback: any threat zone not routed
+        for (String z : threatZones) {
+            if (!routedZones.contains(z)) return z;
+        }
+
+        return null;
     }
 
-    private int relationshipOrder(Relationship r) {
+private int relationshipOrder(Relationship r) {
         return switch (r) {
             case ALLIED   -> 0;
             case FRIENDLY -> 1;
@@ -277,6 +298,24 @@ private NobleHouse weightedPick(List<NobleHouse> claimants,
             if (h.getZoneIds().contains(zoneId)) return h;
         }
         return null;
+    }
+
+    // ─── Routed zone management ─────────────────────────────────────────────
+
+    /** Called when a coalition attack fails. 50% chance to mark the zone as routed for that coalition. */
+    public void onCoalitionAttackFailed(String coordinatorId, String threatId, String zoneId) {
+        if (RNG.nextDouble() < 0.5) {
+            String key = threatId + ":" + coordinatorId;
+            routedZones.computeIfAbsent(key, k -> new HashSet<>()).add(zoneId);
+        }
+    }
+
+    /** Called whenever a house loses any zone. Clears all routed sets for coalitions against that house. */
+    public void onHouseLostZone(String houseId) {
+        routedZones.entrySet().removeIf(entry -> {
+            String threatId = entry.getKey().split(":")[0];
+            return threatId.equals(houseId);
+        });
     }
 
     // ─── Army helpers ────────────────────────────────────────────────────────

@@ -313,9 +313,19 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
             }
             relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
             for (NobleHouse p : attackerParticipants) p.setThreatened(false);
+
+            // Any zone loss by a house resets routed lists against that house
+            if (coalitionManager != null) {
+                coalitionManager.onHouseLostZone(defender.getId());
+            }
         } else {
             log.add(defender.getName() + " repels the attack on " + zoneId + ".");
             relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
+
+            // Coalition failure — may route this target
+            if (isCoalition && coalitionManager != null) {
+                coalitionManager.onCoalitionAttackFailed(attacker.getId(), defender.getId(), zoneId);
+            }
         }
 
         // ---- Return supporter armies to previous zones (or capital) ----
