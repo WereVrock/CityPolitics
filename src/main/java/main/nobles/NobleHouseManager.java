@@ -23,14 +23,17 @@ public class NobleHouseManager {
     private final ClaimManager        claimManager  = new ClaimManager();
     private final ZoneManager         zoneManager;
     private final NobleArmyManager    armyManager;
+    private final CoalitionManager    coalitionManager;
 
     // Prebuilt zone gold/food maps for capital tiebreaker
     private Map<String, Integer> zoneGoldMap = new HashMap<>();
     private Map<String, Integer> zoneFoodMap = new HashMap<>();
 
     public NobleHouseManager(ZoneManager zoneManager) {
-        this.zoneManager  = zoneManager;
-        this.armyManager  = new NobleArmyManager(zoneManager, relationships);
+        this.zoneManager      = zoneManager;
+        this.armyManager      = new NobleArmyManager(zoneManager, relationships);
+        this.coalitionManager = new CoalitionManager(zoneManager, relationships, claimManager, armyManager);
+        this.armyManager.setCoalitionManager(coalitionManager);
         buildZoneMaps();
         buildHouses();
     }
@@ -81,8 +84,7 @@ public List<String> processTurn(ResourcePool playerResources) {
             }
         }
 
-        log.addAll(NobleAI.checkCoalition(
-            new ArrayList<>(houses), relationships, claimManager, zoneManager, armyManager));
+        log.addAll(coalitionManager.checkCoalitions(new ArrayList<>(houses)));
 
         // Step 5 — tick orders issued this turn so they resolve NEXT turn
         armyManager.tickOrders();
@@ -200,6 +202,8 @@ private int computeHouseGold(NobleHouse house) {
         armyManager.reset();
         buildHouses();
     }
+
+    public CoalitionManager getCoalitionManager() { return coalitionManager; }
 
     // ─── House definitions ───────────────────────────────────────────────────
 

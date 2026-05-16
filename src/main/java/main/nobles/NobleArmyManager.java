@@ -26,10 +26,15 @@ private       int                          nextId   = 1;
 
 private final ZoneManager         zoneManager;
 private final RelationshipManager relationships;
+private       CoalitionManager    coalitionManager; // set after construction to avoid circular dep
 
 public NobleArmyManager(ZoneManager zoneManager, RelationshipManager relationships) {
-this.zoneManager   = zoneManager;
-this.relationships = relationships;
+    this.zoneManager   = zoneManager;
+    this.relationships = relationships;
+}
+
+public void setCoalitionManager(CoalitionManager coalitionManager) {
+    this.coalitionManager = coalitionManager;
 }
 
 // ─── Recruitment ─────────────────────────────────────────────────────────
@@ -146,56 +151,69 @@ army.tickOrder();
 */
 
 public List<String> resolveOrders(List<NobleHouse> allHouses,
-ClaimManager claimManager) {
-List<String> log = new ArrayList<>();
-for (NobleArmy army : new ArrayList<>(armies)) {
-if (!army.isOrderReadyToResolve()) continue;
-switch (army.getPendingOrder()) {
-case ATTACK -> log.addAll(resolveAttack(army, allHouses, claimManager));
-case RAID   -> log.addAll(resolveRaid(army, allHouses));
-case NONE   -> {}
-}
-army.clearOrder();
-}
-removeDeadArmies(allHouses);
-return log;
+                                   ClaimManager claimManager) {
+    List<String> log = new ArrayList<>();
+    for (NobleArmy army : new ArrayList<>(armies)) {
+        if (!army.isOrderReadyToResolve()) continue;
+        switch (army.getPendingOrder()) {
+            case ATTACK -> log.addAll(resolveAttack(army, allHouses, claimManager,
+                    army.getCoalitionMemberIds()));
+            case RAID   -> log.addAll(resolveRaid(army, allHouses));
+            case NONE   -> {}
+        }
+        army.clearOrder();
+    }
+    removeDeadArmies(allHouses);
+    return log;
 }
 
 // ─── Attack resolution ───────────────────────────────────────────────────
 
 private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses,
-                                        ClaimManager claimManager) {
-        List<String> log = new ArrayList<>();
-        String zoneId = attArmy.getPendingTargetZoneId();
-        if (zoneId == null) return log;
+                                    ClaimManager claimManager,
+                                    Set<String> coalitionMemberIds) {
+    List<String> log = new ArrayList<>();
+    String zoneId = attArmy.getPendingTargetZoneId();
+    if (zoneId == null) return log;
 
-        NobleHouse attacker = findHouse(attArmy.getHouseId(), allHouses);
-        NobleHouse defender = findZoneOwner(zoneId, allHouses);
-        if (attacker == null || defender == null || attacker == defender) return log;
+    NobleHouse attacker = findHouse(attArmy.getHouseId(), allHouses);
+    NobleHouse defender = findZoneOwner(zoneId, allHouses);
+    if (attacker == null || defender == null || attacker == defender) return log;
 
+    boolean isCoalition = coalitionMemberIds != null && !coalitionMemberIds.isEmpty();
+    if (isCoalition) {
+        log.add("=== Coalition attack on " + zoneId + " held by " + defender.getName()
+                + " === Coordinator: " + attacker.getName() + " ===");
+    } else {
         log.add(attacker.getName() + " army attacks " + zoneId
                 + " held by " + defender.getName() + ".");
+    }
 
         // ---- Gather supporter armies for attacker ----
         List<NobleArmy> attackerArmies = new ArrayList<>();
         attackerArmies.add(attArmy);
+        // Track all participants for coalition zone award
+        List<NobleHouse> attackerParticipants = new ArrayList<>();
+        attackerParticipants.add(attacker);
 
         for (NobleHouse house : allHouses) {
             if (house == attacker || house == defender || house.isEliminated()) continue;
             Relationship relToDef = relationships.get(house.getId(), defender.getId());
             Relationship relToAtk = relationships.get(house.getId(), attacker.getId());
 
-            // Do NOT join if hostile/rival/threatened towards the attacker
-            if (relToAtk == Relationship.HOSTILE || relToAtk == Relationship.RIVAL || house.isThreatened()) {
-                continue;
-            }
-
             boolean qualifies = false;
-            if (relToAtk == Relationship.ALLIED) {
+            // Coalition members always join if they have an army
+            if (isCoalition && coalitionMemberIds.contains(house.getId())) {
                 qualifies = true;
-            } else if (relToDef == Relationship.HOSTILE || relToDef == Relationship.RIVAL
-                    || (house.isThreatened() && relToDef == Relationship.NEUTRAL)) {
-                qualifies = true;
+            } else {
+                // Do NOT join if hostile/rival towards the attacker
+                if (relToAtk == Relationship.HOSTILE || relToAtk == Relationship.RIVAL) continue;
+                if (relToAtk == Relationship.ALLIED) {
+                    qualifies = true;
+                } else if (relToDef == Relationship.HOSTILE || relToDef == Relationship.RIVAL
+                        || (house.isThreatened() && relToDef == Relationship.NEUTRAL)) {
+                    qualifies = true;
+                }
             }
 
             if (!qualifies) continue;
@@ -207,6 +225,7 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
                 a.setPreviousZoneId(a.getZoneId());
                 moveArmy(a, zoneId);
                 attackerArmies.add(a);
+                attackerParticipants.add(house);
                 log.add(house.getName() + " joins the attack on " + zoneId + ".");
             }
         }
@@ -270,18 +289,27 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
         boolean attackersWin = result.getWinnerId().equals(attacker.getId());
 
         if (attackersWin) {
-            defender.removeZone(zoneId);
-            attacker.addZone(zoneId);
-            claimManager.removeAllClaimsOnZone(zoneId);
             ZoneState state = zoneManager.getState(zoneId);
             if (state != null) state.markConquered();
             defender.resetGarrison(zoneId);
-            attacker.resetGarrison(zoneId);
-            log.add(attacker.getName() + " captures " + zoneId
-                    + " from " + defender.getName() + ".");
-            if (defender.isEliminated())
-                log.add(defender.getName() + " has been eliminated.");
+
+            if (isCoalition && coalitionManager != null) {
+                // Coalition award logic determines who gets the zone
+                coalitionManager.awardConqueredZone(zoneId, attacker,
+                        attackerParticipants, allHouses, log);
+            } else {
+                defender.removeZone(zoneId);
+                attacker.addZone(zoneId);
+                claimManager.removeAllClaimsOnZone(zoneId);
+                attacker.resetGarrison(zoneId);
+                log.add(attacker.getName() + " captures " + zoneId
+                        + " from " + defender.getName() + ".");
+                if (defender.isEliminated())
+                    log.add(defender.getName() + " has been eliminated.");
+            }
             relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
+            // Clear threatened for all attackers
+            for (NobleHouse p : attackerParticipants) p.setThreatened(false);
         } else {
             log.add(defender.getName() + " repels the attack on " + zoneId + ".");
             relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);

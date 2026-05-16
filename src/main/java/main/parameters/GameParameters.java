@@ -271,6 +271,20 @@ public final class GameParameters {
     public static final double COALITION_ARMY_THRESHOLD              = 0.90;
 
     // =========================================================
+    // COALITION ZONE AWARD WEIGHTS
+    // =========================================================
+    /** Flat bonus added to coordinator's weight in zone award roll. */
+    public static final double COALITION_COORDINATOR_BONUS           = 3.0;
+    /** Per cunning point added to weight. */
+    public static final double COALITION_CUNNING_WEIGHT              = 0.4;
+    /** Per diplomacy point added to weight. */
+    public static final double COALITION_DIPLOMACY_WEIGHT            = 0.4;
+    /** Per prestige point added to weight. */
+    public static final double COALITION_PRESTIGE_WEIGHT             = 0.02;
+    /** Army participation fraction multiplier added to weight. */
+    public static final double COALITION_ARMY_PARTICIPATION_WEIGHT   = 2.0;
+
+    // =========================================================
     // THREATENED
     // =========================================================
     public static final double THREATENED_BASE_CHANCE_MULTIPLIER     = 5.0;
