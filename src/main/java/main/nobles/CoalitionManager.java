@@ -188,10 +188,12 @@ public class CoalitionManager {
      * 1. Landless member with a claim on the zone (guaranteed; random among ties by diplomacy+cunning)
      * 2. Participating claimants weighted by coordinator bonus, cunning, diplomacy, prestige, army %
      */
-    public void awardConqueredZone(String zoneId,
+
+public void awardConqueredZone(String zoneId,
                                     NobleHouse conqueror,
                                     List<NobleHouse> allParticipants,
                                     List<NobleHouse> allHouses,
+                                    int previousFortification,
                                     List<String> log) {
         // Step 1 — landless claimants
         List<NobleHouse> landlessClaimants = new ArrayList<>();
@@ -202,7 +204,7 @@ public class CoalitionManager {
         }
         if (!landlessClaimants.isEmpty()) {
             NobleHouse winner = pickByDiplomacyCunning(landlessClaimants);
-            transferZone(zoneId, winner, findCurrentOwner(zoneId, allHouses), log);
+            transferZone(zoneId, winner, findCurrentOwner(zoneId, allHouses), previousFortification, log);
             return;
         }
 
@@ -212,17 +214,16 @@ public class CoalitionManager {
             if (claimManager.hasClaim(h.getId(), zoneId)) claimants.add(h);
         }
         if (claimants.isEmpty()) {
-            // No claimants among participants — conqueror (coordinator) takes it
-            transferZone(zoneId, conqueror, findCurrentOwner(zoneId, allHouses), log);
+            transferZone(zoneId, conqueror, findCurrentOwner(zoneId, allHouses), previousFortification, log);
             return;
         }
 
         int totalArmy = allParticipants.stream().mapToInt(NobleHouse::getTotalArmySize).sum();
         NobleHouse winner = weightedPick(claimants, conqueror, totalArmy);
-        transferZone(zoneId, winner, findCurrentOwner(zoneId, allHouses), log);
+        transferZone(zoneId, winner, findCurrentOwner(zoneId, allHouses), previousFortification, log);
     }
 
-    private NobleHouse weightedPick(List<NobleHouse> claimants,
+private NobleHouse weightedPick(List<NobleHouse> claimants,
                                      NobleHouse coordinator,
                                      int totalArmy) {
         double[] weights = new double[claimants.size()];
@@ -260,9 +261,10 @@ public class CoalitionManager {
         })).orElse(houses.get(0));
     }
 
-    private void transferZone(String zoneId, NobleHouse winner, NobleHouse loser, List<String> log) {
+    private void transferZone(String zoneId, NobleHouse winner, NobleHouse loser,
+                               int previousFortification, List<String> log) {
         if (loser != null) loser.removeZone(zoneId);
-        winner.addZone(zoneId);
+        winner.conquerZone(zoneId, previousFortification);
         claimManager.removeAllClaimsOnZone(zoneId);
         log.add(winner.getName() + " receives " + zoneId + " as coalition spoils.");
         if (loser != null && loser.isEliminated()) {

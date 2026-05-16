@@ -463,10 +463,13 @@ public class NobleAI {
                 int allyMilitary = ally.getActiveCharacter() != null
                     ? ally.getActiveCharacter().getMilitary() : 0;
                 ArmyForce allyForce = new ArmyForce(ally.getId(),
-                    (int)(ally.getTotalArmySize() * militaryMultiplier(allyMilitary)),
-                    attacked.getDefense());
+                    ally.getTotalArmySize(),
+                    attacked.getDefense(),
+                    allyMilitary);
                 ArmyForce atkForce = new ArmyForce(attacker.getId(),
-                    attacker.getTotalArmySize(), 0);
+                    attacker.getTotalArmySize(),
+                    0,
+                    0);
                 CombatResult defResult = CombatResolver.resolve(atkForce, allyForce);
                 log.add(ally.getName() + " joins defense of " + attacked.getName() + "!");
                 log.addAll(defResult.getLog());

@@ -170,24 +170,24 @@ public List<String> resolveOrders(List<NobleHouse> allHouses,
 // ─── Attack resolution ───────────────────────────────────────────────────
 
 private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses,
-                                    ClaimManager claimManager,
-                                    Set<String> coalitionMemberIds) {
-    List<String> log = new ArrayList<>();
-    String zoneId = attArmy.getPendingTargetZoneId();
-    if (zoneId == null) return log;
+                                        ClaimManager claimManager,
+                                        Set<String> coalitionMemberIds) {
+        List<String> log = new ArrayList<>();
+        String zoneId = attArmy.getPendingTargetZoneId();
+        if (zoneId == null) return log;
 
-    NobleHouse attacker = findHouse(attArmy.getHouseId(), allHouses);
-    NobleHouse defender = findZoneOwner(zoneId, allHouses);
-    if (attacker == null || defender == null || attacker == defender) return log;
+        NobleHouse attacker = findHouse(attArmy.getHouseId(), allHouses);
+        NobleHouse defender = findZoneOwner(zoneId, allHouses);
+        if (attacker == null || defender == null || attacker == defender) return log;
 
-    boolean isCoalition = coalitionMemberIds != null && !coalitionMemberIds.isEmpty();
-    if (isCoalition) {
-        log.add("=== Coalition attack on " + zoneId + " held by " + defender.getName()
-                + " === Coordinator: " + attacker.getName() + " ===");
-    } else {
-        log.add(attacker.getName() + " army attacks " + zoneId
-                + " held by " + defender.getName() + ".");
-    }
+        boolean isCoalition = coalitionMemberIds != null && !coalitionMemberIds.isEmpty();
+        if (isCoalition) {
+            log.add("=== Coalition attack on " + zoneId + " held by " + defender.getName()
+                    + " === Coordinator: " + attacker.getName() + " ===");
+        } else {
+            log.add(attacker.getName() + " army attacks " + zoneId
+                    + " held by " + defender.getName() + ".");
+        }
 
         // ---- Gather supporter armies for attacker ----
         List<NobleArmy> attackerArmies = new ArrayList<>();
@@ -235,6 +235,7 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
         List<NobleArmy> existingDef = getArmiesInZone(zoneId, defender.getId());
         defenderArmies.addAll(existingDef);
         int garrisonSize = defender.getGarrisonFor(zoneId);
+        int defFort = defender.getFortificationFor(zoneId);
 
         for (NobleHouse house : allHouses) {
             if (house == attacker || house == defender || house.isEliminated()) continue;
@@ -252,38 +253,41 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
             }
         }
 
-        // ---- Build ArmyForce lists ----
+        // ---- Build ArmyForce lists with raw size and military skill ----
         List<ArmyForce> attackerForces = new ArrayList<>();
         for (NobleArmy a : attackerArmies) {
-            int milSkill = militarySkill(findHouse(a.getHouseId(), allHouses));
-            int power = (int)(a.getSize() * (1.0 + milSkill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
-            attackerForces.add(new ArmyForce(a.getHouseId(), power, 0));
+            NobleHouse h = findHouse(a.getHouseId(), allHouses);
+            int milSkill = militarySkill(h);
+            attackerForces.add(new ArmyForce(a.getHouseId(), a.getSize(), 0, milSkill));
         }
         List<ArmyForce> defenderForces = new ArrayList<>();
         int defMil = militarySkill(defender);
-        int garrisonPower = (int)(garrisonSize * (1.0 + defMil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
-        defenderForces.add(new ArmyForce(defender.getId(), garrisonPower, defender.getFortificationFor(zoneId)));
+        defenderForces.add(new ArmyForce(defender.getId(), garrisonSize, defFort, defMil));
         for (NobleArmy a : defenderArmies) {
-            int mil = militarySkill(findHouse(a.getHouseId(), allHouses));
-            int power = (int)(a.getSize() * (1.0 + mil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
-            defenderForces.add(new ArmyForce(a.getHouseId(), power, defender.getFortificationFor(zoneId)));
+            NobleHouse h = findHouse(a.getHouseId(), allHouses);
+            int mil = militarySkill(h);
+            defenderForces.add(new ArmyForce(a.getHouseId(), a.getSize(), defFort, mil));
         }
 
         // ---- Resolve battle ----
         CombatResult result = CombatResolver.resolveMultiSideBattle(
                 attackerForces, defenderForces,
                 attacker.getId(), defender.getId(),
-                defender.getFortificationFor(zoneId));
+                defFort);
         log.addAll(result.getLog());
 
         // ---- Apply losses ----
         for (int i = 0; i < attackerArmies.size(); i++) {
-            attackerArmies.get(i).setSize(attackerForces.get(i).getArmySize());
+            attackerArmies.get(i).setSize(attackerForces.get(i).getRawSize());
         }
-        int newGarrison = defenderForces.get(0).getArmySize();
-        defender.damageGarrison(zoneId, garrisonSize - newGarrison);
+        int newGarrisonRaw = defenderForces.get(0).getRawSize();
+        int garrisonDelta = garrisonSize - newGarrisonRaw;
+        if (garrisonDelta > 0) {
+            defender.damageGarrison(zoneId, garrisonDelta);
+        }
+        // defender armies
         for (int i = 1; i < defenderArmies.size(); i++) {
-            defenderArmies.get(i-1).setSize(defenderForces.get(i).getArmySize());
+            defenderArmies.get(i - 1).setSize(defenderForces.get(i).getRawSize());
         }
 
         boolean attackersWin = result.getWinnerId().equals(attacker.getId());
@@ -294,12 +298,12 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
             defender.resetGarrison(zoneId);
 
             if (isCoalition && coalitionManager != null) {
-                // Coalition award logic determines who gets the zone
                 coalitionManager.awardConqueredZone(zoneId, attacker,
-                        attackerParticipants, allHouses, log);
+                        attackerParticipants, allHouses, defFort, log);
             } else {
+                // Non‑coalition conquest: halve fortification, zero garrison
                 defender.removeZone(zoneId);
-                attacker.addZone(zoneId);
+                attacker.conquerZone(zoneId, defFort);
                 claimManager.removeAllClaimsOnZone(zoneId);
                 attacker.resetGarrison(zoneId);
                 log.add(attacker.getName() + " captures " + zoneId
@@ -308,7 +312,6 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
                     log.add(defender.getName() + " has been eliminated.");
             }
             relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
-            // Clear threatened for all attackers
             for (NobleHouse p : attackerParticipants) p.setThreatened(false);
         } else {
             log.add(defender.getName() + " repels the attack on " + zoneId + ".");
@@ -351,81 +354,73 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
 // ─── Raid resolution ─────────────────────────────────────────────────────
 
 private List<String> resolveRaid(NobleArmy attArmy, List<NobleHouse> allHouses) {
-List<String> log = new ArrayList<>();
-String zoneId = attArmy.getPendingTargetZoneId();
-if (zoneId == null) return log;
+        List<String> log = new ArrayList<>();
+        String zoneId = attArmy.getPendingTargetZoneId();
+        if (zoneId == null) return log;
 
-NobleHouse attacker = findHouse(attArmy.getHouseId(), allHouses);
-NobleHouse defender = findZoneOwner(zoneId, allHouses);
-if (attacker == null || defender == null || attacker == defender) return log;
+        NobleHouse attacker = findHouse(attArmy.getHouseId(), allHouses);
+        NobleHouse defender = findZoneOwner(zoneId, allHouses);
+        if (attacker == null || defender == null || attacker == defender) return log;
 
-ZoneState state = zoneManager.getState(zoneId);
-if (state != null && state.isRecentlyRaided()) {
-log.add(attacker.getName() + " finds " + zoneId
-+ " already raided. Raid cancelled.");
-// Return army to capital
-String capital = attacker.getCapitalZoneId();
-if (capital != null) moveArmy(attArmy, capital);
-return log;
-}
+        ZoneState state = zoneManager.getState(zoneId);
+        if (state != null && state.isRecentlyRaided()) {
+            log.add(attacker.getName() + " finds " + zoneId
+                    + " already raided. Raid cancelled.");
+            String capital = attacker.getCapitalZoneId();
+            if (capital != null) moveArmy(attArmy, capital);
+            return log;
+        }
 
-// Intercept check — defender army already in that zone
-List<NobleArmy> defArmies = getArmiesInZone(zoneId, defender.getId());
-if (!defArmies.isEmpty()) {
-int defMilitary = militarySkill(defender);
-double interceptChance = GameParameters.RAID_INTERCEPT_BASE_CHANCE
-+ defMilitary * GameParameters.RAID_INTERCEPT_MILITARY_BONUS;
-if (Math.random() < interceptChance) {
-log.add(defender.getName() + "'s army intercepts the raid on "
-+ zoneId + "!");
-int attMilitary = militarySkill(attacker);
-ArmyForce atk = new ArmyForce(attacker.getId(),
-(int)(attArmy.getSize() * militaryMult(attMilitary)), 0);
-NobleArmy defArmy = defArmies.get(0);
-ArmyForce def = new ArmyForce(defender.getId(),
-(int)(defArmy.getSize() * militaryMult(defMilitary)), 0);
-CombatResult result = CombatResolver.resolve(atk, def);
-log.addAll(result.getLog());
-attArmy.setSize(atk.getArmySize());
-defArmy.setSize(def.getArmySize());
-if (!attacker.getId().equals(result.getWinnerId())) {
-log.add("Raid on " + zoneId + " repelled.");
-String capital = attacker.getCapitalZoneId();
-if (capital != null) moveArmy(attArmy, capital);
-if (!attArmy.isAlive()) remove(attArmy);
-return log;
-}
-log.add(attacker.getName() + " fights through and raids " + zoneId + ".");
-} else {
-log.add(defender.getName() + "'s army fails to intercept the raid.");
-}
-}
+        // Intercept check
+        List<NobleArmy> defArmies = getArmiesInZone(zoneId, defender.getId());
+        if (!defArmies.isEmpty()) {
+            int defMilitary = militarySkill(defender);
+            double interceptChance = GameParameters.RAID_INTERCEPT_BASE_CHANCE
+                    + defMilitary * GameParameters.RAID_INTERCEPT_MILITARY_BONUS;
+            if (Math.random() < interceptChance) {
+                log.add(defender.getName() + "'s army intercepts the raid on " + zoneId + "!");
+                int attMilitary = militarySkill(attacker);
+                ArmyForce atk = new ArmyForce(attacker.getId(), attArmy.getSize(), 0, attMilitary);
+                NobleArmy defArmy = defArmies.get(0);
+                ArmyForce def = new ArmyForce(defender.getId(), defArmy.getSize(), 0, defMilitary);
+                CombatResult result = CombatResolver.resolve(atk, def);
+                log.addAll(result.getLog());
+                attArmy.setSize(atk.getRawSize());
+                defArmy.setSize(def.getRawSize());
+                if (!attacker.getId().equals(result.getWinnerId())) {
+                    log.add("Raid on " + zoneId + " repelled.");
+                    String capital = attacker.getCapitalZoneId();
+                    if (capital != null) moveArmy(attArmy, capital);
+                    if (!attArmy.isAlive()) remove(attArmy);
+                    return log;
+                }
+                log.add(attacker.getName() + " fights through and raids " + zoneId + ".");
+            } else {
+                log.add(defender.getName() + "'s army fails to intercept the raid.");
+            }
+        }
 
-// Gold stolen — capped by zone production and army size
-Zone zone    = zoneManager.getZone(zoneId);
-int zoneGold = zone != null ? zone.getGoldProduction()
-: GameParameters.ZONE_VILLAGE_GOLD;
-int maxByZone = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
-int maxByArmy = (int)(attArmy.getSize() * GameParameters.RAID_GOLD_PER_SOLDIER);
-int maxSteal  = Math.min(maxByZone, maxByArmy);
-int stolen    = Math.min(maxSteal,
-(int)(defender.getGold() * GameParameters.AI_RAID_GOLD_FRACTION));
-stolen = Math.max(0, stolen);
+        Zone zone    = zoneManager.getZone(zoneId);
+        int zoneGold = zone != null ? zone.getGoldProduction() : GameParameters.ZONE_VILLAGE_GOLD;
+        int maxByZone = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
+        int maxByArmy = (int)(attArmy.getSize() * GameParameters.RAID_GOLD_PER_SOLDIER);
+        int maxSteal  = Math.min(maxByZone, maxByArmy);
+        int stolen    = Math.min(maxSteal,
+                (int)(defender.getGold() * GameParameters.AI_RAID_GOLD_FRACTION));
+        stolen = Math.max(0, stolen);
 
-defender.addGold(-stolen);
-attacker.addGold(stolen);
-if (state != null) state.markRaided();
-log.add(attacker.getName() + " raids " + zoneId
-+ " stealing " + stolen + " gold.");
-relationships.recordRaid(attacker.getId(), defender.getId());
+        defender.addGold(-stolen);
+        attacker.addGold(stolen);
+        if (state != null) state.markRaided();
+        log.add(attacker.getName() + " raids " + zoneId + " stealing " + stolen + " gold.");
+        relationships.recordRaid(attacker.getId(), defender.getId());
 
-// Return raiding army to capital
-String capital = attacker.getCapitalZoneId();
-if (capital != null) moveArmy(attArmy, capital);
+        String capital = attacker.getCapitalZoneId();
+        if (capital != null) moveArmy(attArmy, capital);
 
-if (!attArmy.isAlive()) remove(attArmy);
-return log;
-}
+        if (!attArmy.isAlive()) remove(attArmy);
+        return log;
+    }
 
 // ─── Collection access ───────────────────────────────────────────────────
 

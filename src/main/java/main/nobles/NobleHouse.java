@@ -279,7 +279,7 @@ public class NobleHouse {
 
     // ─── Zone management ─────────────────────────────────────────────────────
 
-    public void addZone(String zoneId) {
+public void addZone(String zoneId) {
         if (!zoneIds.contains(zoneId)) {
             zoneIds.add(zoneId);
             fortifications.put(zoneId, 0);
@@ -289,7 +289,23 @@ public class NobleHouse {
         }
     }
 
-    public void removeZone(String zoneId) {
+    /**
+     * Conquer a zone: garrison starts at 0, fortification is halved,
+     * garrisonMaxBonus recalculated proportionally.
+     */
+    public void conquerZone(String zoneId, int previousFortification) {
+        if (zoneIds.contains(zoneId)) return;
+        zoneIds.add(zoneId);
+        int newFort = Math.max(0, previousFortification / 2);
+        fortifications.put(zoneId, newFort);
+        int newBonus = Math.min(GameParameters.FORTIFY_GARRISON_MAX_BONUS,
+                                (newFort / GameParameters.NOBLE_FORTIFY_GAIN) * GameParameters.FORTIFY_GARRISON_GAIN);
+        garrisonMaxBonus.put(zoneId, newBonus);
+        garrisons.put(zoneId, 0);
+        recalculateCapital();
+    }
+
+public void removeZone(String zoneId) {
         zoneIds.remove(zoneId);
         fortifications.remove(zoneId);
         garrisons.remove(zoneId);
