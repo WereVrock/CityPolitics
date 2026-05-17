@@ -1,5 +1,6 @@
 package main.nobles;
 
+import main.nobles.ai.NobleAI;
 import main.map.ZoneManager;
 import main.parameters.GameParameters;
 
@@ -59,15 +60,19 @@ public class CoalitionManager {
         List<NobleHouse> members = gatherMembers(threat, allHouses);
         if (members.size() < 2) return log; // need at least 2
 
-        // Coordinator = highest prestige
-        NobleHouse coordinator = members.stream()
-                .max(Comparator.comparingInt(NobleHouse::getPrestige))
-                .orElse(null);
-        if (coordinator == null) return log;
-
-        // Coordinator must have or be able to recruit an idle army
-        NobleArmy coordArmy = getOrRecruitIdleArmy(coordinator);
-        if (coordArmy == null) return log;
+        // Coordinator = highest prestige who can field an army
+        List<NobleHouse> sorted = new ArrayList<>(members);
+        sorted.sort(Comparator.comparingInt(NobleHouse::getPrestige).reversed());
+        NobleHouse coordinator = null;
+        NobleArmy  coordArmy   = null;
+        for (NobleHouse m : sorted) {
+            coordArmy = getOrRecruitIdleArmy(m);
+            if (coordArmy != null) {
+                coordinator = m;
+                break;
+            }
+        }
+        if (coordinator == null || coordArmy == null) return log;
 
         // Determine routed zones for this coalition (threat + coordinator)
         String routeKey = threat.getId() + ":" + coordinator.getId();
@@ -78,6 +83,18 @@ public class CoalitionManager {
         if (targetZone == null) {
             log.add("=== Coalition against " + threat.getName()
                     + " disbands — no viable targets remain. ===");
+            return log;
+        }
+
+        // ---------- Strength check ----------
+        int totalPower = NobleAI.estimateAttackPower(coordinator, armyManager);
+        for (NobleHouse m : members) {
+            if (m == coordinator) continue;
+            totalPower += NobleAI.estimateMemberPower(m, armyManager);
+        }
+        int defenderPower = NobleAI.estimateDefenderPower(threat, targetZone);
+        if (totalPower < defenderPower * GameParameters.COALITION_STRENGTH_THRESHOLD) {
+            // not strong enough yet — silently skip this turn
             return log;
         }
 
@@ -284,9 +301,13 @@ private NobleHouse weightedPick(List<NobleHouse> claimants,
 
     private void transferZone(String zoneId, NobleHouse winner, NobleHouse loser,
                                int previousFortification, List<String> log) {
-        if (loser != null) loser.removeZone(zoneId);
+        if (loser != null) {
+            loser.removeZone(zoneId);
+            // Loser automatically gains a claim on their former zone
+            claimManager.addClaim(loser.getId(), zoneId);
+        }
         winner.conquerZone(zoneId, previousFortification);
-        claimManager.removeAllClaimsOnZone(zoneId);
+        // Other houses' claims on this zone are preserved
         log.add(winner.getName() + " receives " + zoneId + " as coalition spoils.");
         if (loser != null && loser.isEliminated()) {
             log.add(loser.getName() + " has been eliminated.");

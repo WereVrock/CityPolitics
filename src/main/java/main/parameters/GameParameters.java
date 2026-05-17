@@ -289,6 +289,8 @@ public final class GameParameters {
     // =========================================================
     public static final double THREATENED_BASE_CHANCE_MULTIPLIER     = 5.0;
     public static final double THREATENED_DECAY_CHANCE               = 0.05;
+    /** Extra multiplier applied to threat chance for claimless attacks. */
+    public static final double THREATENED_CLAIMLESS_MULTIPLIER       = 2.0;
 
     // =========================================================
     // RAID COOLDOWN & PRODUCTION MALUS
@@ -313,6 +315,8 @@ public final class GameParameters {
 
     public static final double CLAIM_BASE_SUCCESS_CHANCE             = 0.35;
     public static final double CLAIM_CUNNING_BONUS_PER_POINT         = 0.15;
+    /** Multiplier applied when target zone is not adjacent to any owned zone. */
+    public static final double CLAIM_ADJACENCY_PENALTY               = 0.50;
 
     // =========================================================
     // SCHEME SUCCESS
@@ -380,6 +384,7 @@ public final class GameParameters {
     public static final int    AI_INFLUENCE_COST_SCHEME              = 3;
     public static final int    AI_INFLUENCE_COST_ALLY                = 1;
     public static final int    AI_INFLUENCE_COST_SUPPORT             = 2;
+    public static final int    AI_INFLUENCE_COST_SABOTAGE            = 3;
 
     // =========================================================
     // NOBLE GARRISON
@@ -424,6 +429,36 @@ public final class GameParameters {
     public static final double RAID_GOLD_PER_SOLDIER                    = 0.5;
     /** Max gold stolen = zone gold production × this multiplier. */
     public static final double RAID_GOLD_ZONE_MULTIPLIER                = 3.0;
+
+    // =========================================================
+    // CLAIM DECAY
+    // =========================================================
+    /** Per-turn chance a house must defend a random claim or lose it. */
+    public static final double CLAIM_DECAY_CHANCE                     = 0.30;
+    /** Influence cost to maintain a claim when decay triggers. */
+    public static final int    CLAIM_DECAY_INFLUENCE_COST             = 3;
+
+    // =========================================================
+    // ATTACK STRENGTH THRESHOLDS
+    // =========================================================
+    /** Minimum attacker/defender power ratio for normal attacks. */
+    public static final double NORMAL_ATTACK_STRENGTH_THRESHOLD = 0.5;
+    /** Minimum coalition estimated power ratio vs defender to proceed. */
+    public static final double COALITION_STRENGTH_THRESHOLD      = 0.4;
+    /** Minimum attacker/defender power ratio for reckless claimless attacks. */
+    public static final double RECKLESS_MIN_STRENGTH             = 0.6;
+    /** Reckless target must be this many times better than best claimed zone. */
+    public static final double RECKLESS_VALUE_MULTIPLIER         = 2.0;
+
+    // =========================================================
+    // SABOTAGE
+    // =========================================================
+    /** Gold cost for sabotage action. */
+    public static final int    AI_SABOTAGE_GOLD_COST                  = 30;
+    /** Base success chance for sabotage. */
+    public static final double SABOTAGE_BASE_SUCCESS_CHANCE           = 0.40;
+    /** Per cunning point bonus to sabotage success. */
+    public static final double SABOTAGE_CUNNING_BONUS_PER_POINT       = 0.15;
 
     // =========================================================
     // ARMY

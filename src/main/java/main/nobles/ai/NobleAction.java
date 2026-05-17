@@ -12,6 +12,7 @@ public enum NobleAction {
     FORTIFY,
     GIFT,
     RAID,
+    SABOTAGE,
     SCHEME,
     SUPPORT_RIVAL
 }

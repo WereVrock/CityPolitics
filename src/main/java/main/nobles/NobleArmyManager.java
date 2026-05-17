@@ -304,7 +304,8 @@ private List<String> resolveAttack(NobleArmy attArmy, List<NobleHouse> allHouses
                 // Non‑coalition conquest: halve fortification, zero garrison
                 defender.removeZone(zoneId);
                 attacker.conquerZone(zoneId, defFort);
-                claimManager.removeAllClaimsOnZone(zoneId);
+                // Loser automatically gains a claim on their former zone
+                claimManager.addClaim(defender.getId(), zoneId);
                 attacker.resetGarrison(zoneId);
                 log.add(attacker.getName() + " captures " + zoneId
                         + " from " + defender.getName() + ".");

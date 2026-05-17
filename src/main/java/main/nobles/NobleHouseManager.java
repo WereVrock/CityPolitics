@@ -50,11 +50,11 @@ public class NobleHouseManager {
     // ─── Turn processing ──────────────────────────────────────────────────────
 
 public List<String> processTurn(ResourcePool playerResources) {
+        System.out.println("=== TURN START v2 ===");
         List<String> log = new ArrayList<>();
 
         tickZoneStates();
 
-        // Step 1 — economy (manpower accrues to noble pool, NO garrison tick yet)
         for (NobleHouse house : houses) {
             if (!house.isEliminated()) {
                 processEconomy(house, playerResources, log);
@@ -63,17 +63,14 @@ public List<String> processTurn(ResourcePool playerResources) {
 
         processConquestCosts();
 
-        // Step 2 — resolve orders that were issued LAST turn (already ticked)
         log.addAll(armyManager.resolveOrders(new ArrayList<>(houses), claimManager));
 
-        // Step 3 — upkeep for existing raised armies (after resolution, before new orders)
         for (NobleHouse house : houses) {
             if (!house.isEliminated()) {
                 armyManager.payUpkeep(house);
             }
         }
 
-        // Step 4 — AI decides actions (recruit, issue new orders, diplomacy)
         NobleAI.tickThreatenedDecay(houses);
         List<NobleHouse> snapshot = new ArrayList<>(houses);
         for (NobleHouse house : snapshot) {
@@ -84,19 +81,18 @@ public List<String> processTurn(ResourcePool playerResources) {
             }
         }
 
+        NobleAI.tickClaimDecay(snapshot, relationships, claimManager, log);
+
         log.addAll(coalitionManager.checkCoalitions(new ArrayList<>(houses)));
 
-        // Step 5 — tick orders issued this turn so they resolve NEXT turn
         armyManager.tickOrders();
 
-        // Step 6 — garrison tick AFTER AI recruits (leftover manpower fills garrisons)
         for (NobleHouse house : houses) {
             if (!house.isEliminated()) {
                 house.tickGarrisons();
             }
         }
 
-        // Step 7 — recalculate capitals
         for (NobleHouse house : houses) {
             house.recalculateCapital(zoneGoldMap, zoneFoodMap);
         }

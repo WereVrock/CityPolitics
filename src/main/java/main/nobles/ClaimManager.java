@@ -16,17 +16,43 @@ public class ClaimManager {
 
     /**
      * Attempt to fabricate a claim. Returns true on success.
-     * Success chance = base + cunning * per_cunning_bonus.
+     * Success chance = base + cunning * per_cunning_bonus, halved if not adjacent.
+     * @param claimantZones zones owned by the claimant (for adjacency check)
+     * @param allZones list of all Zone objects (for adjacency data)
      */
-    public boolean fabricate(String claimantId, String zoneId, int cunning, Random rng) {
+    public boolean fabricate(String claimantId, String zoneId, int cunning, Random rng,
+                              List<String> claimantZones, List<main.map.Zone> allZones) {
         if (hasClaim(claimantId, zoneId)) return false;
         double chance = GameParameters.CLAIM_BASE_SUCCESS_CHANCE
             + cunning * GameParameters.CLAIM_CUNNING_BONUS_PER_POINT;
+
+        // Adjacency penalty: halve chance if target not adjacent to any owned zone
+        boolean adjacent = false;
+        main.map.Zone targetZone = null;
+        for (main.map.Zone z : allZones) {
+            if (z.getId().equals(zoneId)) { targetZone = z; break; }
+        }
+        if (targetZone != null && !claimantZones.isEmpty()) {
+            for (String adjId : targetZone.getAdjacentIds()) {
+                if (claimantZones.contains(adjId)) { adjacent = true; break; }
+            }
+        }
+        if (!adjacent) {
+            chance *= GameParameters.CLAIM_ADJACENCY_PENALTY;
+        }
+
         if (rng.nextDouble() < chance) {
             claims.add(new Claim(claimantId, zoneId));
             return true;
         }
         return false;
+    }
+
+    /** Directly add a claim without a fabrication check. Used for automatic loser claims. */
+    public void addClaim(String claimantId, String zoneId) {
+        if (!hasClaim(claimantId, zoneId)) {
+            claims.add(new Claim(claimantId, zoneId));
+        }
     }
 
     // ─── Query ───────────────────────────────────────────────────────────────
@@ -79,4 +105,17 @@ public class ClaimManager {
     }
 
     public void reset() { claims.clear(); }
+
+    // ─── Claim decay ─────────────────────────────────────────────────────────
+
+    /**
+     * Roll for claim decay on a house. Returns a random claim the house must defend
+     * (pay influence to keep), or null if no decay triggers.
+     */
+    public Claim rollClaimDecay(String houseId, Random rng) {
+        List<Claim> houseClaims = getClaimsFor(houseId);
+        if (houseClaims.isEmpty()) return null;
+        if (rng.nextDouble() >= GameParameters.CLAIM_DECAY_CHANCE) return null;
+        return houseClaims.get(rng.nextInt(houseClaims.size()));
+    }
 }
