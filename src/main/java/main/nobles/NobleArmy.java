@@ -9,6 +9,11 @@ import java.util.Set;
  */
 public class NobleArmy {
 
+    private boolean skipNextUpkeep = false;
+
+    public boolean getSkipNextUpkeep() { return skipNextUpkeep; }
+    public void setSkipNextUpkeep(boolean v) { skipNextUpkeep = v; }
+
     public enum OrderType { NONE, ATTACK, RAID }
 
     private final String id;

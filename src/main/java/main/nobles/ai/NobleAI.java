@@ -1,11 +1,14 @@
 package main.nobles.ai;
 
 import main.nobles.*;
+import debug.Debug;
+import main.parameters.GameParameters;
 import main.nobles.combat.ArmyForce;
 import main.nobles.combat.CombatResolver;
 import main.nobles.combat.CombatResult;
 import main.map.ZoneState;
 import main.parameters.GameParameters;
+import main.rules.NobleRules;
 
 import java.util.*;
 
@@ -40,29 +43,12 @@ int gold = actor.getGold();
 int minSize = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
 int maxSustainableSize = (int)(gold / (GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER * 2.0));
 
-if (manpower >= minSize && gold >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-if (idleArmy == null) {
-int rawSize = Math.max(minSize, (int)(manpower * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
-int recruitSize = Math.min(rawSize, maxSustainableSize);
-recruitSize = Math.max(minSize, recruitSize);
-NobleArmy recruited = armyManager.recruit(actor, recruitSize);
-if (recruited != null) {
-log.add(actor.getName() + " recruits an army of " + recruited.getSize() + ".");
-}
-} else {
-int currentSize = idleArmy.getSize();
-int desiredIncrease = (int)(manpower * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION);
-int targetSize = Math.min(currentSize + desiredIncrease, maxSustainableSize);
-if (targetSize > currentSize) {
-int reinforceAmount = targetSize - currentSize;
-boolean success = armyManager.reinforceArmy(actor, idleArmy, reinforceAmount);
-if (success) {
-log.add(actor.getName() + " reinforces its army by " + reinforceAmount
-+ " (now " + targetSize + ").");
-}
-}
-}
-}
+// Armies are now recruited on-demand in execute() and CoalitionManager.
+// Proactive recruitment removed to prevent idle army gold drain.
+
+// War-chest target for this house
+int warChestTarget = getWarChestTarget(actor, allHouses, relationships, armyManager);
+Debug.log("noble", "warchest", actor.getName() + " target=" + warChestTarget);
 
 if (actor.getGold() < GameParameters.NOBLE_ARMY_DISBAND_GOLD_THRESHOLD) {
 for (NobleArmy army : new ArrayList<>(armyManager.getArmiesForHouse(actor.getId()))) {
@@ -364,6 +350,16 @@ Debug.log("noble", "attack-feasibility", actor.getName() + " target=" + target.g
 if (!feasible) {
 target = null;
 Debug.log("noble", "attack-feasibility", actor.getName() + " NOT FEASIBLE -> fallback");
+} else if (isRecklessAtWar(actor)) {
+// Reckless leaders attack as soon as feasible, even if chest not full
+Debug.log("noble", "attack-reckless-ready", actor.getName() + " reckless — attacking with current forces");
+} else {
+// Non‑reckless: check war chest readiness
+int chestTarget = getWarChestTarget(actor, allHouses, relationships, armyManager);
+if (actor.getGold() < chestTarget) {
+Debug.log("noble", "attack-feasibility", actor.getName() + " war chest not ready (have=" + actor.getGold() + " need=" + chestTarget + ") -> fallback");
+target = null;
+}
 }
 }
 
@@ -492,6 +488,7 @@ relationships.worsen(actor.getId(), schemeTarget.getId());
 case FORTIFY -> {
 int cost = GameParameters.AI_FORTIFY_GOLD_COST;
 if (actor.getGold() < cost) break;
+if (actor.getGold() - cost < getWarChestTarget(actor, allHouses, relationships, armyManager)) break;
 actor.addGold(-cost);
 actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
 String fortZone = actor.getCapitalZoneId();
@@ -540,7 +537,8 @@ claimManager.removeClaim(actor.getId(), claimOnTarget.getZoneId());
 relationships.improve(actor.getId(), giftTarget.getId());
 log.add(actor.getName() + " forfeits claim on " + claimOnTarget.getZoneId()
 + " as gift to " + giftTarget.getName() + ". Relations improve.");
-} else if (actor.getGold() >= GameParameters.GIFT_MONEY_AMOUNT) {
+} else if (actor.getGold() >= GameParameters.GIFT_MONEY_AMOUNT
+&& actor.getGold() - GameParameters.GIFT_MONEY_AMOUNT >= getWarChestTarget(actor, allHouses, relationships, armyManager)) {
 actor.addGold(-GameParameters.GIFT_MONEY_AMOUNT);
 giftTarget.addGold(GameParameters.GIFT_MONEY_AMOUNT);
 relationships.improve(actor.getId(), giftTarget.getId());
@@ -567,6 +565,7 @@ case SABOTAGE -> {
 NobleHouse sabTarget = findSabotageTarget(actor, allHouses, relationships);
 if (sabTarget == null) break;
 if (actor.getGold() < GameParameters.AI_SABOTAGE_GOLD_COST) break;
+if (actor.getGold() - GameParameters.AI_SABOTAGE_GOLD_COST < getWarChestTarget(actor, allHouses, relationships, armyManager)) break;
 if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SABOTAGE, log)) break;
 actor.addGold(-GameParameters.AI_SABOTAGE_GOLD_COST);
 
@@ -1161,6 +1160,73 @@ if (keep) {
 }
 }
 
+// ─── War chest ──────────────────────────────────────────────────────────
+
+/** Compute the gold target this house wants to keep in reserve. */
+private static int getWarChestTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager) {
+// 1. Estimate strongest enemy power among rivals/hostiles
+int maxEnemyPower = 0;
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) continue;
+for (String zid : other.getZoneIds()) {
+int defPower = estimateDefenderPower(other, zid);
+if (defPower > maxEnemyPower) maxEnemyPower = defPower;
+}
+}
+// fallback if no enemies: at least a small garrison
+if (maxEnemyPower < 5) maxEnemyPower = 5;
+
+// 2. Soldiers needed to match that power
+int myMil = actor.getActiveCharacter() != null ? actor.getActiveCharacter().getMilitary() : 0;
+double myMult = 1.0 + myMil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+int neededSoldiers = (int) Math.ceil(maxEnemyPower / myMult);
+
+// 3. Gold needed = recruit cost + expected upkeep
+int recruitCost = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+int upkeepCost  = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER * GameParameters.WAR_CHEST_UPKEEP_TURNS;
+int baseGold = recruitCost + upkeepCost;
+
+// 4. Personality multiplier (75% dominant + 25% secondary)
+NobleCharacter ch = actor.getActiveCharacter();
+Motivation dom = ch != null ? ch.getDominantMotivation() : Motivation.SECURITY;
+Motivation sec = ch != null ? ch.getSecondaryMotivation() : Motivation.SECURITY;
+double domPriority = motivationPriority(dom);
+double secPriority = motivationPriority(sec);
+double priority = 0.75 * domPriority + 0.25 * secPriority;
+
+// 5. Fuzziness based on cunning
+int cunning = ch != null ? ch.getCunning() : 0;
+double fuzzRange = GameParameters.WAR_CHEST_FUZZ_BASE
++ (4 - cunning) * GameParameters.WAR_CHEST_FUZZ_PER_MISSING;
+double fuzz = 1.0 + (RNG.nextDouble() * 2 - 1) * fuzzRange;
+
+int target = (int) (baseGold * priority * fuzz);
+return Math.max(0, target);
+}
+
+private static double motivationPriority(Motivation m) {
+return switch (m) {
+case EXPANSION -> GameParameters.WAR_CHEST_PRIORITY_EXPANSION;
+case SECURITY  -> GameParameters.WAR_CHEST_PRIORITY_SECURITY;
+case WEALTH    -> GameParameters.WAR_CHEST_PRIORITY_WEALTH;
+case PRESTIGE  -> GameParameters.WAR_CHEST_PRIORITY_PRESTIGE;
+};
+}
+
+/** Returns true if the house should skip the war‑chest check (reckless at war). */
+private static boolean isRecklessAtWar(NobleHouse actor) {
+NobleCharacter ch = actor.getActiveCharacter();
+if (ch == null) return false;
+return ch.getDominantMotivation() == Motivation.EXPANSION
+&& ch.getMilitary() >= 2
+&& ch.getCunning() < 2;
+}
+
 private static boolean shouldGift(NobleHouse actor, Motivation motivation,
 List<NobleHouse> allHouses,
 RelationshipManager relationships) {
@@ -1181,6 +1247,16 @@ if ((rel == Relationship.HOSTILE || rel == Relationship.NEUTRAL)
 return false;
 }
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

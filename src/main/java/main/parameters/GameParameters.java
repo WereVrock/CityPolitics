@@ -426,7 +426,7 @@ public final class GameParameters {
     /** Per military skill point bonus to intercept chance. */
     public static final double RAID_INTERCEPT_MILITARY_BONUS            = 0.05;
     /** Gold stolen per raiding soldier. */
-    public static final double RAID_GOLD_PER_SOLDIER                    = 0.5;
+    public static final double RAID_GOLD_PER_SOLDIER                    = 1.0;
     /** Max gold stolen = zone gold production × this multiplier. */
     public static final double RAID_GOLD_ZONE_MULTIPLIER                = 3.0;
 
@@ -463,6 +463,26 @@ public final class GameParameters {
     // =========================================================
     // ARMY
     // =========================================================
+    // =========================================================
+    // MAP CANVAS
+    // =========================================================
+    // =========================================================
+    // WAR CHEST
+    // =========================================================
+    /** Base savings priority per motivation (fraction of target to maintain). */
+    public static final double WAR_CHEST_PRIORITY_EXPANSION = 0.95;
+    public static final double WAR_CHEST_PRIORITY_SECURITY  = 0.90;
+    public static final double WAR_CHEST_PRIORITY_WEALTH    = 0.75;
+    public static final double WAR_CHEST_PRIORITY_PRESTIGE  = 0.60;
+    /** Expected upkeep turns for war‑chest calculation. */
+    public static final int    WAR_CHEST_UPKEEP_TURNS        = 2;
+    /** Readiness threshold for reckless leaders (fraction of target). */
+    public static final double RECKLESS_READINESS_THRESHOLD = 0.70;
+    /** Base fuzziness for war‑chest estimates. */
+    public static final double WAR_CHEST_FUZZ_BASE          = 0.07;
+    /** Per missing cunning point fuzziness for war‑chest estimates. */
+    public static final double WAR_CHEST_FUZZ_PER_MISSING   = 0.13;
+
     // =========================================================
     // MAP CANVAS
     // =========================================================
