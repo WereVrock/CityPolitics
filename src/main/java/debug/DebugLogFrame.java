@@ -4,8 +4,11 @@ import javax.swing.*;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.util.*;
 import java.util.List;
+import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
 
 final class DebugLogFrame extends JFrame {
@@ -21,7 +24,16 @@ final class DebugLogFrame extends JFrame {
     private JCheckBox showDetailsCheckbox;
     private JCheckBox stayOnTopCheckbox;
 
-DebugLogFrame() {
+    // Preferences keys
+    private static final String PREFS_NODE = "debug_log_viewer";
+    private static final String KEY_X = "window_x";
+    private static final String KEY_Y = "window_y";
+    private static final String KEY_WIDTH = "window_width";
+    private static final String KEY_HEIGHT = "window_height";
+    private static final String KEY_SHOW_DETAILS = "show_details";
+    private static final String KEY_STAY_ON_TOP = "stay_on_top";
+
+    DebugLogFrame() {
         setTitle("Debug Log Viewer");
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout());
@@ -30,14 +42,26 @@ DebugLogFrame() {
         table.setFillsViewportHeight(true);
         JScrollPane scrollPane = new JScrollPane(table);
 
-        categoryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        typePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        // Create panels with wrap layout and put them in scroll panes
+        categoryPanel = new JPanel(new WrapLayout(FlowLayout.LEFT));
+        typePanel = new JPanel(new WrapLayout(FlowLayout.LEFT));
         categoryPanel.setBorder(BorderFactory.createTitledBorder("Categories"));
         typePanel.setBorder(BorderFactory.createTitledBorder("Types"));
 
+        JScrollPane categoryScroll = new JScrollPane(categoryPanel);
+        categoryScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        categoryScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        JScrollPane typeScroll = new JScrollPane(typePanel);
+        typeScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        typeScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        // Give scroll panes a reasonable preferred height
+        categoryScroll.setPreferredSize(new Dimension(0, 80));
+        typeScroll.setPreferredSize(new Dimension(0, 80));
+
         JPanel filterPanel = new JPanel(new GridLayout(2, 1));
-        filterPanel.add(categoryPanel);
-        filterPanel.add(typePanel);
+        filterPanel.add(categoryScroll);
+        filterPanel.add(typeScroll);
 
         JPanel controlBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
         showDetailsCheckbox = new JCheckBox("Show Details (Timestamp, Category, Type)", true);
@@ -59,30 +83,77 @@ DebugLogFrame() {
         add(scrollPane, BorderLayout.CENTER);
         add(controlBar, BorderLayout.SOUTH);
 
+        // Load saved preferences
+        loadPreferences();
+
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosed(java.awt.event.WindowEvent e) {
+                savePreferences();
                 DebugUIManager.getInstance().onWindowClosedByUser();
+            }
+        });
+
+        // Also save on resize / move (real‑time)
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                savePreferences();
+            }
+            @Override
+            public void componentMoved(ComponentEvent e) {
+                savePreferences();
             }
         });
 
         toggleColumns();
         updateFilter();
 
-        // Auto-size to fit content, then center, and set a reasonable minimum size
+        // Pack and then apply saved size/location (if any)
         pack();
-        setMinimumSize(new Dimension(600, 300));
-        setLocationRelativeTo(null);
+        if (getWidth() == 0 || getHeight() == 0) {
+            setSize(900, 600);
+        }
+        setLocationRelativeTo(null); // fallback, but preferences will override if saved
+        applySavedBounds();
     }
 
-/** Add a batch of log entries (called from the flusher) */
+    private void loadPreferences() {
+        Preferences prefs = Preferences.userRoot().node(PREFS_NODE);
+        showDetailsCheckbox.setSelected(prefs.getBoolean(KEY_SHOW_DETAILS, true));
+        stayOnTopCheckbox.setSelected(prefs.getBoolean(KEY_STAY_ON_TOP, false));
+        setAlwaysOnTop(stayOnTopCheckbox.isSelected());
+    }
+
+    private void savePreferences() {
+        Preferences prefs = Preferences.userRoot().node(PREFS_NODE);
+        prefs.putBoolean(KEY_SHOW_DETAILS, showDetailsCheckbox.isSelected());
+        prefs.putBoolean(KEY_STAY_ON_TOP, stayOnTopCheckbox.isSelected());
+        prefs.putInt(KEY_X, getX());
+        prefs.putInt(KEY_Y, getY());
+        prefs.putInt(KEY_WIDTH, getWidth());
+        prefs.putInt(KEY_HEIGHT, getHeight());
+    }
+
+    private void applySavedBounds() {
+        Preferences prefs = Preferences.userRoot().node(PREFS_NODE);
+        int x = prefs.getInt(KEY_X, -1);
+        int y = prefs.getInt(KEY_Y, -1);
+        int w = prefs.getInt(KEY_WIDTH, -1);
+        int h = prefs.getInt(KEY_HEIGHT, -1);
+        if (x != -1 && y != -1 && w != -1 && h != -1) {
+            setBounds(x, y, w, h);
+        } else {
+            setSize(900, 600);
+            setLocationRelativeTo(null);
+        }
+    }
+
     void addLogEntries(List<LogEntry> entries) {
         if (entries.isEmpty()) return;
 
-        // Batch insert into table model
         tableModel.addLogs(entries);
 
-        // Update known categories and types across the batch
         boolean categoriesChanged = false;
         boolean typesChanged = false;
         for (LogEntry entry : entries) {
@@ -99,7 +170,6 @@ DebugLogFrame() {
         if (categoriesChanged || typesChanged) {
             revalidateFilterPanels();
         }
-        // Always update filter because new logs might be filtered
         updateFilter();
     }
 
@@ -149,7 +219,7 @@ DebugLogFrame() {
         panel.add(none);
     }
 
-private void updateFilter() {
+    private void updateFilter() {
         List<RowFilter<LogTableModel, Integer>> filters = new ArrayList<>();
 
         Set<String> enabledCategories = categoryCheckboxes.entrySet().stream()
@@ -182,7 +252,6 @@ private void updateFilter() {
 
         RowFilter<LogTableModel, Integer> compound;
         if (enabledCategories.isEmpty() && enabledTypes.isEmpty()) {
-            // No filters selected -> show nothing
             compound = new RowFilter<>() {
                 @Override
                 public boolean include(Entry<? extends LogTableModel, ? extends Integer> entry) {
@@ -197,7 +266,7 @@ private void updateFilter() {
         sorter.setRowFilter(compound);
     }
 
-private void toggleColumns() {
+    private void toggleColumns() {
         boolean show = showDetailsCheckbox.isSelected();
         int[] widths = show ? new int[]{100, 100, 100} : new int[]{0, 0, 0};
         for (int i = 0; i < 3; i++) {
@@ -205,7 +274,6 @@ private void toggleColumns() {
             table.getColumnModel().getColumn(i).setMaxWidth(show ? 200 : 0);
             table.getColumnModel().getColumn(i).setPreferredWidth(widths[i]);
         }
-        // Message column always visible
         table.getColumnModel().getColumn(3).setPreferredWidth(400);
     }
 
@@ -227,7 +295,6 @@ private void toggleColumns() {
 
     private void clearLogs() {
         tableModel.clear();
-        // Optionally keep filter checkboxes – they remain but logs are gone.
         updateFilter();
     }
 }
