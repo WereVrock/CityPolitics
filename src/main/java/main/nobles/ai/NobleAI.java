@@ -197,7 +197,7 @@ public class NobleAI {
 
         return switch (motivation) {
             case EXPANSION -> {
-                boolean hasClaims = !claimManager.getClaimsFor(actor.getId()).isEmpty();
+                boolean hasClaims = hasClaimOnNonAlliedZone(actor, allHouses, relationships, claimManager);
                 NobleCharacter ch = actor.getActiveCharacter();
                 boolean recklessEligible = ch != null && ch.getCunning() < 2 && ch.getMilitary() >= 2
                         && ch.getDominantMotivation() == Motivation.EXPANSION;
@@ -813,7 +813,8 @@ public class NobleAI {
      * Target must be significantly weaker and more valuable than any claimed zone.
      * Returns [targetHouse, zoneId] or null.
      */
-    private static Object[] findRecklessClaimlessTarget(NobleHouse actor,
+
+private static Object[] findRecklessClaimlessTarget(NobleHouse actor,
                                                         List<NobleHouse> allHouses,
                                                         RelationshipManager relationships,
                                                         ClaimManager claimManager,
@@ -826,12 +827,14 @@ public class NobleAI {
             return null;
         }
 
-        // compute best value among claimed zones (as benchmark)
+        // compute best value among claimed zones THAT CAN ACTUALLY BE ATTACKED
         double bestClaimedValue = 0;
         for (Claim c : claimManager.getClaimsFor(actor.getId())) {
             for (NobleHouse other : allHouses) {
                 if (other == actor || other.isEliminated()) continue;
                 if (!other.getZoneIds().contains(c.getZoneId())) continue;
+                Relationship rel = relationships.get(actor.getId(), other.getId());
+                if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
                 int defPower = estimateDefenderCombatPower(actor, other, c.getZoneId(), allHouses, armyManager, relationships);
                 if (defPower <= 0) continue;
                 main.map.Zone z = zoneManager.getZone(c.getZoneId());
@@ -841,7 +844,7 @@ public class NobleAI {
                 break;
             }
         }
-        Debug.log("noble", "reckless-scan", actor.getName() + " bestClaimedValue=" + bestClaimedValue);
+        Debug.log("noble", "reckless-scan", actor.getName() + " bestClaimedValue (attackable)=" + bestClaimedValue);
 
         // scan rivals/hostiles for high-value weak zones
         NobleHouse bestTarget = null;
@@ -905,7 +908,7 @@ public class NobleAI {
         return new Object[] { bestTarget, bestZone };
     }
 
-    private static NobleHouse findClaimlessAttackTarget(NobleHouse actor,
+private static NobleHouse findClaimlessAttackTarget(NobleHouse actor,
                                                         List<NobleHouse> allHouses,
                                                         RelationshipManager relationships,
                                                         NobleArmyManager armyManager) {
@@ -1156,12 +1159,13 @@ public class NobleAI {
 
     // ─── Claim decay ────────────────────────────────────────────────────────
 
-    public static void tickClaimDecay(List<NobleHouse> allHouses,
+public static void tickClaimDecay(List<NobleHouse> allHouses,
                                       RelationshipManager relationships,
                                       ClaimManager claimManager,
                                       List<String> log) {
         for (NobleHouse house : allHouses) {
             if (house.isEliminated()) continue;
+
             Claim decayed = claimManager.rollClaimDecay(house.getId(), RNG);
             if (decayed == null) continue;
 
@@ -1172,6 +1176,13 @@ public class NobleAI {
                     if (rel == Relationship.RIVAL || rel == Relationship.HOSTILE) {
                         keep = true;
                         break;
+                    }
+                    // If the zone owner is allied/friendly, only keep if swimming in influence
+                    if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) {
+                        if (house.getInfluence() >= GameParameters.CLAIM_DECAY_INFLUENCE_COST * 10) {
+                            keep = true;
+                        }
+                        // else: keep stays false — let it decay to free up influence
                     }
                 }
             }
@@ -1188,7 +1199,7 @@ public class NobleAI {
         }
     }
 
-    // ─── War chest ──────────────────────────────────────────────────────────
+// ─── War chest ──────────────────────────────────────────────────────────
 
     /** Compute the gold target this house wants to keep in reserve. */
     private static int getWarChestTarget(NobleHouse actor,
@@ -1260,6 +1271,27 @@ public class NobleAI {
             if (rel == Relationship.HOSTILE || rel == Relationship.NEUTRAL) {
                 int otherStrength = estimatedPower(actor, other, armyManager);
                 if (otherStrength > selfStrength) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if the house has at least one claim on a zone owned by a non-allied, non-friendly house.
+     */
+    private static boolean hasClaimOnNonAlliedZone(NobleHouse actor,
+                                                   List<NobleHouse> allHouses,
+                                                   RelationshipManager relationships,
+                                                   ClaimManager claimManager) {
+        for (Claim c : claimManager.getClaimsFor(actor.getId())) {
+            for (NobleHouse other : allHouses) {
+                if (other == actor || other.isEliminated()) continue;
+                if (other.getZoneIds().contains(c.getZoneId())) {
+                    Relationship rel = relationships.get(actor.getId(), other.getId());
+                    if (rel != Relationship.ALLIED && rel != Relationship.FRIENDLY) {
+                        return true;
+                    }
+                }
             }
         }
         return false;
