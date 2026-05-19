@@ -19,6 +19,8 @@ final class DebugLogFrame extends JFrame {
     private final Set<String> knownTypes = new HashSet<>();
     private final Map<String, JCheckBox> categoryCheckboxes = new LinkedHashMap<>();
     private final Map<String, JCheckBox> typeCheckboxes = new LinkedHashMap<>();
+    // Maps each type to its parent category (first seen category for that type)
+    private final Map<String, String> typeToCategory = new HashMap<>();
     private JPanel categoryPanel;
     private JPanel typePanel;
     private JCheckBox showDetailsCheckbox;
@@ -165,6 +167,8 @@ final class DebugLogFrame extends JFrame {
                 categoriesChanged = true;
             }
             if (knownTypes.add(entry.type())) {
+                // Store the category for this type (first seen)
+                typeToCategory.put(entry.type(), entry.category());
                 addTypeCheckbox(entry.type());
                 typesChanged = true;
             }
@@ -178,7 +182,10 @@ final class DebugLogFrame extends JFrame {
 
     private void addCategoryCheckbox(String category) {
         JCheckBox cb = new JCheckBox(category, true);
-        cb.addActionListener(e -> updateFilter());
+        cb.addActionListener(e -> {
+            updateTypeEnablement();
+            updateFilter();
+        });
         categoryCheckboxes.put(category, cb);
     }
 
@@ -186,6 +193,22 @@ final class DebugLogFrame extends JFrame {
         JCheckBox cb = new JCheckBox(type, true);
         cb.addActionListener(e -> updateFilter());
         typeCheckboxes.put(type, cb);
+    }
+
+    private void updateTypeEnablement() {
+        for (Map.Entry<String, JCheckBox> entry : typeCheckboxes.entrySet()) {
+            String type = entry.getKey();
+            String parentCategory = typeToCategory.get(type);
+            if (parentCategory != null) {
+                JCheckBox catCb = categoryCheckboxes.get(parentCategory);
+                boolean enabled = catCb != null && catCb.isSelected();
+                entry.getValue().setEnabled(enabled);
+                // If disabled, also unselect it to avoid confusion
+                if (!enabled && entry.getValue().isSelected()) {
+                    entry.getValue().setSelected(false);
+                }
+            }
+        }
     }
 
     private void revalidateFilterPanels() {
@@ -200,6 +223,9 @@ final class DebugLogFrame extends JFrame {
             typePanel.add(cb);
         }
         addSelectButtons(typePanel, typeCheckboxes);
+        
+        // Apply enablement based on current category selections
+        updateTypeEnablement();
 
         categoryPanel.revalidate();
         categoryPanel.repaint();
@@ -212,10 +238,17 @@ final class DebugLogFrame extends JFrame {
         JButton none = new JButton("None");
         all.addActionListener(e -> {
             for (JCheckBox cb : checkboxes.values()) cb.setSelected(true);
+            // For type panel, we must also update enablement after "All" on categories
+            if (panel == categoryPanel) {
+                updateTypeEnablement();
+            }
             updateFilter();
         });
         none.addActionListener(e -> {
             for (JCheckBox cb : checkboxes.values()) cb.setSelected(false);
+            if (panel == categoryPanel) {
+                updateTypeEnablement();
+            }
             updateFilter();
         });
         panel.add(all);
@@ -223,50 +256,50 @@ final class DebugLogFrame extends JFrame {
     }
 
     private void updateFilter() {
-        List<RowFilter<LogTableModel, Integer>> filters = new ArrayList<>();
-
+        // Enabled categories
         Set<String> enabledCategories = categoryCheckboxes.entrySet().stream()
                 .filter(e -> e.getValue().isSelected())
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
-        if (!enabledCategories.isEmpty()) {
-            filters.add(new RowFilter<>() {
-                @Override
-                public boolean include(Entry<? extends LogTableModel, ? extends Integer> entry) {
-                    String category = (String) entry.getValue(1);
-                    return enabledCategories.contains(category);
-                }
-            });
-        }
-
+        
+        // Enabled types (only those whose checkbox is selected AND enabled)
         Set<String> enabledTypes = typeCheckboxes.entrySet().stream()
-                .filter(e -> e.getValue().isSelected())
+                .filter(e -> e.getValue().isSelected() && e.getValue().isEnabled())
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
-        if (!enabledTypes.isEmpty()) {
-            filters.add(new RowFilter<>() {
-                @Override
-                public boolean include(Entry<? extends LogTableModel, ? extends Integer> entry) {
-                    String type = (String) entry.getValue(2);
-                    return enabledTypes.contains(type);
-                }
-            });
-        }
-
-        RowFilter<LogTableModel, Integer> compound;
-        if (enabledCategories.isEmpty() && enabledTypes.isEmpty()) {
-            compound = new RowFilter<>() {
+        
+        // If no categories selected, show nothing (since types depend on categories)
+        if (enabledCategories.isEmpty()) {
+            sorter.setRowFilter(new RowFilter<>() {
                 @Override
                 public boolean include(Entry<? extends LogTableModel, ? extends Integer> entry) {
                     return false;
                 }
-            };
-        } else if (filters.isEmpty()) {
-            compound = null;
-        } else {
-            compound = RowFilter.andFilter(filters);
+            });
+            return;
         }
-        sorter.setRowFilter(compound);
+        
+        // If no types selected, show nothing (no type active)
+        if (enabledTypes.isEmpty()) {
+            sorter.setRowFilter(new RowFilter<>() {
+                @Override
+                public boolean include(Entry<? extends LogTableModel, ? extends Integer> entry) {
+                    return false;
+                }
+            });
+            return;
+        }
+        
+        // Row is visible if its category is in enabledCategories AND its type is in enabledTypes
+        RowFilter<LogTableModel, Integer> filter = new RowFilter<>() {
+            @Override
+            public boolean include(Entry<? extends LogTableModel, ? extends Integer> entry) {
+                String category = (String) entry.getValue(1);
+                String type = (String) entry.getValue(2);
+                return enabledCategories.contains(category) && enabledTypes.contains(type);
+            }
+        };
+        sorter.setRowFilter(filter);
     }
 
     private void toggleColumns() {
