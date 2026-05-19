@@ -134,16 +134,18 @@ public class NobleAI {
             chance = Math.max(0, Math.min(1.0, chance));
 
             if (RNG.nextDouble() < chance) {
-                observer.setThreatened(true);
+                observer.addThreat(attacker.getId());
             }
         }
     }
 
     public static void tickThreatenedDecay(List<NobleHouse> allHouses) {
         for (NobleHouse house : allHouses) {
-            if (house.isThreatened()
-                    && RNG.nextDouble() < GameParameters.THREATENED_DECAY_CHANCE) {
-                house.setThreatened(false);
+            Set<String> threats = new HashSet<>(house.getThreatenedBy());
+            for (String threatId : threats) {
+                if (RNG.nextDouble() < GameParameters.THREATENED_DECAY_CHANCE) {
+                    house.removeThreat(threatId);
+                }
             }
         }
     }

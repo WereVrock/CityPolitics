@@ -28,7 +28,7 @@ public class NobleHouse {
     private int     influence;
     private int     playerOpinion;
     private int     prestige;
-    private boolean threatened;
+    private final Set<String> threatenedBy = new HashSet<>();
 
     // Per-zone fortification level (0–100), garrison size, and garrison cap bonus from fortifying
     private final Map<String, Integer> fortifications   = new LinkedHashMap<>();
@@ -53,7 +53,7 @@ public class NobleHouse {
         this.influence            = GameParameters.NOBLE_HOUSE_STARTING_INFLUENCE;
         this.playerOpinion        = GameParameters.NOBLE_HOUSE_STARTING_OPINION;
         this.prestige             = startingPrestige;
-        this.threatened           = false;
+        
 
         for (String z : zoneIds) {
             fortifications.put(z, 0);
@@ -229,8 +229,12 @@ public class NobleHouse {
 
     // ─── Threatened ──────────────────────────────────────────────────────────
 
-    public boolean isThreatened()           { return threatened; }
-    public void    setThreatened(boolean v) { this.threatened = v; }
+    public boolean isThreatened()                          { return !threatenedBy.isEmpty(); }
+    public boolean isThreatenedBy(String houseId)          { return threatenedBy.contains(houseId); }
+    public void    addThreat(String houseId)               { threatenedBy.add(houseId); }
+    public void    removeThreat(String houseId)            { threatenedBy.remove(houseId); }
+    public void    clearThreats()                          { threatenedBy.clear(); }
+    public Set<String> getThreatenedBy()                   { return Collections.unmodifiableSet(threatenedBy); }
 
     // ─── Military score ──────────────────────────────────────────────────────
 

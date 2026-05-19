@@ -223,7 +223,7 @@ reason = " (hostile to defender)";
 } else if (relToDef == Relationship.RIVAL) {
 qualifies = true;
 reason = " (rival to defender)";
-} else if (house.isThreatened() && relToDef == Relationship.NEUTRAL) {
+} else if (house.isThreatenedBy(defender.getId()) && relToDef == Relationship.NEUTRAL) {
 qualifies = true;
 reason = " (threatened by defender)";
 }
@@ -326,7 +326,7 @@ if (defender.isEliminated())
 log.add(defender.getName() + " has been eliminated.");
 }
 relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
-for (NobleHouse p : attackerParticipants) p.setThreatened(false);
+for (NobleHouse p : attackerParticipants) p.clearThreats();
 
 // Any zone loss by a house resets routed lists against that house
 if (coalitionManager != null) {
@@ -560,6 +560,8 @@ private double militaryMult(int skill) {
 return 1.0 + skill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
 }
 }
+
+
 
 
 
