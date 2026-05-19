@@ -67,16 +67,19 @@ final class DebugLogFrame extends JFrame {
         showDetailsCheckbox = new JCheckBox("Show Details (Timestamp, Category, Type)", true);
         stayOnTopCheckbox = new JCheckBox("Stay on Top", false);
         JButton copyButton = new JButton("Copy Messages (Visible)");
+        JButton chunkButton = new JButton("Copy Visible in Chunks");
         JButton clearButton = new JButton("Clear All Logs");
 
         showDetailsCheckbox.addActionListener(e -> toggleColumns());
         stayOnTopCheckbox.addActionListener(e -> setAlwaysOnTop(stayOnTopCheckbox.isSelected()));
         copyButton.addActionListener(e -> copyVisibleMessages());
+        chunkButton.addActionListener(e -> openChunkCopyDialog());
         clearButton.addActionListener(e -> clearLogs());
 
         controlBar.add(showDetailsCheckbox);
         controlBar.add(stayOnTopCheckbox);
         controlBar.add(copyButton);
+        controlBar.add(chunkButton);
         controlBar.add(clearButton);
 
         add(filterPanel, BorderLayout.NORTH);
@@ -297,4 +300,82 @@ final class DebugLogFrame extends JFrame {
         tableModel.clear();
         updateFilter();
     }
+
+    private String getVisibleMessagesText() {
+        int visibleCount = sorter.getViewRowCount();
+        if (visibleCount == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int viewRow = 0; viewRow < visibleCount; viewRow++) {
+            int modelRow = sorter.convertRowIndexToModel(viewRow);
+            LogEntry entry = tableModel.getLogAt(modelRow);
+            sb.append(entry.message()).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private java.util.List<String> splitIntoChunks(String text, int maxChunkSize) {
+        java.util.List<String> chunks = new java.util.ArrayList<>();
+        if (text == null || text.isEmpty()) {
+            return chunks;
+        }
+        String[] lines = text.split("(?<=\n)", -1); // keep line breaks
+        StringBuilder current = new StringBuilder();
+        for (String line : lines) {
+            if (current.length() + line.length() > maxChunkSize && current.length() > 0) {
+                chunks.add(current.toString());
+                current.setLength(0);
+            }
+            current.append(line);
+        }
+        if (current.length() > 0) {
+            chunks.add(current.toString());
+        }
+        return chunks;
+    }
+
+private void openChunkCopyDialog() {
+        String fullText = getVisibleMessagesText();
+        if (fullText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No visible logs to copy.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        java.util.List<String> chunks = splitIntoChunks(fullText, 20000);
+        JDialog dialog = new JDialog(this, "Copy Logs in Chunks (20k char limit)", false);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        
+        JTextField statusField = new JTextField("Ready - click a chunk to copy");
+        statusField.setEditable(false);
+        statusField.setBackground(UIManager.getColor("Panel.background"));
+        statusField.setHorizontalAlignment(JTextField.CENTER);
+        
+        JPanel buttonPanel = new JPanel(new WrapLayout(WrapLayout.LEFT));
+        for (int i = 0; i < chunks.size(); i++) {
+            String chunk = chunks.get(i);
+            int charCount = chunk.length();
+            final int index = i;
+            final String chunkText = chunk;
+            JButton btn = new JButton(String.format("Chunk %d (%d chars)", index + 1, charCount));
+            btn.addActionListener(e -> {
+                StringSelection sel = new StringSelection(chunkText);
+                Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+                statusField.setText(String.format("Last copied: Chunk %d (%d characters)", index + 1, chunkText.length()));
+            });
+            buttonPanel.add(btn);
+        }
+        JScrollPane scrollPane = new JScrollPane(buttonPanel);
+        scrollPane.setBorder(BorderFactory.createTitledBorder("Select chunk to copy"));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        mainPanel.add(statusField, BorderLayout.SOUTH);
+        
+        dialog.add(mainPanel);
+        dialog.setSize(500, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
 }
