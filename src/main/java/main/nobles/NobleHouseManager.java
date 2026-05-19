@@ -50,7 +50,7 @@ public class NobleHouseManager {
     // ─── Turn processing ──────────────────────────────────────────────────────
 
 public List<String> processTurn(ResourcePool playerResources) {
-        System.out.println("=== TURN START v2 ===");
+        System.out.println("=== TURN START  ===");
         List<String> log = new ArrayList<>();
 
         tickZoneStates();
