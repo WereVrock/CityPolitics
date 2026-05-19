@@ -21,6 +21,8 @@ final class DebugLogFrame extends JFrame {
     private final Map<String, JCheckBox> typeCheckboxes = new LinkedHashMap<>();
     // Maps each type to its parent category (first seen category for that type)
     private final Map<String, String> typeToCategory = new HashMap<>();
+    // Stores original checkbox state for each type (used when category is re-enabled)
+    private final Map<String, Boolean> typeOriginalState = new HashMap<>();
     private JPanel categoryPanel;
     private JPanel typePanel;
     private JCheckBox showDetailsCheckbox;
@@ -183,7 +185,7 @@ final class DebugLogFrame extends JFrame {
     private void addCategoryCheckbox(String category) {
         JCheckBox cb = new JCheckBox(category, true);
         cb.addActionListener(e -> {
-            updateTypeEnablement();
+            rebuildTypePanel();   // rebuild instead of enable/disable
             updateFilter();
         });
         categoryCheckboxes.put(category, cb);
@@ -191,24 +193,88 @@ final class DebugLogFrame extends JFrame {
 
     private void addTypeCheckbox(String type) {
         JCheckBox cb = new JCheckBox(type, true);
-        cb.addActionListener(e -> updateFilter());
+        cb.addActionListener(e -> {
+            // Save original state for this type when toggled
+            typeOriginalState.put(type, cb.isSelected());
+            updateFilter();
+        });
         typeCheckboxes.put(type, cb);
+        // Initially store default state (true)
+        typeOriginalState.putIfAbsent(type, true);
     }
 
-    private void updateTypeEnablement() {
-        for (Map.Entry<String, JCheckBox> entry : typeCheckboxes.entrySet()) {
-            String type = entry.getKey();
-            String parentCategory = typeToCategory.get(type);
-            if (parentCategory != null) {
-                JCheckBox catCb = categoryCheckboxes.get(parentCategory);
-                boolean enabled = catCb != null && catCb.isSelected();
-                entry.getValue().setEnabled(enabled);
-                // If disabled, also unselect it to avoid confusion
-                if (!enabled && entry.getValue().isSelected()) {
-                    entry.getValue().setSelected(false);
-                }
+    private void rebuildTypePanel() {
+        // Determine which categories are currently selected
+        Set<String> selectedCategories = new HashSet<>();
+        for (Map.Entry<String, JCheckBox> entry : categoryCheckboxes.entrySet()) {
+            if (entry.getValue().isSelected()) {
+                selectedCategories.add(entry.getKey());
             }
         }
+        
+        // Build a new set of types to show (those whose category is selected)
+        Set<String> typesToShow = new LinkedHashSet<>();
+        for (Map.Entry<String, String> entry : typeToCategory.entrySet()) {
+            String type = entry.getKey();
+            String category = entry.getValue();
+            if (selectedCategories.contains(category)) {
+                typesToShow.add(type);
+            }
+        }
+        
+        // Remember current selection states for types that are being removed
+        for (Map.Entry<String, JCheckBox> entry : typeCheckboxes.entrySet()) {
+            typeOriginalState.put(entry.getKey(), entry.getValue().isSelected());
+        }
+        
+        // Remove all current type checkboxes
+        typeCheckboxes.clear();
+        typePanel.removeAll();
+        
+        // Add checkboxes for typesToShow
+        for (String type : typesToShow) {
+            JCheckBox cb = new JCheckBox(type, true);
+            Boolean savedState = typeOriginalState.get(type);
+            cb.setSelected(savedState != null ? savedState : true);
+            cb.addActionListener(e -> {
+                typeOriginalState.put(type, cb.isSelected());
+                updateFilter();
+            });
+            typeCheckboxes.put(type, cb);
+            typePanel.add(cb);
+        }
+        
+        // Add the All/None buttons for the type panel (they will work on visible types only)
+        if (!typeCheckboxes.isEmpty()) {
+            JButton all = new JButton("All");
+            JButton none = new JButton("None");
+            all.addActionListener(e -> {
+                for (JCheckBox cb : typeCheckboxes.values()) {
+                    cb.setSelected(true);
+                    typeOriginalState.put(getTypeFromCheckbox(cb), true);
+                }
+                updateFilter();
+            });
+            none.addActionListener(e -> {
+                for (JCheckBox cb : typeCheckboxes.values()) {
+                    cb.setSelected(false);
+                    typeOriginalState.put(getTypeFromCheckbox(cb), false);
+                }
+                updateFilter();
+            });
+            typePanel.add(all);
+            typePanel.add(none);
+        }
+        
+        typePanel.revalidate();
+        typePanel.repaint();
+    }
+    
+    private String getTypeFromCheckbox(JCheckBox cb) {
+        for (Map.Entry<String, JCheckBox> entry : typeCheckboxes.entrySet()) {
+            if (entry.getValue() == cb) return entry.getKey();
+        }
+        return null;
     }
 
     private void revalidateFilterPanels() {
@@ -217,20 +283,13 @@ final class DebugLogFrame extends JFrame {
             categoryPanel.add(cb);
         }
         addSelectButtons(categoryPanel, categoryCheckboxes);
-
-        typePanel.removeAll();
-        for (JCheckBox cb : typeCheckboxes.values()) {
-            typePanel.add(cb);
-        }
-        addSelectButtons(typePanel, typeCheckboxes);
         
-        // Apply enablement based on current category selections
-        updateTypeEnablement();
-
+        // Rebuild type panel based on currently selected categories
+        rebuildTypePanel();
+        
         categoryPanel.revalidate();
         categoryPanel.repaint();
-        typePanel.revalidate();
-        typePanel.repaint();
+        // typePanel already rebuilt with revalidate/repaint inside rebuildTypePanel
     }
 
     private void addSelectButtons(JPanel panel, Map<String, JCheckBox> checkboxes) {
@@ -238,16 +297,15 @@ final class DebugLogFrame extends JFrame {
         JButton none = new JButton("None");
         all.addActionListener(e -> {
             for (JCheckBox cb : checkboxes.values()) cb.setSelected(true);
-            // For type panel, we must also update enablement after "All" on categories
             if (panel == categoryPanel) {
-                updateTypeEnablement();
+                rebuildTypePanel();   // rebuild because categories changed
             }
             updateFilter();
         });
         none.addActionListener(e -> {
             for (JCheckBox cb : checkboxes.values()) cb.setSelected(false);
             if (panel == categoryPanel) {
-                updateTypeEnablement();
+                rebuildTypePanel();
             }
             updateFilter();
         });
@@ -262,13 +320,13 @@ final class DebugLogFrame extends JFrame {
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
         
-        // Enabled types (only those whose checkbox is selected AND enabled)
+        // Enabled types (only those currently visible in the UI and selected)
         Set<String> enabledTypes = typeCheckboxes.entrySet().stream()
-                .filter(e -> e.getValue().isSelected() && e.getValue().isEnabled())
+                .filter(e -> e.getValue().isSelected())
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toSet());
         
-        // If no categories selected, show nothing (since types depend on categories)
+        // If no categories selected, show nothing
         if (enabledCategories.isEmpty()) {
             sorter.setRowFilter(new RowFilter<>() {
                 @Override
@@ -279,7 +337,7 @@ final class DebugLogFrame extends JFrame {
             return;
         }
         
-        // If no types selected, show nothing (no type active)
+        // If no types selected, show nothing
         if (enabledTypes.isEmpty()) {
             sorter.setRowFilter(new RowFilter<>() {
                 @Override
@@ -290,7 +348,7 @@ final class DebugLogFrame extends JFrame {
             return;
         }
         
-        // Row is visible if its category is in enabledCategories AND its type is in enabledTypes
+        // Row is visible if its category is selected AND its type is selected (type must belong to that category, but type selection already ensures category because types are hidden otherwise)
         RowFilter<LogTableModel, Integer> filter = new RowFilter<>() {
             @Override
             public boolean include(Entry<? extends LogTableModel, ? extends Integer> entry) {
