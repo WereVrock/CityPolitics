@@ -467,6 +467,18 @@ public final class GameParameters {
     // MAP CANVAS
     // =========================================================
     // =========================================================
+    // OPPORTUNISM (OpportunismEvaluator)
+    // =========================================================
+    /** Attacker field army / defender(est.field+garrison) for hostile/rival targets. */
+    public static final double OPPORTUNISM_STRENGTH_RATIO_HOSTILE  = 2.0;
+    /** Same ratio for neutral targets. */
+    public static final double OPPORTUNISM_STRENGTH_RATIO_NEUTRAL  = 2.5;
+    /** Ratio for security‑driven attacks (threats only). */
+    public static final double OPPORTUNISM_SECURITY_STRENGTH_RATIO = 1.7;
+    /** Turns a house skips opportunism after a failed fabrication. */
+    public static final int    OPPORTUNISM_FABRICATE_COOLDOWN      = 1;
+
+    // =========================================================
     // WAR CHEST
     // =========================================================
     /** Base savings priority per motivation (fraction of target to maintain). */

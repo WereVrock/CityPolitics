@@ -26,6 +26,8 @@ public List<String> processTurn(
 
         List<String> log = new ArrayList<>();
 
+        debug.Debug.log("turn", "cycle", calendar.getDisplayString());
+
         applyPopEconomics(resources, popManager, log);
         log.addAll(nobleHouseManager.processTurn(resources));
         applyStatDecay(stats, log);

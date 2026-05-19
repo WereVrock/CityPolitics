@@ -10,7 +10,6 @@ import main.parameters.GameParameters;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Collectors;
 import main.map.Zone;
 
 /**
@@ -207,17 +206,26 @@ Relationship relToDef = relationships.get(house.getId(), defender.getId());
 Relationship relToAtk = relationships.get(house.getId(), attacker.getId());
 
 boolean qualifies = false;
+String reason = "";
 // Coalition members always join if they have an army
 if (isCoalition && coalitionMemberIds.contains(house.getId())) {
 qualifies = true;
+reason = " (coalition member)";
 } else {
 // Do NOT join if hostile/rival towards the attacker
 if (relToAtk == Relationship.HOSTILE || relToAtk == Relationship.RIVAL) continue;
 if (relToAtk == Relationship.ALLIED) {
 qualifies = true;
-} else if (relToDef == Relationship.HOSTILE || relToDef == Relationship.RIVAL
-|| (house.isThreatened() && relToDef == Relationship.NEUTRAL)) {
+reason = " (allied to attacker)";
+} else if (relToDef == Relationship.HOSTILE) {
 qualifies = true;
+reason = " (hostile to defender)";
+} else if (relToDef == Relationship.RIVAL) {
+qualifies = true;
+reason = " (rival to defender)";
+} else if (house.isThreatened() && relToDef == Relationship.NEUTRAL) {
+qualifies = true;
+reason = " (threatened by defender)";
 }
 }
 
@@ -231,7 +239,7 @@ a.setPreviousZoneId(a.getZoneId());
 moveArmy(a, zoneId);
 attackerArmies.add(a);
 attackerParticipants.add(house);
-log.add(house.getName() + " joins the attack on " + zoneId + ".");
+log.add(house.getName() + " joins the attack on " + zoneId + reason + ".");
 }
 }
 
@@ -552,5 +560,7 @@ private double militaryMult(int skill) {
 return 1.0 + skill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
 }
 }
+
+
 
 

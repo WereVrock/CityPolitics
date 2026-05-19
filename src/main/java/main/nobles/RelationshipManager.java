@@ -1,5 +1,6 @@
 package main.nobles;
 
+import debug.Debug;
 import main.parameters.GameParameters;
 
 import java.util.*;
@@ -21,7 +22,11 @@ public class RelationshipManager {
     }
 
     public void set(String idA, String idB, Relationship rel) {
+        Relationship old = get(idA, idB);
         relationships.put(key(idA, idB), rel);
+        if (old != rel) {
+            Debug.log("noble", "relation", idA + " / " + idB + " : " + old.name() + " -> " + rel.name());
+        }
         if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY
                 || rel == Relationship.NEUTRAL) {
             peaceTurns.put(key(idA, idB), 0);

@@ -60,6 +60,15 @@ public class NobleAI {
             }
         }
 
+        // Opportunistic attack before normal motivation-based action
+        NobleAction opportunismAction = OpportunismEvaluator.evaluate(
+                actor, allHouses, relationships, claimManager, armyManager, zoneManager, log);
+        if (opportunismAction != null) {
+            log.addAll(execute(actor, opportunismAction, Motivation.EXPANSION, allHouses,
+                    relationships, claimManager, zoneManager, armyManager));
+            return log;
+        }
+
         Motivation motivation = pickMotivation(actor.getActiveCharacter());
         NobleAction action    = pickAction(actor, motivation, allHouses, relationships, claimManager, armyManager);
         Debug.log("noble", "tick", actor.getName() + " motivation=" + motivation + " action=" + action);
