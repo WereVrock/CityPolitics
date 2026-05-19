@@ -2,13 +2,11 @@ package main.nobles.ai;
 
 import main.nobles.*;
 import debug.Debug;
-import main.parameters.GameParameters;
 import main.nobles.combat.ArmyForce;
 import main.nobles.combat.CombatResolver;
 import main.nobles.combat.CombatResult;
 import main.map.ZoneState;
 import main.parameters.GameParameters;
-import main.rules.NobleRules;
 
 import java.util.*;
 
@@ -350,16 +348,8 @@ Debug.log("noble", "attack-feasibility", actor.getName() + " target=" + target.g
 if (!feasible) {
 target = null;
 Debug.log("noble", "attack-feasibility", actor.getName() + " NOT FEASIBLE -> fallback");
-} else if (isRecklessAtWar(actor)) {
-// Reckless leaders attack as soon as feasible, even if chest not full
-Debug.log("noble", "attack-reckless-ready", actor.getName() + " reckless — attacking with current forces");
 } else {
-// Non‑reckless: check war chest readiness
-int chestTarget = getWarChestTarget(actor, allHouses, relationships, armyManager);
-if (actor.getGold() < chestTarget) {
-Debug.log("noble", "attack-feasibility", actor.getName() + " war chest not ready (have=" + actor.getGold() + " need=" + chestTarget + ") -> fallback");
-target = null;
-}
+Debug.log("noble", "attack-feasibility", actor.getName() + " feasible and proceeding");
 }
 }
 
@@ -1247,6 +1237,7 @@ if ((rel == Relationship.HOSTILE || rel == Relationship.NEUTRAL)
 return false;
 }
 }
+
 
 
 
