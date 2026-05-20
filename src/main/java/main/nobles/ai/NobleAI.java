@@ -1264,6 +1264,10 @@ public static void tickClaimDecay(List<NobleHouse> allHouses,
         double fuzz = 1.0 + (RNG.nextDouble() * 2 - 1) * fuzzRange;
 
         int target = (int) (baseGold * priority * fuzz);
+        // Never let the war‑chest drop below the cost of recruiting a minimal army.
+        if (target < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
+            target = GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD;
+        }
         return Math.max(0, target);
     }
 

@@ -34,7 +34,15 @@ public class WrapLayout extends FlowLayout {
             Insets insets = target.getInsets();
             int maxWidth = target.getWidth() - (insets.left + insets.right);
             if (maxWidth <= 0 && preferred) {
-                maxWidth = Integer.MAX_VALUE;
+                // Try to get width from parent viewport (if inside a JScrollPane)
+                Container parent = target.getParent();
+                if (parent instanceof JViewport) {
+                    maxWidth = parent.getWidth() - insets.left - insets.right;
+                }
+                // Fallback to a reasonable default width
+                if (maxWidth <= 0) {
+                    maxWidth = 400;
+                }
             }
             Dimension dim = new Dimension(0, 0);
             int x = 0;

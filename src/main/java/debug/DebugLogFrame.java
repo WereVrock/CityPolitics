@@ -456,6 +456,7 @@ private void openChunkCopyDialog() {
             buttonPanel.add(btn);
         }
         JScrollPane scrollPane = new JScrollPane(buttonPanel);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setBorder(BorderFactory.createTitledBorder("Select chunk to copy"));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         
