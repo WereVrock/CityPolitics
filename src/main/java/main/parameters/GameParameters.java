@@ -475,6 +475,10 @@ public final class GameParameters {
     public static final double OPPORTUNISM_STRENGTH_RATIO_NEUTRAL  = 2.5;
     /** Ratio for security‑driven attacks (threats only). */
     public static final double OPPORTUNISM_SECURITY_STRENGTH_RATIO = 1.7;
+    /** Ratio for prestige‑driven attacks (rivals only). */
+    public static final double OPPORTUNISM_PRESTIGE_STRENGTH_RATIO = 3.0;
+    /** Ratio for wealth‑driven attacks (high‑gold zones only). */
+    public static final double OPPORTUNISM_WEALTH_STRENGTH_RATIO   = 3.0;
     /** Turns a house skips opportunism after a failed fabrication. */
     public static final int    OPPORTUNISM_FABRICATE_COOLDOWN      = 1;
 

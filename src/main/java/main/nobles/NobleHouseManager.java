@@ -323,7 +323,7 @@ private int computeHouseGold(NobleHouse house) {
                     Motivation.EXPANSION, Motivation.WEALTH, 0.7, 0.3, 0, 2, 3)
             ), 75, 50));
 
-        houses.add(new NobleHouse("house_emberveil", "House Emberveil",
+        NobleHouse emberveil = new NobleHouse("house_emberveil", "House Emberveil",
             NobleHouse.Race.ELF,
             List.of("ashenveil"),
             List.of(
@@ -336,7 +336,9 @@ private int computeHouseGold(NobleHouse house) {
                 new NobleCharacter("Sentinel Dravan Emberveil",
                     "Silent guardian. Speaks through action alone.",
                     Motivation.SECURITY, Motivation.EXPANSION, 0.8, 0.2, 0, 3, 1)
-            ), 65, 45));
+            ), 130, 45);
+        emberveil.addFortification("ashenveil", 1);
+        houses.add(emberveil);
     }
 }
 

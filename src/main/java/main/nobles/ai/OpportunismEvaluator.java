@@ -43,30 +43,83 @@ public class OpportunismEvaluator {
         boolean expansionMinor = (sec == Motivation.EXPANSION);
         boolean securityMajor  = (dom == Motivation.SECURITY);
         boolean securityMinor  = (sec == Motivation.SECURITY && RNG.nextDouble() < 0.25);
+        boolean prestigeMajor  = (dom == Motivation.PRESTIGE);
+        boolean wealthMajor    = (dom == Motivation.WEALTH);
 
-        if (!expansionMinor && !securityMajor && !securityMinor) return null;
+        if (!expansionMinor && !securityMajor && !securityMinor && !prestigeMajor && !wealthMajor) return null;
 
         Debug.log("noble", "opportunism", actor.getName() + " evaluating opportunism"
                 + " (expansionMinor=" + expansionMinor
                 + ", securityMajor=" + securityMajor
                 + ", securityMinor=" + securityMinor + ")");
 
-        // ── 1. Build list of potential targets ──────────────────────
-        List<NobleHouse> targets = new ArrayList<>();
-        double requiredRatio;
+        // ── 1. Build list of potential targets per active trait ─────
+        List<NobleHouse> eligible = new ArrayList<>();
+        int myPower = NobleAI.exactPotentialFieldArmy(actor, armyManager);
 
         if (expansionMinor) {
-            requiredRatio = GameParameters.OPPORTUNISM_STRENGTH_RATIO_HOSTILE;
+            double requiredRatio = GameParameters.OPPORTUNISM_STRENGTH_RATIO_HOSTILE;
             for (NobleHouse other : allHouses) {
                 if (other == actor || other.isEliminated()) continue;
                 Relationship rel = relationships.get(actor.getId(), other.getId());
                 if (rel == Relationship.HOSTILE || rel == Relationship.RIVAL || rel == Relationship.NEUTRAL) {
-                    targets.add(other);
+                    double ratio = (rel == Relationship.NEUTRAL)
+                            ? GameParameters.OPPORTUNISM_STRENGTH_RATIO_NEUTRAL
+                            : requiredRatio;
+                    int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
+                                    + other.getTotalGarrisonSize();
+                    if (targetPower > 0 && myPower >= targetPower * ratio) {
+                        eligible.add(other);
+                    }
                 }
             }
-        } else {
-            // security major or minor
-            requiredRatio = GameParameters.OPPORTUNISM_SECURITY_STRENGTH_RATIO;
+        }
+
+        if (prestigeMajor) {
+            for (NobleHouse other : allHouses) {
+                if (other == actor || other.isEliminated()) continue;
+                Relationship rel = relationships.get(actor.getId(), other.getId());
+                if (rel != Relationship.RIVAL) continue;
+                int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
+                                + other.getTotalGarrisonSize();
+                if (targetPower > 0 && myPower >= targetPower * GameParameters.OPPORTUNISM_PRESTIGE_STRENGTH_RATIO) {
+                    eligible.add(other);
+                }
+            }
+        }
+
+        if (wealthMajor) {
+            // Calculate average gold production across all zones
+            double totalGold = 0;
+            int totalZones = 0;
+            for (main.map.Zone z : zoneManager.getZones()) {
+                totalGold += z.getGoldProduction();
+                totalZones++;
+            }
+            double avgGold = (totalZones > 0) ? (totalGold / totalZones) : 0;
+            for (NobleHouse other : allHouses) {
+                if (other == actor || other.isEliminated()) continue;
+                Relationship rel = relationships.get(actor.getId(), other.getId());
+                if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
+                // Check if any zone owned by other has above‑average gold
+                boolean hasRichZone = false;
+                for (String zid : other.getZoneIds()) {
+                    main.map.Zone z = zoneManager.getZone(zid);
+                    if (z != null && z.getGoldProduction() > avgGold) {
+                        hasRichZone = true;
+                        break;
+                    }
+                }
+                if (!hasRichZone) continue;
+                int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
+                                + other.getTotalGarrisonSize();
+                if (targetPower > 0 && myPower >= targetPower * GameParameters.OPPORTUNISM_WEALTH_STRENGTH_RATIO) {
+                    eligible.add(other);
+                }
+            }
+        }
+
+        if (securityMajor || securityMinor) {
             for (NobleHouse other : allHouses) {
                 if (other == actor || other.isEliminated()) continue;
                 Relationship rel = relationships.get(actor.getId(), other.getId());
@@ -78,23 +131,12 @@ public class OpportunismEvaluator {
                         break;
                     }
                 }
-                if (hasClaimOnActor) targets.add(other);
-            }
-        }
-
-        // ── 2. Filter by strength ratio ─────────────────────────────
-        int myPower = NobleAI.exactPotentialFieldArmy(actor, armyManager);
-        List<NobleHouse> eligible = new ArrayList<>();
-        for (NobleHouse target : targets) {
-            Relationship rel = relationships.get(actor.getId(), target.getId());
-            double ratio = (rel == Relationship.NEUTRAL && expansionMinor)
-                    ? GameParameters.OPPORTUNISM_STRENGTH_RATIO_NEUTRAL
-                    : requiredRatio;
-            int targetPower = NobleAI.estimatedPower(actor, target, armyManager)
-                            + target.getTotalGarrisonSize();
-            if (targetPower <= 0) continue;
-            if (myPower >= targetPower * ratio) {
-                eligible.add(target);
+                if (!hasClaimOnActor) continue;
+                int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
+                                + other.getTotalGarrisonSize();
+                if (targetPower > 0 && myPower >= targetPower * GameParameters.OPPORTUNISM_SECURITY_STRENGTH_RATIO) {
+                    eligible.add(other);
+                }
             }
         }
 
@@ -123,6 +165,12 @@ public class OpportunismEvaluator {
         }
 
         if (bestTarget != null && bestClaimZone != null) {
+            if (armyManager.hasPendingAttackOrder(actor.getId(), bestClaimZone)) {
+                Debug.log("noble", "opportunism", actor.getName()
+                        + " skipping opportunistic attack on " + bestTarget.getName()
+                        + " zone " + bestClaimZone + " – already attacking");
+                return null;
+            }
             Debug.log("noble", "opportunism", actor.getName() + " opportunistic attack on "
                     + bestTarget.getName() + " zone " + bestClaimZone);
             return NobleAction.ATTACK;

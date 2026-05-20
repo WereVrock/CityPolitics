@@ -462,6 +462,19 @@ return Collections.unmodifiableList(
 byZone.getOrDefault(zoneId, Collections.emptyList()));
 }
 
+/**
+* Returns true if the house already has a pending ATTACK order targeting the given zone.
+*/
+public boolean hasPendingAttackOrder(String houseId, String zoneId) {
+for (NobleArmy a : getArmiesForHouse(houseId)) {
+if (a.getPendingOrder() == NobleArmy.OrderType.ATTACK
+&& zoneId.equals(a.getPendingTargetZoneId())) {
+return true;
+}
+}
+return false;
+}
+
 public List<NobleArmy> getArmiesInZone(String zoneId, String houseId) {
 List<NobleArmy> result = new ArrayList<>();
 for (NobleArmy a : byZone.getOrDefault(zoneId, Collections.emptyList())) {
@@ -560,6 +573,7 @@ private double militaryMult(int skill) {
 return 1.0 + skill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
 }
 }
+
 
 
 
