@@ -21,6 +21,9 @@ final class DebugLogFrame extends JFrame {
     private final Map<String, JCheckBox> typeCheckboxes = new LinkedHashMap<>();
     // Maps each type to its parent category (first seen category for that type)
     private final Map<String, String> typeToCategory = new HashMap<>();
+    private boolean programmaticFilterActive = false;
+    private java.util.Map<String, Boolean> savedTypeSelections;
+    private java.util.Map<String, Boolean> savedCategorySelections;
     // Stores original checkbox state for each type (used when category is re-enabled)
     private final Map<String, Boolean> typeOriginalState = new HashMap<>();
     private JPanel categoryPanel;
@@ -67,7 +70,7 @@ final class DebugLogFrame extends JFrame {
         filterPanel.add(categoryScroll);
         filterPanel.add(typeScroll);
 
-        JPanel controlBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel controlBar = new JPanel(new WrapLayout(FlowLayout.LEFT));
         showDetailsCheckbox = new JCheckBox("Show Details (Timestamp, Category, Type)", true);
         stayOnTopCheckbox = new JCheckBox("Stay on Top", false);
         JButton copyButton = new JButton("Copy Messages (Visible)");
@@ -85,6 +88,12 @@ final class DebugLogFrame extends JFrame {
         controlBar.add(copyButton);
         controlBar.add(chunkButton);
         controlBar.add(clearButton);
+        JButton pasteFilterButton = new JButton("Paste Filter from Clipboard");
+        pasteFilterButton.addActionListener(e -> pasteFilterFromClipboard());
+        controlBar.add(pasteFilterButton);
+        JButton copyFilterButton = new JButton("Copy Filter Instructions for AI");
+        copyFilterButton.addActionListener(e -> copyFilterInstructionsForAI());
+        controlBar.add(copyFilterButton);
 
         add(filterPanel, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
@@ -313,6 +322,66 @@ final class DebugLogFrame extends JFrame {
         panel.add(none);
     }
 
+    /**
+     * Set the exact set of visible log types programmatically (e.g. from AI debugging commands).
+     * Category checkboxes are automatically selected if any type of that category is enabled,
+     * and all checkboxes become non-interactive until {@link #clearProgrammaticFilter()} is called.
+     */
+
+void setVisibleTypes(java.util.Set<String> types) {
+        for (java.util.Map.Entry<String, JCheckBox> entry : typeCheckboxes.entrySet()) {
+            entry.getValue().setSelected(types.contains(entry.getKey()));
+        }
+        // Update category checkboxes: selected if any of its types is selected
+        for (java.util.Map.Entry<String, JCheckBox> catEntry : categoryCheckboxes.entrySet()) {
+            boolean anySelected = false;
+            for (String typeName : typeCheckboxes.keySet()) {
+                if (catEntry.getKey().equals(typeToCategory.get(typeName))
+                        && typeCheckboxes.get(typeName).isSelected()) {
+                    anySelected = true;
+                    break;
+                }
+            }
+            catEntry.getValue().setSelected(anySelected);
+        }
+        updateFilter();
+    }
+
+void clearProgrammaticFilter() {
+        // If any controls were disabled (e.g. from a previous programmatic filter), re-enable them.
+        for (JCheckBox cb : typeCheckboxes.values()) {
+            cb.setEnabled(true);
+            cb.setSelected(true);
+        }
+        for (JCheckBox cb : categoryCheckboxes.values()) {
+            cb.setEnabled(true);
+            cb.setSelected(true);
+        }
+        setFilterButtonsEnabled(true);
+        updateFilter();
+    }
+
+private void captureUserSelections() {
+        savedTypeSelections = new java.util.HashMap<>();
+        for (java.util.Map.Entry<String, JCheckBox> e : typeCheckboxes.entrySet()) {
+            savedTypeSelections.put(e.getKey(), e.getValue().isSelected());
+        }
+        savedCategorySelections = new java.util.HashMap<>();
+        for (java.util.Map.Entry<String, JCheckBox> e : categoryCheckboxes.entrySet()) {
+            savedCategorySelections.put(e.getKey(), e.getValue().isSelected());
+        }
+    }
+
+    private void setFilterButtonsEnabled(boolean enabled) {
+        // Traverse the categoryPanel and typePanel to find All/None buttons and enable/disable them.
+        for (java.awt.Component comp : categoryPanel.getComponents()) {
+            if (comp instanceof JButton) comp.setEnabled(enabled);
+        }
+        for (java.awt.Component comp : typePanel.getComponents()) {
+            if (comp instanceof JButton) comp.setEnabled(enabled);
+        }
+    }
+
     private void updateFilter() {
         // Enabled categories
         Set<String> enabledCategories = categoryCheckboxes.entrySet().stream()
@@ -404,6 +473,40 @@ final class DebugLogFrame extends JFrame {
             sb.append(entry.message()).append("\n");
         }
         return sb.toString();
+    }
+
+    private void copyFilterInstructionsForAI() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Available log types (space-separated). To filter, copy the types you want and click 'Paste Filter from Clipboard':\n\n");
+
+        // Group types by category
+        Map<String, List<String>> byCategory = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : typeToCategory.entrySet()) {
+            byCategory.computeIfAbsent(entry.getValue(), k -> new ArrayList<>()).add(entry.getKey());
+        }
+
+        for (Map.Entry<String, List<String>> catEntry : byCategory.entrySet()) {
+            sb.append("[").append(catEntry.getKey()).append("] ");
+            java.util.Collections.sort(catEntry.getValue());
+            sb.append(String.join(" ", catEntry.getValue()));
+            sb.append("\n");
+        }
+
+        sb.append("\nExample: noble warchest attack");
+        StringSelection sel = new StringSelection(sb.toString());
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
+    }
+
+    private void pasteFilterFromClipboard() {
+        try {
+            String text = (String) Toolkit.getDefaultToolkit().getSystemClipboard().getData(java.awt.datatransfer.DataFlavor.stringFlavor);
+            if (text != null && !text.trim().isEmpty()) {
+                String[] types = text.trim().split("\\s+");
+                Debug.setVisibleTypes(types);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Failed to read clipboard: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private java.util.List<String> splitIntoChunks(String text, int maxChunkSize) {

@@ -10,9 +10,20 @@ final class DebugCore {
     private final List<LogEntry> logs = new ArrayList<>();
     private final List<DebugObserver> observers = new CopyOnWriteArrayList<>();
 
+    private volatile java.util.Set<String> programmaticTypeFilter = null;
+
     private DebugCore() {}
 
     static DebugCore getInstance() { return INSTANCE; }
+
+    void setProgrammaticTypeFilter(java.util.Set<String> types) {
+        this.programmaticTypeFilter = types;
+        DebugUIManager.getInstance().applyProgrammaticTypeFilter(types);
+    }
+
+    java.util.Set<String> getProgrammaticTypeFilter() {
+        return programmaticTypeFilter;
+    }
 
     void addLog(String category, String type, String message) {
         LogEntry entry = new LogEntry(LocalTime.now(), category, type, message);

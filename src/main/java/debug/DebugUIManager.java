@@ -85,6 +85,18 @@ final class DebugUIManager implements DebugObserver {
         }
     }
 
+    void applyProgrammaticTypeFilter(java.util.Set<String> types) {
+        if (frame != null) {
+            SwingUtilities.invokeLater(() -> {
+                if (types == null) {
+                    frame.clearProgrammaticFilter();
+                } else {
+                    frame.setVisibleTypes(types);
+                }
+            });
+        }
+    }
+
     @Override
     public void onLogAdded(LogEntry entry) {
         synchronized (buffer) {
