@@ -279,7 +279,15 @@ public class NobleAI {
                 String targetZone = findClaimTarget(actor, allHouses, claimManager);
                 if (targetZone == null) break;
                 List<String> myZones = new ArrayList<>(actor.getZoneIds());
-                boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, RNG,
+                // Find owner of targetZone and get their cunning
+                int ownerCunning = 0;
+                for (NobleHouse other : allHouses) {
+                    if (other.getZoneIds().contains(targetZone)) {
+                        ownerCunning = other.getActiveCharacter() != null ? other.getActiveCharacter().getCunning() : 0;
+                        break;
+                    }
+                }
+                boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, ownerCunning, RNG,
                         myZones, zoneManager.getZones());
                 if (success) {
                     log.add(actor.getName() + " fabricates a claim on " + targetZone + ".");
@@ -1098,7 +1106,15 @@ private static NobleHouse findClaimlessAttackTarget(NobleHouse actor,
                     List<String> myZones = new ArrayList<>(actor.getZoneIds());
                     NobleCharacter ch = actor.getActiveCharacter();
                     int cunning = ch != null ? ch.getCunning() : 0;
-                    boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, RNG,
+                    // Find owner of targetZone and get their cunning
+                    int ownerCunning = 0;
+                    for (NobleHouse other : allHouses) {
+                        if (other.getZoneIds().contains(targetZone)) {
+                            ownerCunning = other.getActiveCharacter() != null ? other.getActiveCharacter().getCunning() : 0;
+                            break;
+                        }
+                    }
+                    boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, ownerCunning, RNG,
                             myZones, zoneManager.getZones());
                     if (success) {
                         log.add(actor.getName() + " fabricates a claim on " + targetZone + ".");

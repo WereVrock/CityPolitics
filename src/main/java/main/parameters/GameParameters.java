@@ -313,8 +313,9 @@ public final class GameParameters {
 
    
 
-    public static final double CLAIM_BASE_SUCCESS_CHANCE             = 0.35;
+    public static final double CLAIM_BASE_SUCCESS_CHANCE             = 0.40;
     public static final double CLAIM_CUNNING_BONUS_PER_POINT         = 0.15;
+    public static final double CLAIM_OWNER_CUNNING_PENALTY_PER_POINT = 0.10;
     /** Multiplier applied when target zone is not adjacent to any owned zone. */
     public static final double CLAIM_ADJACENCY_PENALTY               = 0.50;
 

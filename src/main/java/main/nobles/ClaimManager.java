@@ -20,11 +20,13 @@ public class ClaimManager {
      * @param claimantZones zones owned by the claimant (for adjacency check)
      * @param allZones list of all Zone objects (for adjacency data)
      */
-    public boolean fabricate(String claimantId, String zoneId, int cunning, Random rng,
-                              List<String> claimantZones, List<main.map.Zone> allZones) {
+    public boolean fabricate(String claimantId, String zoneId, int cunning, int ownerCunning,
+                              Random rng, List<String> claimantZones, List<main.map.Zone> allZones) {
         if (hasClaim(claimantId, zoneId)) return false;
         double chance = GameParameters.CLAIM_BASE_SUCCESS_CHANCE
-            + cunning * GameParameters.CLAIM_CUNNING_BONUS_PER_POINT;
+            + cunning * GameParameters.CLAIM_CUNNING_BONUS_PER_POINT
+            - ownerCunning * GameParameters.CLAIM_OWNER_CUNNING_PENALTY_PER_POINT;
+        if (chance <= 0) return false;
 
         // Adjacency penalty: halve chance if target not adjacent to any owned zone
         boolean adjacent = false;

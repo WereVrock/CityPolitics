@@ -224,8 +224,15 @@ public class OpportunismEvaluator {
         if (fabricateTarget != null && fabricateZone != null) {
             int cunning = character.getCunning();
             List<String> myZones = new ArrayList<>(actor.getZoneIds());
+            int ownerCunning = 0;
+            for (NobleHouse other : allHouses) {
+                if (other.getZoneIds().contains(fabricateZone)) {
+                    ownerCunning = other.getActiveCharacter() != null ? other.getActiveCharacter().getCunning() : 0;
+                    break;
+                }
+            }
             boolean success = claimManager.fabricate(
-                    actor.getId(), fabricateZone, cunning, RNG,
+                    actor.getId(), fabricateZone, cunning, ownerCunning, RNG,
                     myZones, zoneManager.getZones());
             Debug.log("noble", "opportunism", actor.getName() + " opportunism fabrication on "
                     + fabricateTarget.getName() + " zone " + fabricateZone
