@@ -12,6 +12,7 @@ public class ZoneState {
     private int    supplyLevel;
     private int    recentlyRaidedTurns;  // >0 = unraidable, production malus active
     private int    conquestMalusPercent; // 0-100, decays each turn
+    private int    rebellionPower;
 
     public ZoneState() {
         reset();
@@ -22,6 +23,7 @@ public class ZoneState {
         this.supplyLevel          = 100;
         this.recentlyRaidedTurns  = 0;
         this.conquestMalusPercent = 0;
+        this.rebellionPower      = 0;
     }
 
     // ─── Turn tick ───────────────────────────────────────────────────────────
@@ -45,6 +47,10 @@ public class ZoneState {
     public void markConquered()        { conquestMalusPercent = 100; }
     public int  getConquestMalus()     { return conquestMalusPercent; }
     public boolean hasConquestMalus()  { return conquestMalusPercent > 0; }
+
+    public int  getRebellionPower()          { return rebellionPower; }
+    public void setRebellionPower(int v)     { rebellionPower = Math.max(0, v); }
+    public void addRebellionPower(int delta) { rebellionPower = Math.max(0, rebellionPower + delta); }
 
     /**
      * Effective production multiplier accounting for both raid and conquest malus.

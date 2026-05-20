@@ -501,6 +501,26 @@ public final class GameParameters {
     public static final double WAR_CHEST_FUZZ_PER_MISSING   = 0.13;
 
     // =========================================================
+    // REBELLION
+    // =========================================================
+    /** Base admin capacity for a house (added to cunning). */
+    public static final int    ADMIN_CAPACITY_BASE                = 3;
+    /** Base chance per turn to increase rebellion power in an overextended zone. */
+    public static final double REBELLION_BASE_CHANCE              = 0.30;
+    /** Additional chance per zone over capacity. */
+    public static final double REBELLION_OVEREXTENSION_PER_ZONE   = 0.05;
+    /** Rebellion power added on a successful increase roll. */
+    public static final int    REBELLION_POWER_INCREASE           = 5;
+    /** Base chance per turn to decay rebellion power when not overextended. */
+    public static final double REBELLION_DECAY_BASE_CHANCE        = 0.30;
+    /** Additional decay chance per point of owner cunning. */
+    public static final double REBELLION_DECAY_CUNNING_PER_POINT  = 0.05;
+    /** Rebellion power removed on a successful decay roll. */
+    public static final int    REBELLION_POWER_DECREASE           = 5;
+    /** Multiplier of (garrison + idle armies) that rebellion power must exceed for auto-flip. */
+    public static final double REBELLION_FLIP_MULTIPLIER          = 1.5;
+
+    // =========================================================
     // MAP CANVAS
     // =========================================================
     public static final int MAP_CANVAS_WIDTH  = 1200;

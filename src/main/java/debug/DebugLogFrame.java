@@ -475,9 +475,11 @@ private void captureUserSelections() {
         return sb.toString();
     }
 
-    private void copyFilterInstructionsForAI() {
+private void copyFilterInstructionsForAI() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Available log types (space-separated). To filter, copy the types you want and click 'Paste Filter from Clipboard':\n\n");
+        sb.append("To filter logs, copy ONLY the TYPES (space-separated) you want to see. Do NOT include category names.\n");
+        sb.append("Categories will auto-select based on types.\n\n");
+        sb.append("Available TYPES by category:\n");
 
         // Group types by category
         Map<String, List<String>> byCategory = new LinkedHashMap<>();
@@ -492,12 +494,12 @@ private void captureUserSelections() {
             sb.append("\n");
         }
 
-        sb.append("\nExample: noble warchest attack");
+        sb.append("\nExample: warchest attack opportunism");
         StringSelection sel = new StringSelection(sb.toString());
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(sel, null);
     }
 
-    private void pasteFilterFromClipboard() {
+private void pasteFilterFromClipboard() {
         try {
             String text = (String) Toolkit.getDefaultToolkit().getSystemClipboard().getData(java.awt.datatransfer.DataFlavor.stringFlavor);
             if (text != null && !text.trim().isEmpty()) {

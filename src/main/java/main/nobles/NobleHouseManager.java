@@ -1,6 +1,7 @@
 // NobleHouseManager.java
 package main.nobles;
 
+import debug.Debug;
 import main.map.Zone;
 import main.map.ZoneManager;
 import main.map.ZoneState;
@@ -82,6 +83,9 @@ public List<String> processTurn(ResourcePool playerResources) {
 
         NobleAI.tickClaimDecay(snapshot, relationships, claimManager, log);
 
+        // ── Rebellion phase ──────────────────────────────────────
+        processRebellions(new ArrayList<>(houses), log);
+
         log.addAll(coalitionManager.checkCoalitions(new ArrayList<>(houses)));
 
         armyManager.tickOrders();
@@ -106,6 +110,166 @@ public List<String> processTurn(ResourcePool playerResources) {
             for (String zoneId : house.getZoneIds()) {
                 ZoneState state = zoneManager.getState(zoneId);
                 if (state != null) state.tick();
+            }
+        }
+    }
+
+    private void processRebellions(List<NobleHouse> allHouses, List<String> log) {
+        Random rng = new Random();
+        // 1. Accumulate / decay rebellion power
+        for (NobleHouse house : allHouses) {
+            if (house.isEliminated()) continue;
+            int cunning = house.getActiveCharacter() != null ? house.getActiveCharacter().getCunning() : 0;
+            int capacity = cunning + GameParameters.ADMIN_CAPACITY_BASE;
+            int extraZones = Math.max(0, house.getZoneIds().size() - capacity);
+            double increaseChance = GameParameters.REBELLION_BASE_CHANCE + extraZones * GameParameters.REBELLION_OVEREXTENSION_PER_ZONE;
+            double decayChance = GameParameters.REBELLION_DECAY_BASE_CHANCE + cunning * GameParameters.REBELLION_DECAY_CUNNING_PER_POINT;
+
+            for (String zoneId : house.getZoneIds()) {
+                // Only zones with claims can rebel
+                boolean hasClaim = false;
+                for (NobleHouse other : allHouses) {
+                    if (other == house) continue;
+                    if (claimManager.hasClaim(other.getId(), zoneId)) {
+                        hasClaim = true;
+                        break;
+                    }
+                }
+                if (!hasClaim) {
+                    // If rebellion power exists but no claim, it decays faster? We'll just leave it.
+                    // But we still allow decay even without overextension.
+                    if (extraZones == 0 && zoneManager.getState(zoneId).getRebellionPower() > 0) {
+                        if (rng.nextDouble() < decayChance) {
+                            zoneManager.getState(zoneId).addRebellionPower(-GameParameters.REBELLION_POWER_DECREASE);
+                        }
+                    }
+                    continue;
+                }
+
+                ZoneState state = zoneManager.getState(zoneId);
+                Debug.log("noble", "rebellion-check", house.getName() + " zone=" + zoneId
+                        + " cunning=" + cunning + " capacity=" + capacity
+                        + " extraZones=" + extraZones + " chance=" + (extraZones > 0 ? increaseChance : decayChance)
+                        + " rebellionPower=" + state.getRebellionPower());
+                if (extraZones > 0) {
+                    if (rng.nextDouble() < increaseChance) {
+                        state.addRebellionPower(GameParameters.REBELLION_POWER_INCREASE);
+                        Debug.log("noble", "rebellion", house.getName() + " zone=" + zoneId
+                                + " REBELLION +" + GameParameters.REBELLION_POWER_INCREASE
+                                + " → " + state.getRebellionPower()
+                                + " (extraZones=" + extraZones + ", chance=" + increaseChance + ")");
+                    }
+                } else {
+                    // Not overextended, decay
+                    if (state.getRebellionPower() > 0 && rng.nextDouble() < decayChance) {
+                        int oldPower = state.getRebellionPower();
+                        state.addRebellionPower(-GameParameters.REBELLION_POWER_DECREASE);
+                        Debug.log("noble", "rebellion", house.getName() + " zone=" + zoneId
+                                + " REBELLION -" + GameParameters.REBELLION_POWER_DECREASE
+                                + " → " + state.getRebellionPower()
+                                + " (cunning=" + cunning + ", decayChance=" + decayChance + ")");
+                    }
+                }
+            }
+        }
+
+        // 2. Check for auto-flips
+        for (NobleHouse house : new ArrayList<>(allHouses)) {
+            if (house.isEliminated()) continue;
+            for (String zoneId : new ArrayList<>(house.getZoneIds())) {
+                ZoneState state = zoneManager.getState(zoneId);
+                int rebellion = state.getRebellionPower();
+                if (rebellion <= 0) continue;
+
+                int garrison = house.getGarrisonFor(zoneId);
+                int idleArmies = armyManager.getTotalIdleArmySize(house.getId(), zoneId);
+                double threshold = (garrison + idleArmies) * GameParameters.REBELLION_FLIP_MULTIPLIER;
+                if (rebellion <= threshold) continue;
+
+                // 3. Select claimant
+                List<NobleHouse> claimants = new ArrayList<>();
+                for (NobleHouse other : allHouses) {
+                    if (other == house || other.isEliminated()) {
+                        if (claimManager.hasClaim(other.getId(), zoneId)) {
+                            claimants.add(other); // landless
+                        }
+                    } else {
+                        if (claimManager.hasClaim(other.getId(), zoneId)) {
+                            claimants.add(other);
+                        }
+                    }
+                }
+                if (claimants.isEmpty()) continue;
+
+                // Priority: landless > adjacent > any, each group by cunning desc
+                NobleHouse winner = null;
+                int bestCunning = -1;
+
+                // Landless
+                for (NobleHouse c : claimants) {
+                    if (c.isEliminated()) {
+                        int cun = c.getActiveCharacter() != null ? c.getActiveCharacter().getCunning() : 0;
+                        if (cun > bestCunning) {
+                            winner = c;
+                            bestCunning = cun;
+                        }
+                    }
+                }
+                if (winner == null) {
+                    // Adjacent
+                    Set<String> adjacentZones = new HashSet<>();
+                    main.map.Zone zone = zoneManager.getZone(zoneId);
+                    if (zone != null) adjacentZones.addAll(zone.getAdjacentIds());
+                    for (NobleHouse c : claimants) {
+                        if (c.isEliminated()) continue;
+                        boolean adj = false;
+                        for (String z : c.getZoneIds()) {
+                            if (adjacentZones.contains(z)) { adj = true; break; }
+                        }
+                        if (adj) {
+                            int cun = c.getActiveCharacter() != null ? c.getActiveCharacter().getCunning() : 0;
+                            if (cun > bestCunning) {
+                                winner = c;
+                                bestCunning = cun;
+                            }
+                        }
+                    }
+                }
+                if (winner == null) {
+                    // Any
+                    for (NobleHouse c : claimants) {
+                        if (c.isEliminated()) continue;
+                        int cun = c.getActiveCharacter() != null ? c.getActiveCharacter().getCunning() : 0;
+                        if (cun > bestCunning) {
+                            winner = c;
+                            bestCunning = cun;
+                        }
+                    }
+                }
+                if (winner == null) continue;
+
+                // 4. Transfer zone
+                boolean wasLandless = winner.isEliminated();
+                house.removeZone(zoneId);
+                winner.addZone(zoneId);
+                winner.resetGarrison(zoneId);
+                state.setRebellionPower(0);
+                // Move owner's idle armies out
+                for (NobleArmy a : new ArrayList<>(armyManager.getArmiesInZone(zoneId, house.getId()))) {
+                    if (!a.hasPendingOrder()) {
+                        String capital = house.getCapitalZoneId();
+                        if (capital != null) {
+                            armyManager.moveArmy(a, capital);
+                        } else {
+                            armyManager.remove(a);
+                        }
+                    }
+                }
+                String revivalMsg = wasLandless ? (" " + winner.getName() + " is revived!") : "";
+                log.add("Rebellion in " + zoneId + "! Zone transfers to " + winner.getName() + "." + revivalMsg);
+                Debug.log("noble", "rebellion", "FLIP " + zoneId + " from " + house.getName()
+                        + " to " + winner.getName() + " (power=" + rebellion
+                        + ", threshold=" + threshold + ")" + (wasLandless ? " REVIVED" : ""));
             }
         }
     }

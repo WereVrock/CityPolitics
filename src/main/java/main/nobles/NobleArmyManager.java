@@ -320,6 +320,9 @@ attacker.conquerZone(zoneId, defFort);
 // Loser automatically gains a claim on their former zone
 claimManager.addClaim(defender.getId(), zoneId);
 attacker.resetGarrison(zoneId);
+// Halve rebellion power on conquest
+ZoneState st = zoneManager.getState(zoneId);
+if (st != null) st.setRebellionPower(st.getRebellionPower() / 2);
 log.add(attacker.getName() + " captures " + zoneId
 + " from " + defender.getName() + ".");
 if (defender.isEliminated())
@@ -475,6 +478,15 @@ return true;
 return false;
 }
 
+/** Total size of idle (no pending order) armies a house has in a specific zone. */
+public int getTotalIdleArmySize(String houseId, String zoneId) {
+int total = 0;
+for (NobleArmy a : getArmiesInZone(zoneId, houseId)) {
+if (!a.hasPendingOrder()) total += a.getSize();
+}
+return total;
+}
+
 public List<NobleArmy> getArmiesInZone(String zoneId, String houseId) {
 List<NobleArmy> result = new ArrayList<>();
 for (NobleArmy a : byZone.getOrDefault(zoneId, Collections.emptyList())) {
@@ -573,6 +585,8 @@ private double militaryMult(int skill) {
 return 1.0 + skill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
 }
 }
+
+
 
 
 
