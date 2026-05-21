@@ -56,39 +56,44 @@ public List<String> processTurn(ResourcePool playerResources) {
         tickZoneStates();
 
         for (NobleHouse house : houses) {
-            if (!house.isEliminated()) {
-                processEconomy(house, playerResources, log);
-            }
+            if (house.isEliminated()) continue;
+
+            // 1. Resolve this house's pending orders
+            log.addAll(armyManager.resolveOrdersForHouse(house.getId(),
+                new ArrayList<>(houses), claimManager));
+
+            // 2. Economy
+            processEconomy(house, playerResources, log);
         }
 
         processConquestCosts();
 
-        log.addAll(armyManager.resolveOrders(new ArrayList<>(houses), claimManager));
-
+        // 3. Per-house: disband idle → AI tick → upkeep
         for (NobleHouse house : houses) {
-            if (!house.isEliminated()) {
-                armyManager.payUpkeep(house);
-            }
+            if (house.isEliminated()) continue;
+
+            // Disband idle armies — manpower returns, gold drain stops
+            armyManager.disbandIdleArmies(house);
+
+            // AI tick — may recruit and issue new orders (ATTACK, RAID, JOIN_BATTLE)
+            List<String> aiLog = NobleAI.tick(
+                house, new ArrayList<>(houses), relationships,
+                claimManager, zoneManager, armyManager);
+            log.addAll(aiLog);
+
+            // Upkeep — newly recruited armies have skipNextUpkeep set
+            armyManager.payUpkeep(house);
         }
+
+        // 4. Tick orders so this turn's orders resolve next turn
+        armyManager.tickOrders();
 
         NobleAI.tickThreatenedDecay(houses);
-        List<NobleHouse> snapshot = new ArrayList<>(houses);
-        for (NobleHouse house : snapshot) {
-            if (!house.isEliminated()) {
-                List<String> aiLog = NobleAI.tick(
-                    house, snapshot, relationships, claimManager, zoneManager, armyManager);
-                log.addAll(aiLog);
-            }
-        }
+        NobleAI.tickClaimDecay(new ArrayList<>(houses), relationships, claimManager, log);
 
-        NobleAI.tickClaimDecay(snapshot, relationships, claimManager, log);
-
-        // ── Rebellion phase ──────────────────────────────────────
         processRebellions(new ArrayList<>(houses), log);
 
         log.addAll(coalitionManager.checkCoalitions(new ArrayList<>(houses)));
-
-        armyManager.tickOrders();
 
         for (NobleHouse house : houses) {
             if (!house.isEliminated()) {
@@ -278,16 +283,20 @@ public List<String> processTurn(ResourcePool playerResources) {
 
     private void processConquestCosts() {
         for (NobleHouse house : houses) {
-            if (house.isEliminated()) continue;
-            for (String zoneId : house.getZoneIds()) {
-                ZoneState state = zoneManager.getState(zoneId);
-                if (state == null || !state.hasConquestMalus()) continue;
-                int malus         = state.getConquestMalus();
-                int goldCost      = (int)(malus * GameParameters.CONQUEST_MALUS_GOLD_COST_PER_PERCENT);
-                int influenceCost = (int)(malus * GameParameters.CONQUEST_MALUS_INFLUENCE_COST_PER_PERCENT);
-                if (goldCost > 0) house.addGold(-Math.min(goldCost, house.getGold()));
-                if (influenceCost > 0) house.addInfluence(-Math.min(influenceCost, house.getInfluence()));
-            }
+            processConquestCostsForHouse(house);
+        }
+    }
+
+    private void processConquestCostsForHouse(NobleHouse house) {
+        if (house.isEliminated()) return;
+        for (String zoneId : house.getZoneIds()) {
+            ZoneState state = zoneManager.getState(zoneId);
+            if (state == null || !state.hasConquestMalus()) continue;
+            int malus         = state.getConquestMalus();
+            int goldCost      = (int)(malus * GameParameters.CONQUEST_MALUS_GOLD_COST_PER_PERCENT);
+            int influenceCost = (int)(malus * GameParameters.CONQUEST_MALUS_INFLUENCE_COST_PER_PERCENT);
+            if (goldCost > 0)      house.addGold(-Math.min(goldCost, house.getGold()));
+            if (influenceCost > 0) house.addInfluence(-Math.min(influenceCost, house.getInfluence()));
         }
     }
 

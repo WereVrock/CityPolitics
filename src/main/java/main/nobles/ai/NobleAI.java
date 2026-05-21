@@ -36,29 +36,8 @@ public class NobleAI {
         relationships.tickDecay(allHouseIds(allHouses));
         considerBreakingAlliances(actor, allHouses, relationships, armyManager, log);
 
-        List<NobleArmy> existingArmies = new ArrayList<>(armyManager.getArmiesForHouse(actor.getId()));
-        NobleArmy idleArmy = existingArmies.stream().filter(a -> !a.hasPendingOrder()).findFirst().orElse(null);
-
-        int manpower = actor.getNobleManpower();
-        int gold = actor.getGold();
-        int minSize = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
-        int maxSustainableSize = (int)(gold / (GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER * 2.0));
-
-        // Armies are now recruited on-demand in execute() and CoalitionManager.
-        // Proactive recruitment removed to prevent idle army gold drain.
-
-        // War-chest target for this house
         int warChestTarget = getWarChestTarget(actor, allHouses, relationships, armyManager);
         Debug.log("noble", "warchest", actor.getName() + " target=" + warChestTarget);
-
-        if (actor.getGold() < GameParameters.NOBLE_ARMY_DISBAND_GOLD_THRESHOLD) {
-            for (NobleArmy army : new ArrayList<>(armyManager.getArmiesForHouse(actor.getId()))) {
-                if (!army.hasPendingOrder()) {
-                    armyManager.disbandPartial(actor, army, army.getSize());
-                    log.add(actor.getName() + " disbands army to conserve gold.");
-                }
-            }
-        }
 
         // Opportunistic attack before normal motivation-based action
         NobleAction opportunismAction = OpportunismEvaluator.evaluate(
@@ -66,17 +45,184 @@ public class NobleAI {
         if (opportunismAction != null) {
             log.addAll(execute(actor, opportunismAction, Motivation.EXPANSION, allHouses,
                     relationships, claimManager, zoneManager, armyManager));
+            issueJoinBattleOrders(actor, allHouses, relationships, armyManager, log);
             return log;
         }
 
         Motivation motivation = pickMotivation(actor.getActiveCharacter());
         NobleAction action    = pickAction(actor, motivation, allHouses, relationships, claimManager, armyManager);
         Debug.log("noble", "tick", actor.getName() + " motivation=" + motivation + " action=" + action);
-        if (action == null) return log;
+        if (action != null) {
+            log.addAll(execute(actor, action, motivation, allHouses,
+                    relationships, claimManager, zoneManager, armyManager));
+        }
 
-        log.addAll(execute(actor, action, motivation, allHouses,
-                relationships, claimManager, zoneManager, armyManager));
+        // After main action: issue JOIN_BATTLE orders for battles this house wants to support
+        issueJoinBattleOrders(actor, allHouses, relationships, armyManager, log);
+
         return log;
+    }
+
+    /**
+     * After the main action, scan all pending ATTACK orders visible this turn.
+     * For each battle this house wants to support, recruit if needed and issue JOIN_BATTLE.
+     * Priority: own zones under attack first, then ally attacks, then ally defenses.
+     * Splits army if supporting two battles; joins whole pool to one battle otherwise.
+     */
+    private static void issueJoinBattleOrders(NobleHouse actor,
+                                               List<NobleHouse> allHouses,
+                                               RelationshipManager relationships,
+                                               NobleArmyManager armyManager,
+                                               List<String> log) {
+        // Collect all pending ATTACK orders from other houses (not yet resolved this turn)
+        List<PendingBattle> battles = new ArrayList<>();
+        debug.Debug.log("noble", "join-battle", actor.getName() + " scanning for battles to join");
+        for (NobleHouse other : allHouses) {
+            if (other == actor || other.isEliminated()) continue;
+            for (NobleArmy a : armyManager.getArmiesForHouse(other.getId())) {
+                if (a.getPendingOrder() == NobleArmy.OrderType.ATTACK
+                        && a.getPendingTargetZoneId() != null) {
+                    NobleHouse defender = findZoneOwner(a.getPendingTargetZoneId(), allHouses);
+                    if (defender != null) {
+                        battles.add(new PendingBattle(other, defender, a.getPendingTargetZoneId()));
+                    }
+                }
+            }
+        }
+
+        if (battles.isEmpty()) return;
+
+        // Determine which battles this house wants to join and on which side
+        List<PendingBattle> joinAsAttacker = new ArrayList<>();
+        List<PendingBattle> joinAsDefender = new ArrayList<>();
+
+        for (PendingBattle battle : battles) {
+            Relationship relToAtk = relationships.get(actor.getId(), battle.attacker.getId());
+            Relationship relToDef = relationships.get(actor.getId(), battle.defender.getId());
+
+            // Own zone under attack — always defend
+            if (battle.defender == actor) {
+                joinAsDefender.add(battle);
+                debug.Debug.log("noble", "join-battle", actor.getName() + " will defend own zone " + battle.zoneId);
+                continue;
+            }
+
+            // Hostile/rival toward attacker — don't join attacker side
+            if (relToAtk == Relationship.HOSTILE || relToAtk == Relationship.RIVAL) {
+                // Join defender if allied or threatened by attacker
+                if (relToDef == Relationship.ALLIED
+                        || actor.isThreatenedBy(battle.attacker.getId())) {
+                    joinAsDefender.add(battle);
+                    debug.Debug.log("noble", "join-battle", actor.getName() + " will defend " + battle.defender.getName() + " at " + battle.zoneId + " (hostile to attacker)");
+                }
+                continue;
+            }
+
+            // Decide attacker side
+            boolean wantAttack = relToAtk == Relationship.ALLIED
+                || relToDef == Relationship.HOSTILE
+                || relToDef == Relationship.RIVAL
+                || actor.isThreatenedBy(battle.defender.getId());
+
+            // Decide defender side
+            boolean wantDefend = relToDef == Relationship.ALLIED;
+
+            if (wantAttack) {
+                joinAsAttacker.add(battle);
+                debug.Debug.log("noble", "join-battle", actor.getName() + " will attack " + battle.defender.getName() + " at " + battle.zoneId);
+            } else if (wantDefend) {
+                joinAsDefender.add(battle);
+                debug.Debug.log("noble", "join-battle", actor.getName() + " will defend " + battle.defender.getName() + " at " + battle.zoneId);
+            }
+        }
+
+        List<PendingBattle> toJoin = new ArrayList<>();
+        toJoin.addAll(joinAsDefender); // own-zone defense has priority
+        toJoin.addAll(joinAsAttacker);
+
+        if (toJoin.isEmpty()) return;
+
+        // Recruit if we have nothing deployed
+        boolean hasArmy = !armyManager.getArmiesForHouse(actor.getId()).isEmpty();
+        if (!hasArmy
+                && actor.getNobleManpower() >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE
+                && actor.getGold() >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
+            int size = Math.max(GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE,
+                (int)(actor.getNobleManpower() * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
+            NobleArmy recruited = armyManager.recruit(actor, size);
+            if (recruited != null) {
+                log.add(actor.getName() + " raises " + size + " soldiers to join battle.");
+            }
+        }
+
+        List<NobleArmy> available = new ArrayList<>();
+        for (NobleArmy a : armyManager.getArmiesForHouse(actor.getId())) {
+            if (!a.hasPendingOrder() && a.isAlive()) available.add(a);
+        }
+        if (available.isEmpty()) {
+            debug.Debug.log("noble", "join-battle", actor.getName() + " has no available armies to join battles");
+            return;
+        }
+
+        // Merge all available into one pool army
+        NobleArmy pool = available.get(0);
+        for (int i = 1; i < available.size(); i++) {
+            NobleArmy other = available.get(i);
+            pool.setSize(pool.getSize() + other.getSize());
+            armyManager.remove(other);
+        }
+        debug.Debug.log("noble", "join-battle", actor.getName() + " merged " + available.size() + " armies into pool of size " + pool.getSize());
+
+        int battleCount = Math.min(toJoin.size(), 2);
+        debug.Debug.log("noble", "join-battle", actor.getName() + " joining " + battleCount + " battle(s) out of " + toJoin.size());
+
+        if (battleCount == 1) {
+            PendingBattle b = toJoin.get(0);
+            armyManager.moveArmy(pool, b.zoneId);
+            pool.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b.zoneId);
+            log.add(actor.getName() + " marches to join battle at " + b.zoneId + ".");
+        } else {
+            // Split pool evenly between two battles
+            int half = pool.getSize() / 2;
+            if (half < 1) {
+                // Too small to split — join priority battle
+                PendingBattle b = toJoin.get(0);
+                armyManager.moveArmy(pool, b.zoneId);
+                pool.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b.zoneId);
+                log.add(actor.getName() + " marches to join battle at " + b.zoneId + ".");
+                return;
+            }
+            NobleArmy split = armyManager.splitArmy(pool, half);
+            PendingBattle b0 = toJoin.get(0);
+            PendingBattle b1 = toJoin.get(1);
+            armyManager.moveArmy(pool, b0.zoneId);
+            pool.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b0.zoneId);
+            log.add(actor.getName() + " marches to join battle at " + b0.zoneId + ".");
+            if (split != null) {
+                armyManager.moveArmy(split, b1.zoneId);
+                split.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b1.zoneId);
+                log.add(actor.getName() + " sends split force to join battle at " + b1.zoneId + ".");
+            }
+        }
+    }
+
+    /** Lightweight struct for a battle visible this turn. */
+    private static class PendingBattle {
+        final NobleHouse attacker;
+        final NobleHouse defender;
+        final String     zoneId;
+        PendingBattle(NobleHouse attacker, NobleHouse defender, String zoneId) {
+            this.attacker = attacker;
+            this.defender = defender;
+            this.zoneId   = zoneId;
+        }
+    }
+
+    private static NobleHouse findZoneOwner(String zoneId, List<NobleHouse> allHouses) {
+        for (NobleHouse h : allHouses) {
+            if (h.getZoneIds().contains(zoneId)) return h;
+        }
+        return null;
     }
 
     // ─── New power estimation methods ──────────────────────────────────────

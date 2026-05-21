@@ -150,6 +150,62 @@ army.tickOrder();
 }
 
 /**
+* Resolve all ready orders for a specific house only.
+* Called once per house in processTurn, in house-list order.
+*/
+public List<String> resolveOrdersForHouse(String houseId,
+List<NobleHouse> allHouses,
+ClaimManager claimManager) {
+List<String> log = new ArrayList<>();
+for (NobleArmy army : new ArrayList<>(armies)) {
+if (!army.getHouseId().equals(houseId)) continue;
+if (!army.isOrderReadyToResolve()) continue;
+switch (army.getPendingOrder()) {
+case ATTACK      -> log.addAll(resolveAttack(army, allHouses, claimManager,
+army.getCoalitionMemberIds()));
+case RAID        -> log.addAll(resolveRaid(army, allHouses));
+case JOIN_BATTLE -> {} // pulled into resolveAttack of the attacking house
+case NONE        -> {}
+}
+if (army.getPendingOrder() != NobleArmy.OrderType.JOIN_BATTLE) {
+army.clearOrder();
+}
+}
+removeDeadArmies(allHouses);
+return log;
+}
+
+/**
+* Disband every idle army belonging to this house.
+* Manpower returns to the house noble pool.
+* Called after resolveOrdersForHouse and before the AI tick.
+*/
+public void disbandIdleArmies(NobleHouse house) {
+for (NobleArmy army : new ArrayList<>(getArmiesForHouse(house.getId()))) {
+if (army.getPendingOrder() == NobleArmy.OrderType.NONE && army.isAlive()) {
+int returned = army.disband(army.getSize());
+house.addNobleManpower(returned);
+remove(army);
+debug.Debug.log("noble", "disband", house.getName() + " disbanded idle army of " + returned + " soldiers (returned to manpower).");
+}
+}
+}
+
+/**
+* Split count soldiers out of army into a new separate army in the same zone.
+* Returns the new army, or null if count <= 0 or army too small.
+*/
+public NobleArmy splitArmy(NobleArmy army, int count) {
+if (count <= 0 || count >= army.getSize()) return null;
+army.setSize(army.getSize() - count);
+String id = "noble_army_" + (nextId++);
+NobleArmy split = new NobleArmy(id, army.getHouseId(), count, army.getZoneId());
+add(split);
+debug.Debug.log("noble", "split", "Split " + count + " from " + army.getId() + " into new army " + split.getId());
+return split;
+}
+
+/**
 * Resolve all ready orders. Returns log lines.
 * Must be called after tickOrders().
 */
@@ -193,76 +249,63 @@ log.add(attacker.getName() + " army attacks " + zoneId
 + " held by " + defender.getName() + ".");
 }
 
-// ---- Gather supporter armies for attacker ----
+// ---- Gather attacker armies: main army + JOIN_BATTLE orders targeting this zone ----
 List<NobleArmy> attackerArmies = new ArrayList<>();
 attackerArmies.add(attArmy);
-// Track all participants for coalition zone award
 List<NobleHouse> attackerParticipants = new ArrayList<>();
 attackerParticipants.add(attacker);
 
 for (NobleHouse house : allHouses) {
 if (house == attacker || house == defender || house.isEliminated()) continue;
-Relationship relToDef = relationships.get(house.getId(), defender.getId());
 Relationship relToAtk = relationships.get(house.getId(), attacker.getId());
-
-boolean qualifies = false;
-String reason = "";
-// Coalition members always join if they have an army
-if (isCoalition && coalitionMemberIds.contains(house.getId())) {
-qualifies = true;
-reason = " (coalition member)";
-} else {
-// Do NOT join if hostile/rival towards the attacker
 if (relToAtk == Relationship.HOSTILE || relToAtk == Relationship.RIVAL) continue;
-if (relToAtk == Relationship.ALLIED) {
-qualifies = true;
-reason = " (allied to attacker)";
-} else if (relToDef == Relationship.HOSTILE) {
-qualifies = true;
-reason = " (hostile to defender)";
-} else if (relToDef == Relationship.RIVAL) {
-qualifies = true;
-reason = " (rival to defender)";
-} else if (house.isThreatenedBy(defender.getId()) && relToDef == Relationship.NEUTRAL) {
-qualifies = true;
-reason = " (threatened by defender)";
-}
-}
 
-if (!qualifies) continue;
+boolean isCoalitionMember = isCoalition && coalitionMemberIds.contains(house.getId());
 
-List<NobleArmy> idle = getArmiesForHouse(house.getId()).stream()
-.filter(a -> !a.hasPendingOrder() && a.isAlive())
-.collect(Collectors.toList());
-for (NobleArmy a : idle) {
-a.setPreviousZoneId(a.getZoneId());
-moveArmy(a, zoneId);
+for (NobleArmy a : new ArrayList<>(getArmiesForHouse(house.getId()))) {
+if (a.getPendingOrder() != NobleArmy.OrderType.JOIN_BATTLE) continue;
+if (!zoneId.equals(a.getPendingTargetZoneId())) continue;
+if (!a.isOrderReadyToResolve()) continue;
+
+Relationship relToDef = relationships.get(house.getId(), defender.getId());
+boolean onAttackingSide = isCoalitionMember
+|| relToAtk == Relationship.ALLIED
+|| relToDef == Relationship.HOSTILE
+|| relToDef == Relationship.RIVAL
+|| house.isThreatenedBy(defender.getId());
+if (!onAttackingSide) continue;
+
+a.clearOrder();
 attackerArmies.add(a);
-attackerParticipants.add(house);
+if (!attackerParticipants.contains(house)) attackerParticipants.add(house);
+String reason = isCoalitionMember ? " (coalition member)" : " (join battle)";
 log.add(house.getName() + " joins the attack on " + zoneId + reason + ".");
 }
 }
 
-// ---- Gather supporter armies for defender ----
+// ---- Gather defender armies: existing zone armies + JOIN_BATTLE orders targeting this zone ----
 List<NobleArmy> defenderArmies = new ArrayList<>();
-List<NobleArmy> existingDef = getArmiesInZone(zoneId, defender.getId());
-defenderArmies.addAll(existingDef);
+defenderArmies.addAll(getArmiesInZone(zoneId, defender.getId()));
 int garrisonSize = defender.getGarrisonFor(zoneId);
 int defFort = defender.getFortificationFor(zoneId);
 
 for (NobleHouse house : allHouses) {
 if (house == attacker || house == defender || house.isEliminated()) continue;
+for (NobleArmy a : new ArrayList<>(getArmiesForHouse(house.getId()))) {
+if (a.getPendingOrder() != NobleArmy.OrderType.JOIN_BATTLE) continue;
+if (!zoneId.equals(a.getPendingTargetZoneId())) continue;
+if (!a.isOrderReadyToResolve()) continue;
+
 Relationship relToDef = relationships.get(house.getId(), defender.getId());
-if (relToDef == Relationship.ALLIED) {
-List<NobleArmy> idle = getArmiesForHouse(house.getId()).stream()
-.filter(a -> !a.hasPendingOrder() && a.isAlive())
-.collect(Collectors.toList());
-for (NobleArmy a : idle) {
-a.setPreviousZoneId(a.getZoneId());
-moveArmy(a, zoneId);
+Relationship relToAtk = relationships.get(house.getId(), attacker.getId());
+boolean onDefendingSide = relToDef == Relationship.ALLIED
+|| relToAtk == Relationship.HOSTILE
+|| relToAtk == Relationship.RIVAL;
+if (!onDefendingSide) continue;
+
+a.clearOrder();
 defenderArmies.add(a);
-log.add(house.getName() + " joins the defense of " + zoneId + ".");
-}
+log.add(house.getName() + " joins the defense of " + zoneId + " (join battle).");
 }
 }
 
@@ -585,6 +628,9 @@ private double militaryMult(int skill) {
 return 1.0 + skill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
 }
 }
+
+
+
 
 
 

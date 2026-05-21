@@ -93,8 +93,10 @@ if (m == coordinator) continue;
 totalPower += NobleAI.estimateMemberPower(m, armyManager);
 }
 int defenderPower = NobleAI.estimateDefenderCombatPower(coordinator, threat, targetZone, allHouses, armyManager, relationships);
-if (totalPower < defenderPower * GameParameters.COALITION_STRENGTH_THRESHOLD) {
-// not strong enough yet — silently skip this turn
+double needed = defenderPower * GameParameters.COALITION_STRENGTH_THRESHOLD;
+debug.Debug.log("noble", "coalition-strength", "Coalition against " + threat.getName() + " totalPower=" + totalPower + " needed=" + needed);
+if (totalPower < needed) {
+debug.Debug.log("noble", "coalition-strength", "Coalition too weak -> skip");
 return log;
 }
 
@@ -355,3 +357,4 @@ int size = Math.max(minSize, (int)(manpower * GameParameters.NOBLE_ARMY_RECRUIT_
 return armyManager.recruit(house, size);
 }
 }
+

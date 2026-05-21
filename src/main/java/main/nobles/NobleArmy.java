@@ -14,7 +14,7 @@ public class NobleArmy {
     public boolean getSkipNextUpkeep() { return skipNextUpkeep; }
     public void setSkipNextUpkeep(boolean v) { skipNextUpkeep = v; }
 
-    public enum OrderType { NONE, ATTACK, RAID }
+    public enum OrderType { NONE, ATTACK, RAID, JOIN_BATTLE }
 
     private final String id;
     private final String houseId;
