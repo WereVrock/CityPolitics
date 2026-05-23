@@ -1,4 +1,3 @@
-// ===== NobleAI.java =====
 package main.nobles.ai;
 
 import main.nobles.*;
@@ -8,1477 +7,1422 @@ import main.nobles.combat.ArmyForce;
 import main.nobles.combat.CombatResolver;
 import main.nobles.combat.CombatResult;
 import main.map.ZoneState;
-import main.parameters.GameParameters;
-import main.rules.NobleRules;
 
 import java.util.*;
 
-/**
- * Per-house AI brain.
- * Handles motivation, action selection, and threatened state.
- * Coalition logic lives in CoalitionManager.
- */
 public class NobleAI {
 
-    private static final Random RNG = new Random();
+private static final Random RNG = new Random();
 
-    // ─── Entry point ─────────────────────────────────────────────────────────
+public static List<String> tick(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+ClaimManager claimManager,
+main.map.ZoneManager zoneManager,
+NobleArmyManager armyManager) {
+List<String> log = new ArrayList<>();
+if (actor.isEliminated()) return log;
 
-    public static List<String> tick(NobleHouse actor,
-                                    List<NobleHouse> allHouses,
-                                    RelationshipManager relationships,
-                                    ClaimManager claimManager,
-                                    main.map.ZoneManager zoneManager,
-                                    NobleArmyManager armyManager) {
-        List<String> log = new ArrayList<>();
-        if (actor.isEliminated()) return log;
+relationships.tickDecay(allHouseIds(allHouses));
+considerBreakingAlliances(actor, allHouses, relationships, armyManager, log);
 
-        relationships.tickDecay(allHouseIds(allHouses));
-        considerBreakingAlliances(actor, allHouses, relationships, armyManager, log);
+int warChestTarget = getWarChestTarget(actor, allHouses, relationships, armyManager);
+Debug.log("noble", "warchest", actor.getName() + " target=" + warChestTarget);
 
-        int warChestTarget = getWarChestTarget(actor, allHouses, relationships, armyManager);
-        Debug.log("noble", "warchest", actor.getName() + " target=" + warChestTarget);
+NobleAction opportunismAction = OpportunismEvaluator.evaluate(
+actor, allHouses, relationships, claimManager, armyManager, zoneManager, log);
+if (opportunismAction != null) {
+log.addAll(execute(actor, opportunismAction, Motivation.EXPANSION, allHouses,
+relationships, claimManager, zoneManager, armyManager));
+issueJoinBattleOrders(actor, allHouses, relationships, armyManager, log);
+return log;
+}
 
-        // Opportunistic attack before normal motivation-based action
-        NobleAction opportunismAction = OpportunismEvaluator.evaluate(
-                actor, allHouses, relationships, claimManager, armyManager, zoneManager, log);
-        if (opportunismAction != null) {
-            log.addAll(execute(actor, opportunismAction, Motivation.EXPANSION, allHouses,
-                    relationships, claimManager, zoneManager, armyManager));
-            issueJoinBattleOrders(actor, allHouses, relationships, armyManager, log);
-            return log;
-        }
+Motivation motivation = pickMotivation(actor.getActiveCharacter());
+NobleAction action    = pickAction(actor, motivation, allHouses, relationships, claimManager, armyManager);
+Debug.log("noble", "tick", actor.getName() + " motivation=" + motivation + " action=" + action);
+if (action != null) {
+log.addAll(execute(actor, action, motivation, allHouses,
+relationships, claimManager, zoneManager, armyManager));
+}
 
-        Motivation motivation = pickMotivation(actor.getActiveCharacter());
-        NobleAction action    = pickAction(actor, motivation, allHouses, relationships, claimManager, armyManager);
-        Debug.log("noble", "tick", actor.getName() + " motivation=" + motivation + " action=" + action);
-        if (action != null) {
-            log.addAll(execute(actor, action, motivation, allHouses,
-                    relationships, claimManager, zoneManager, armyManager));
-        }
+issueJoinBattleOrders(actor, allHouses, relationships, armyManager, log);
 
-        // After main action: issue JOIN_BATTLE orders for battles this house wants to support
-        issueJoinBattleOrders(actor, allHouses, relationships, armyManager, log);
-
-        return log;
-    }
-
-    /**
-     * After the main action, scan all pending ATTACK orders visible this turn.
-     * For each battle this house wants to support, recruit if needed and issue JOIN_BATTLE.
-     * Priority: own zones under attack first, then ally attacks, then ally defenses.
-     * Splits army if supporting two battles; joins whole pool to one battle otherwise.
-     */
+return log;
+}
 
 private static void issueJoinBattleOrders(NobleHouse actor,
-                                               List<NobleHouse> allHouses,
-                                               RelationshipManager relationships,
-                                               NobleArmyManager armyManager,
-                                               List<String> log) {
-        // Collect all pending ATTACK orders from other houses (not yet resolved this turn)
-        List<PendingBattle> battles = new ArrayList<>();
-        debug.Debug.log("noble", "join-battle", actor.getName() + " scanning for battles to join");
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            for (NobleArmy a : armyManager.getArmiesForHouse(other.getId())) {
-                if (a.getPendingOrder() == NobleArmy.OrderType.ATTACK
-                        && a.getPendingTargetZoneId() != null) {
-                    NobleHouse defender = findZoneOwner(a.getPendingTargetZoneId(), allHouses);
-                    if (defender != null) {
-                        battles.add(new PendingBattle(other, defender, a.getPendingTargetZoneId()));
-                    }
-                }
-            }
-        }
-
-        if (battles.isEmpty()) return;
-
-        // Determine which battles this house wants to join and on which side
-        List<PendingBattle> joinAsAttacker = new ArrayList<>();
-        List<PendingBattle> joinAsDefender = new ArrayList<>();
-
-        for (PendingBattle battle : battles) {
-            Relationship relToAtk = relationships.get(actor.getId(), battle.attacker.getId());
-            Relationship relToDef = relationships.get(actor.getId(), battle.defender.getId());
-
-            // Own zone under attack — always defend
-            if (battle.defender == actor) {
-                joinAsDefender.add(battle);
-                debug.Debug.log("noble", "join-battle", actor.getName() + " will defend own zone " + battle.zoneId);
-                continue;
-            }
-
-            // Hostile/rival toward attacker — don't join attacker side
-            if (relToAtk == Relationship.HOSTILE || relToAtk == Relationship.RIVAL) {
-                // Join defender if allied or threatened by attacker
-                if (relToDef == Relationship.ALLIED
-                        || actor.isThreatenedBy(battle.attacker.getId())) {
-                    joinAsDefender.add(battle);
-                    debug.Debug.log("noble", "join-battle", actor.getName() + " will defend " + battle.defender.getName() + " at " + battle.zoneId + " (hostile to attacker)");
-                }
-                continue;
-            }
-
-            // Decide attacker side
-            boolean wantAttack = relToAtk == Relationship.ALLIED
-                || relToDef == Relationship.HOSTILE
-                || relToDef == Relationship.RIVAL
-                || actor.isThreatenedBy(battle.defender.getId());
-
-            // Decide defender side
-            boolean wantDefend = relToDef == Relationship.ALLIED;
-
-            if (wantAttack) {
-                joinAsAttacker.add(battle);
-                debug.Debug.log("noble", "join-battle", actor.getName() + " will attack " + battle.defender.getName() + " at " + battle.zoneId);
-            } else if (wantDefend) {
-                joinAsDefender.add(battle);
-                debug.Debug.log("noble", "join-battle", actor.getName() + " will defend " + battle.defender.getName() + " at " + battle.zoneId);
-            }
-        }
-
-        List<PendingBattle> toJoin = new ArrayList<>();
-        toJoin.addAll(joinAsDefender); // own-zone defense has priority
-        toJoin.addAll(joinAsAttacker);
-
-        if (toJoin.isEmpty()) return;
-
-        // ---------- RECRUITMENT (after decision) ----------
-        // Calculate how many soldiers we can afford right now
-        int availableManpower = actor.getNobleManpower();
-        int availableGold = actor.getGold();
-        int costPerSoldier = Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER);
-        int maxAffordableJoin = Math.min(availableManpower, availableGold / costPerSoldier);
-        if (maxAffordableJoin < GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
-            debug.Debug.log("noble", "join-battle", actor.getName() + " cannot afford even a minimal force (have " + availableManpower + " manpower, " + availableGold + " gold)");
-            return;
-        }
-
-        boolean hasArmy = !armyManager.getArmiesForHouse(actor.getId()).isEmpty();
-        if (!hasArmy) {
-            NobleArmy recruited = armyManager.recruit(actor, maxAffordableJoin);
-            if (recruited != null) {
-                log.add(actor.getName() + " raises " + recruited.getSize() + " soldiers to join battle.");
-            }
-        }
-
-        // Collect available (idle) armies – including the freshly recruited one
-        List<NobleArmy> available = new ArrayList<>();
-        for (NobleArmy a : armyManager.getArmiesForHouse(actor.getId())) {
-            if (!a.hasPendingOrder() && a.isAlive()) available.add(a);
-        }
-        if (available.isEmpty()) {
-            debug.Debug.log("noble", "join-battle", actor.getName() + " has no available armies to join battles");
-            return;
-        }
-
-        // Merge all available into one pool army
-        NobleArmy pool = available.get(0);
-        for (int i = 1; i < available.size(); i++) {
-            NobleArmy other = available.get(i);
-            pool.setSize(pool.getSize() + other.getSize());
-            armyManager.remove(other);
-        }
-        debug.Debug.log("noble", "join-battle", actor.getName() + " merged " + available.size() + " armies into pool of size " + pool.getSize());
-
-        int battleCount = Math.min(toJoin.size(), 2);
-        debug.Debug.log("noble", "join-battle", actor.getName() + " joining " + battleCount + " battle(s) out of " + toJoin.size());
-
-        if (battleCount == 1) {
-            PendingBattle b = toJoin.get(0);
-            armyManager.moveArmy(pool, b.zoneId);
-            pool.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b.zoneId);
-            log.add(actor.getName() + " marches to join battle at " + b.zoneId + ".");
-        } else {
-            // Split pool evenly between two battles
-            int half = pool.getSize() / 2;
-            if (half < 1) {
-                PendingBattle b = toJoin.get(0);
-                armyManager.moveArmy(pool, b.zoneId);
-                pool.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b.zoneId);
-                log.add(actor.getName() + " marches to join battle at " + b.zoneId + ".");
-                return;
-            }
-            NobleArmy split = armyManager.splitArmy(pool, half);
-            PendingBattle b0 = toJoin.get(0);
-            PendingBattle b1 = toJoin.get(1);
-            armyManager.moveArmy(pool, b0.zoneId);
-            pool.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b0.zoneId);
-            log.add(actor.getName() + " marches to join battle at " + b0.zoneId + ".");
-            if (split != null) {
-                armyManager.moveArmy(split, b1.zoneId);
-                split.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b1.zoneId);
-                log.add(actor.getName() + " sends split force to join battle at " + b1.zoneId + ".");
-            }
-        }
-    }
-
-/** Lightweight struct for a battle visible this turn. */
-    private static class PendingBattle {
-        final NobleHouse attacker;
-        final NobleHouse defender;
-        final String     zoneId;
-        PendingBattle(NobleHouse attacker, NobleHouse defender, String zoneId) {
-            this.attacker = attacker;
-            this.defender = defender;
-            this.zoneId   = zoneId;
-        }
-    }
-
-    private static NobleHouse findZoneOwner(String zoneId, List<NobleHouse> allHouses) {
-        for (NobleHouse h : allHouses) {
-            if (h.getZoneIds().contains(zoneId)) return h;
-        }
-        return null;
-    }
-
-    // ─── New power estimation methods ──────────────────────────────────────
-
-    /** Exact potential field army size: how many soldiers the house can put into the field right now. */
-    public static int exactPotentialFieldArmy(NobleHouse house, NobleArmyManager armyManager) {
-        int manpower = house.getNobleManpower();
-        int gold = house.getGold();
-        int recruitable = Math.min(manpower, gold / GameParameters.NOBLE_RECRUIT_COST_PER_SOLDIER);
-        int existingArmies = armyManager.getArmiesForHouse(house.getId()).stream()
-                .mapToInt(NobleArmy::getSize).sum();
-        return recruitable + existingArmies;
-    }
-
-    /** Rough estimation of another house's potential field army, influenced by observer cunning. */
-    public static int estimatedPower(NobleHouse observer, NobleHouse target, NobleArmyManager armyManager) {
-        int exact = exactPotentialFieldArmy(target, armyManager);
-        int cunning = observer.getActiveCharacter() != null ? observer.getActiveCharacter().getCunning() : 0;
-        return roughEstimate(exact, cunning);
-    }
-
-    private static int roughEstimate(int exactValue, int cunning) {
-        double fuzzRange = (4 - cunning) * 0.13 + 0.07;
-        double multiplier = 1.0 + (RNG.nextDouble() * 2 - 1) * fuzzRange;
-        return Math.max(0, (int)(exactValue * multiplier));
-    }
-
-    // ─── Threatened ──────────────────────────────────────────────────────────
-
-    public static void updateThreatenedStatus(NobleHouse attacker,
-                                              List<NobleHouse> allHouses,
-                                              RelationshipManager relationships) {
-        updateThreatenedStatus(attacker, allHouses, relationships, 1.0);
-    }
-
-    /** Overload with a multiplier (e.g. 2.0 for claimless attacks). */
-    public static void updateThreatenedStatus(NobleHouse attacker,
-                                              List<NobleHouse> allHouses,
-                                              RelationshipManager relationships,
-                                              double multiplier) {
-        int attackerZones = attacker.getZoneIds().size();
-        int totalZones    = 0;
-        for (NobleHouse h : allHouses) totalZones += h.getZoneIds().size();
-
-        for (NobleHouse observer : allHouses) {
-            if (observer == attacker || observer.isEliminated()) continue;
-            Relationship rel = relationships.get(attacker.getId(), observer.getId());
-            if (rel != Relationship.NEUTRAL) continue;
-
-            int observerZones = observer.getZoneIds().size();
-            double chance = (double)(attackerZones - observerZones)
-                    / Math.max(1, totalZones)
-                    * GameParameters.THREATENED_BASE_CHANCE_MULTIPLIER
-                    * multiplier;
-            chance = Math.max(0, Math.min(1.0, chance));
-
-            if (RNG.nextDouble() < chance) {
-                observer.addThreat(attacker.getId());
-            }
-        }
-    }
-
-    public static void tickThreatenedDecay(List<NobleHouse> allHouses) {
-        for (NobleHouse house : allHouses) {
-            Set<String> threats = new HashSet<>(house.getThreatenedBy());
-            for (String threatId : threats) {
-                if (RNG.nextDouble() < GameParameters.THREATENED_DECAY_CHANCE) {
-                    house.removeThreat(threatId);
-                }
-            }
-        }
-    }
-
-    // ─── Alliance breaking ────────────────────────────────────────────────────
-
-    private static void considerBreakingAlliances(NobleHouse actor,
-                                                  List<NobleHouse> allHouses,
-                                                  RelationshipManager relationships,
-                                                  NobleArmyManager armyManager,
-                                                  List<String> log) {
-        List<String> allIds = allHouseIds(allHouses);
-        List<String> allies = new ArrayList<>(
-                relationships.getAll(actor.getId(), Relationship.ALLIED, allIds));
-
-        for (String allyId : allies) {
-            NobleHouse ally = findById(allyId, allHouses);
-            if (ally == null || ally.isEliminated()) {
-                relationships.set(actor.getId(), allyId, Relationship.NEUTRAL);
-                continue;
-            }
-            int allyPower = estimatedPower(actor, ally, armyManager) + (int)(0.7 * ally.getTotalGarrisonSize());
-            boolean tooWeak = allyPower < exactPotentialFieldArmy(actor, armyManager) * GameParameters.ALLIANCE_MIN_ARMY_FRACTION;
-            if (tooWeak) {
-                NobleCharacter c   = actor.getActiveCharacter();
-                int            dip = c != null ? c.getDiplomacy() : 0;
-                double cleanChance = GameParameters.ALLIANCE_BREAK_CLEAN_BASE
-                        + dip * GameParameters.ALLIANCE_BREAK_CLEAN_PER_DIPLOMACY;
-                Relationship result = RNG.nextDouble() < cleanChance
-                        ? Relationship.NEUTRAL : Relationship.HOSTILE;
-                relationships.set(actor.getId(), allyId, result);
-                log.add(actor.getName() + " breaks alliance with "
-                        + ally.getName() + ". New relation: " + result.name());
-            }
-        }
-    }
-
-    // ─── Motivation ──────────────────────────────────────────────────────────
-
-    private static Motivation pickMotivation(NobleCharacter character) {
-        if (character == null) return Motivation.SECURITY;
-        return RNG.nextDouble() < GameParameters.AI_DOMINANT_MOTIVATION_CHANCE
-                ? character.getDominantMotivation()
-                : character.getSecondaryMotivation();
-    }
-
-    // ─── Action selection ────────────────────────────────────────────────────
-
-    private static NobleAction pickAction(NobleHouse actor, Motivation motivation,
-                                          List<NobleHouse> allHouses,
-                                          RelationshipManager relationships,
-                                          ClaimManager claimManager,
-                                          NobleArmyManager armyManager) {
-        List<String> allIds = allHouseIds(allHouses);
-
-        if (shouldGift(actor, motivation, allHouses, relationships, armyManager)) {
-            Debug.log("noble", "action-pick", actor.getName() + " -> GIFT (shouldGift)");
-            return NobleAction.GIFT;
-        }
-
-        return switch (motivation) {
-            case EXPANSION -> {
-                boolean hasClaims = hasClaimOnNonAlliedZone(actor, allHouses, relationships, claimManager);
-                NobleCharacter ch = actor.getActiveCharacter();
-                boolean recklessEligible = ch != null && ch.getCunning() < 2 && ch.getMilitary() >= 2
-                        && ch.getDominantMotivation() == Motivation.EXPANSION;
-                Debug.log("noble", "action-pick", actor.getName() + " EXPANSION hasClaims=" + hasClaims + " recklessEligible=" + recklessEligible);
-                if (hasClaims || recklessEligible) {
-                    Debug.log("noble", "action-pick", actor.getName() + " -> ATTACK");
-                    yield NobleAction.ATTACK;
-                }
-                Debug.log("noble", "action-pick", actor.getName() + " -> FABRICATE_CLAIM");
-                yield NobleAction.FABRICATE_CLAIM;
-            }
-            case WEALTH -> {
-                NobleHouse raidTarget = findRaidTarget(actor, allHouses, relationships, null);
-                yield raidTarget != null ? NobleAction.RAID : NobleAction.DEMAND;
-            }
-            case SECURITY -> {
-                List<String> rivals = relationships.getAll(actor.getId(), Relationship.RIVAL, allIds);
-                List<String> hostiles = relationships.getAll(actor.getId(), Relationship.HOSTILE, allIds);
-                if (!rivals.isEmpty() && actor.getDefense() < GameParameters.AI_FORTIFY_THRESHOLD) {
-                    yield NobleAction.FORTIFY;
-                }
-                int allyCount = relationships.getAll(actor.getId(), Relationship.ALLIED, allIds).size();
-                if (!rivals.isEmpty() || !hostiles.isEmpty()) {
-                    NobleCharacter ch = actor.getActiveCharacter();
-                    if (ch != null && ch.getCunning() >= 2 && RNG.nextDouble() < 0.4) {
-                        yield NobleAction.SABOTAGE;
-                    }
-                }
-                yield allyCount < GameParameters.ALLIANCE_MAX_PER_HOUSE
-                        ? NobleAction.ALLY : NobleAction.FORTIFY;
-            }
-            case PRESTIGE -> {
-                NobleHouse supTarget = findSuperiorityTarget(actor, allHouses, relationships);
-                if (supTarget != null) yield NobleAction.DEMAND;
-                List<String> rivals = relationships.getAll(actor.getId(), Relationship.RIVAL, allIds);
-                List<String> hostiles = relationships.getAll(actor.getId(), Relationship.HOSTILE, allIds);
-                if (!rivals.isEmpty() || !hostiles.isEmpty()) {
-                    NobleCharacter ch = actor.getActiveCharacter();
-                    if (ch != null && ch.getCunning() >= 1 && RNG.nextDouble() < 0.5) {
-                        yield NobleAction.SABOTAGE;
-                    }
-                }
-                yield !rivals.isEmpty() ? NobleAction.SCHEME : NobleAction.FORTIFY;
-            }
-        };
-    }
-
-    // ─── Execution ───────────────────────────────────────────────────────────
-
-    private static List<String> execute(NobleHouse actor, NobleAction action,
-                                        Motivation motivation,
-                                        List<NobleHouse> allHouses,
-                                        RelationshipManager relationships,
-                                        ClaimManager claimManager,
-                                        main.map.ZoneManager zoneManager,
-                                        NobleArmyManager armyManager) {
-        List<String> log    = new ArrayList<>();
-        List<String> allIds = allHouseIds(allHouses);
-        NobleCharacter character = actor.getActiveCharacter();
-        int cunning   = character != null ? character.getCunning()   : 0;
-        int military  = character != null ? character.getMilitary()  : 0;
-        int diplomacy = character != null ? character.getDiplomacy() : 0;
-
-        switch (action) {
-
-            case FABRICATE_CLAIM -> {
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_FABRICATE, log)) break;
-                String targetZone = findClaimTarget(actor, allHouses, claimManager);
-                if (targetZone == null) break;
-                List<String> myZones = new ArrayList<>(actor.getZoneIds());
-                // Find owner of targetZone and get their cunning
-                int ownerCunning = 0;
-                for (NobleHouse other : allHouses) {
-                    if (other.getZoneIds().contains(targetZone)) {
-                        ownerCunning = other.getActiveCharacter() != null ? other.getActiveCharacter().getCunning() : 0;
-                        break;
-                    }
-                }
-                boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, ownerCunning, RNG,
-                        myZones, zoneManager.getZones());
-                if (success) {
-                    log.add(actor.getName() + " fabricates a claim on " + targetZone + ".");
-                    for (NobleHouse other : allHouses) {
-                        if (other.getZoneIds().contains(targetZone)) {
-                            relationships.set(actor.getId(), other.getId(), Relationship.RIVAL);
-                            log.add(other.getName() + " becomes rival with "
-                                    + actor.getName() + " over the claim.");
-                            break;
-                        }
-                    }
-                } else {
-                    log.add(actor.getName() + " fails to fabricate a claim. Cunning insufficient.");
-                }
-            }
-
-            case ATTACK -> {
-                int myPower = estimateAttackPower(actor, armyManager);
-                Debug.log("noble", "attack", actor.getName() + " myPower=" + myPower);
-                if (myPower <= 0) {
-                    Debug.log("noble", "attack", actor.getName() + " no power -> fallback");
-                    executeFallback(actor, motivation, allHouses, relationships, claimManager,
-                            zoneManager, armyManager, log);
-                    break;
-                }
-
-                // ---- 1. Find best claim-based target ----
-                NobleHouse bestClaimTarget = null;
-                String bestClaimZone = null;
-                double bestClaimValue = 0;
-                List<Claim> claims = claimManager.getClaimsFor(actor.getId());
-                Debug.log("noble", "attack-claim", actor.getName() + " evaluating " + claims.size() + " claims");
-                for (Claim c : claims) {
-                    for (NobleHouse other : allHouses) {
-                        if (other == actor || other.isEliminated()) continue;
-                        if (!other.getZoneIds().contains(c.getZoneId())) continue;
-                        Relationship rel = relationships.get(actor.getId(), other.getId());
-                        if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) {
-                            Debug.log("noble", "attack-claim", actor.getName() + " claim on " + c.getZoneId() + " owned by " + other.getName() + " SKIPPED (allied/friendly)");
-                            continue;
-                        }
-                        int defPower = estimateDefenderCombatPower(actor, other, c.getZoneId(), allHouses, armyManager, relationships);
-                        if (defPower <= 0) continue;
-                        main.map.Zone z = zoneManager.getZone(c.getZoneId());
-                        if (z == null) continue;
-                        double value = (double) z.getGoldProduction() / defPower;
-                        Debug.log("noble", "attack-claim", actor.getName() + " claim on " + c.getZoneId() + " owner=" + other.getName() + " defPower=" + defPower + " value=" + value);
-                        if (value > bestClaimValue) {
-                            bestClaimValue = value;
-                            bestClaimTarget = other;
-                            bestClaimZone = c.getZoneId();
-                        }
-                        break;
-                    }
-                }
-                Debug.log("noble", "attack-claim", actor.getName() + " bestClaimTarget=" + (bestClaimTarget != null ? bestClaimTarget.getName() : "null") + " zone=" + bestClaimZone + " value=" + bestClaimValue);
-
-                // ---- 2. Find reckless target (if leader qualifies) ----
-                NobleHouse recklessTarget = null;
-                String recklessZone = null;
-                double recklessValue = 0;
-                boolean tryReckless = (character != null && cunning < 2 && military >= 2
-                        && motivation == Motivation.EXPANSION);
-                Debug.log("noble", "attack-reckless", actor.getName() + " tryReckless=" + tryReckless);
-                if (tryReckless) {
-                    Object[] reckless = findRecklessClaimlessTarget(actor, allHouses, relationships,
-                            claimManager, zoneManager, armyManager);
-                    if (reckless != null) {
-                        recklessTarget = (NobleHouse) reckless[0];
-                        recklessZone = (String) reckless[1];
-                        int defPower = estimateDefenderCombatPower(actor, recklessTarget, recklessZone, allHouses, armyManager, relationships);
-                        main.map.Zone z = zoneManager.getZone(recklessZone);
-                        if (z != null && defPower > 0) {
-                            recklessValue = (double) z.getGoldProduction() / defPower;
-                        }
-                        Debug.log("noble", "attack-reckless", actor.getName() + " found target=" + recklessTarget.getName() + " zone=" + recklessZone + " value=" + recklessValue);
-                    } else {
-                        Debug.log("noble", "attack-reckless", actor.getName() + " no reckless target found");
-                    }
-                }
-
-                // ---- 3. Pick best overall target ----
-                NobleHouse target = null;
-                String attackZone = null;
-                boolean isClaimless = false;
-
-                if (recklessTarget != null && recklessValue >= bestClaimValue * GameParameters.RECKLESS_VALUE_MULTIPLIER) {
-                    target = recklessTarget;
-                    attackZone = recklessZone;
-                    isClaimless = true;
-                    Debug.log("noble", "attack-choose", actor.getName() + " -> RECKLESS " + attackZone);
-                } else if (bestClaimTarget != null) {
-                    target = bestClaimTarget;
-                    attackZone = bestClaimZone;
-                    isClaimless = false;
-                    Debug.log("noble", "attack-choose", actor.getName() + " -> CLAIM " + attackZone);
-                } else {
-                    Debug.log("noble", "attack-choose", actor.getName() + " -> no target yet");
-                }
-
-                // ---- 4. Feasibility check ----
-                if (target != null) {
-                    int defPower = estimateDefenderCombatPower(actor, target, attackZone, allHouses, armyManager, relationships);
-                    double threshold = defPower * GameParameters.NORMAL_ATTACK_STRENGTH_THRESHOLD;
-                    boolean feasible = myPower >= threshold;
-                    Debug.log("noble", "attack-feasibility", actor.getName() + " target=" + target.getName() + " zone=" + attackZone + " defPower=" + defPower + " needed=" + threshold + " myPower=" + myPower + " feasible=" + feasible);
-                    if (!feasible) {
-                        target = null;
-                        Debug.log("noble", "attack-feasibility", actor.getName() + " NOT FEASIBLE -> fallback");
-                    } else {
-                        Debug.log("noble", "attack-feasibility", actor.getName() + " feasible and proceeding");
-                    }
-                }
-
-                if (target == null) {
-                    executeFallback(actor, motivation, allHouses, relationships, claimManager,
-                            zoneManager, armyManager, log);
-                    break;
-                }
-
-                // ---- 5. Execute attack ----
-                Debug.log("noble", "attack-exec", actor.getName() + " attacking " + attackZone + " isClaimless=" + isClaimless);
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_ATTACK, log)) break;
-
-                List<NobleArmy> actorArmies = armyManager.getArmiesForHouse(actor.getId());
-                NobleArmy army = null;
-                for (NobleArmy a : actorArmies) {
-                    if (!a.hasPendingOrder()) { army = a; break; }
-                }
-                if (army == null) {
-                    int recruitSize = maxRecruitableSize(actor);
-                    if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
-                        army = armyManager.recruit(actor, recruitSize);
-                        if (army != null) {
-                            log.add(actor.getName() + " raises an army of " + army.getSize() + " for the attack.");
-                        }
-                    }
-                }
-                if (army != null && !army.hasPendingOrder() && army.getSize() > 0) {
-                    armyManager.moveArmy(army, attackZone);
-                    army.issueOrder(NobleArmy.OrderType.ATTACK, attackZone);
-                    if (isClaimless) {
-                        log.add(actor.getName() + " marches on " + attackZone + " without a claim.");
-                    } else {
-                        log.add(actor.getName() + " marches on " + attackZone + ".");
-                    }
-                    updateThreatenedStatus(actor, allHouses, relationships,
-                            isClaimless ? GameParameters.THREATENED_CLAIMLESS_MULTIPLIER : 1.0);
-                    triggerAllyDefense(target, actor, allHouses, relationships, armyManager, log);
-                }
-            }
-
-            case RAID -> {
-                NobleHouse raidTarget = findRaidTarget(actor, allHouses, relationships, zoneManager);
-                if (raidTarget == null) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_RAID, log)) break;
-                String raidedZone = pickRaidableZone(raidTarget, zoneManager);
-                if (raidedZone == null) {
-                    log.add(actor.getName() + " finds no raidable zone in " + raidTarget.getName() + ".");
-                    break;
-                }
-                // Calculate how many soldiers are worth bringing – more than the zone's max yield is wasteful
-                main.map.Zone targetZoneObj = zoneManager.getZone(raidedZone);
-                int zoneGold = targetZoneObj != null ? targetZoneObj.getGoldProduction() : GameParameters.ZONE_VILLAGE_GOLD;
-                int maxStealFromZone = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
-                int maxAffordable = Math.min(actor.getNobleManpower(), actor.getGold() / Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER));
-                int desiredSize = Math.min(maxStealFromZone, maxAffordable);
-                List<NobleArmy> actorArmies = armyManager.getArmiesForHouse(actor.getId());
-                NobleArmy raidArmy = null;
-                for (NobleArmy a : actorArmies) {
-                    if (!a.hasPendingOrder()) { raidArmy = a; break; }
-                }
-                if (raidArmy == null && desiredSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
-                    raidArmy = armyManager.recruit(actor, desiredSize);
-                    if (raidArmy != null) {
-                        log.add(actor.getName() + " raises a raiding party of " + raidArmy.getSize() + ".");
-                    }
-                }
-                if (raidArmy != null && !raidArmy.hasPendingOrder() && raidArmy.getSize() > 0) {
-                    armyManager.moveArmy(raidArmy, raidedZone);
-                    raidArmy.issueOrder(NobleArmy.OrderType.RAID, raidedZone);
-                    log.add(actor.getName() + " sends raiders toward " + raidedZone + ".");
-                }
-            }
-
-            case DEMAND -> {
-                if (motivation == Motivation.PRESTIGE) {
-                    NobleHouse supTarget = findSuperiorityTarget(actor, allHouses, relationships);
-                    if (supTarget == null) break;
-                    if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_DEMAND, log)) break;
-                    boolean accepted = evaluateAcknowledgeSuperiority(actor, supTarget);
-                    if (accepted) {
-                        supTarget.addPrestige(-GameParameters.DEMAND_PRESTIGE_AMOUNT);
-                        actor.addPrestige(GameParameters.DEMAND_PRESTIGE_AMOUNT);
-                        log.add(supTarget.getName() + " acknowledges the superiority of "
-                                + actor.getName() + ". Prestige transferred.");
-                    } else {
-                        log.add(supTarget.getName() + " refuses to acknowledge "
-                                + actor.getName() + "'s superiority.");
-                        relationships.worsen(actor.getId(), supTarget.getId());
-                    }
-                    break;
-                }
-                NobleHouse demTarget = findDemandTarget(actor, allHouses, relationships);
-                if (demTarget == null) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_DEMAND, log)) break;
-                DemandType type = demandTypeForMotivation(motivation);
-                boolean accepted = evaluateDemand(actor, demTarget, relationships, allIds, diplomacy, armyManager);
-                if (accepted) {
-                    applyDemand(actor, demTarget, type, log);
-                } else {
-                    log.add(demTarget.getName() + " refuses " + actor.getName() + "'s demand.");
-                    relationships.worsen(actor.getId(), demTarget.getId());
-                }
-            }
-
-            case SCHEME -> {
-                List<String> rivals = relationships.getAll(actor.getId(), Relationship.RIVAL, allIds);
-                if (rivals.isEmpty()) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SCHEME, log)) break;
-                String targetId = rivals.get(RNG.nextInt(rivals.size()));
-                NobleHouse schemeTarget = findById(targetId, allHouses);
-                if (schemeTarget == null) break;
-                double successChance = GameParameters.SCHEME_BASE_SUCCESS_CHANCE
-                        + cunning * GameParameters.SCHEME_CUNNING_BONUS_PER_POINT;
-                if (RNG.nextDouble() < successChance) {
-                    schemeTarget.addPrestige(-GameParameters.AI_SCHEME_PRESTIGE_LOSS);
-                    actor.addPrestige(GameParameters.AI_SCHEME_PRESTIGE_GAIN);
-                    log.add(actor.getName() + " schemes against " + schemeTarget.getName()
-                            + ". Their prestige suffers.");
-                } else {
-                    log.add(actor.getName() + "'s scheme against " + schemeTarget.getName()
-                            + " is discovered. Relation worsens.");
-                    relationships.worsen(actor.getId(), schemeTarget.getId());
-                }
-            }
-
-            case FORTIFY -> {
-                int cost = GameParameters.AI_FORTIFY_GOLD_COST;
-                if (actor.getGold() < cost) break;
-                if (actor.getGold() - cost < getWarChestTarget(actor, allHouses, relationships, armyManager)) break;
-                actor.addGold(-cost);
-                actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
-                String fortZone = actor.getCapitalZoneId();
-                if (fortZone != null) {
-                    actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
-                }
-                log.add(actor.getName() + " fortifies. Defense +"
-                        + GameParameters.AI_FORTIFY_DEFENSE_GAIN
-                        + ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
-            }
-
-            case ALLY -> {
-                List<String> currentAllies = relationships.getAll(actor.getId(), Relationship.ALLIED, allIds);
-                if (currentAllies.size() >= GameParameters.ALLIANCE_MAX_PER_HOUSE) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_ALLY, log)) break;
-                NobleHouse allyTarget = findAllyTarget(actor, allHouses, relationships);
-                if (allyTarget == null) break;
-                Relationship currentRel = relationships.get(actor.getId(), allyTarget.getId());
-                if (currentRel == Relationship.FRIENDLY || currentRel == Relationship.ALLIED) break;
-                int candidateStrength = estimatedPower(actor, allyTarget, armyManager) + allyTarget.getTotalGarrisonSize();
-                int myStrength = exactPotentialFieldArmy(actor, armyManager) + actor.getTotalGarrisonSize();
-                boolean tooWeak = candidateStrength < myStrength * GameParameters.ALLIANCE_MIN_ARMY_FRACTION;
-                if (tooWeak) {
-                    log.add(actor.getName() + " considers alliance with "
-                            + allyTarget.getName() + " but deems them too weak.");
-                    break;
-                }
-                double acceptChance = GameParameters.ALLY_BASE_ACCEPT_CHANCE
-                        + diplomacy * GameParameters.ALLY_DIPLOMACY_BONUS_PER_POINT;
-                if (RNG.nextDouble() < acceptChance) {
-                    relationships.set(actor.getId(), allyTarget.getId(), Relationship.ALLIED);
-                    log.add(actor.getName() + " and " + allyTarget.getName() + " form an alliance.");
-                } else {
-                    log.add(allyTarget.getName() + " declines alliance with " + actor.getName() + ".");
-                }
-            }
-
-            case GIFT -> {
-                NobleHouse giftTarget = findGiftTarget(actor, allHouses, relationships, armyManager);
-                if (giftTarget == null) break;
-                List<Claim> actorClaims = claimManager.getClaimsFor(actor.getId());
-                Claim claimOnTarget = actorClaims.stream()
-                        .filter(c -> giftTarget.getZoneIds().contains(c.getZoneId()))
-                        .findFirst().orElse(null);
-                if (claimOnTarget != null) {
-                    claimManager.removeClaim(actor.getId(), claimOnTarget.getZoneId());
-                    relationships.improve(actor.getId(), giftTarget.getId());
-                    log.add(actor.getName() + " forfeits claim on " + claimOnTarget.getZoneId()
-                            + " as gift to " + giftTarget.getName() + ". Relations improve.");
-                } else if (actor.getGold() >= GameParameters.GIFT_MONEY_AMOUNT
-                        && actor.getGold() - GameParameters.GIFT_MONEY_AMOUNT >= getWarChestTarget(actor, allHouses, relationships, armyManager)) {
-                    actor.addGold(-GameParameters.GIFT_MONEY_AMOUNT);
-                    giftTarget.addGold(GameParameters.GIFT_MONEY_AMOUNT);
-                    relationships.improve(actor.getId(), giftTarget.getId());
-                    log.add(actor.getName() + " gifts " + GameParameters.GIFT_MONEY_AMOUNT
-                            + " gold to " + giftTarget.getName() + ". Relations improve.");
-                }
-            }
-
-            case SUPPORT_RIVAL -> {
-                List<String> allies = relationships.getAll(actor.getId(), Relationship.ALLIED, allIds);
-                if (allies.isEmpty()) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SUPPORT, log)) break;
-                String allyId = allies.get(RNG.nextInt(allies.size()));
-                NobleHouse ally = findById(allyId, allHouses);
-                if (ally == null) break;
-                int support = (int)(actor.getGold() * GameParameters.AI_SUPPORT_GOLD_FRACTION);
-                actor.addGold(-support);
-                ally.addGold(support);
-                log.add(actor.getName() + " sends " + support
-                        + " gold to " + ally.getName() + " in support.");
-            }
-
-            case SABOTAGE -> {
-                NobleHouse sabTarget = findSabotageTarget(actor, allHouses, relationships);
-                if (sabTarget == null) break;
-                if (actor.getGold() < GameParameters.AI_SABOTAGE_GOLD_COST) break;
-                if (actor.getGold() - GameParameters.AI_SABOTAGE_GOLD_COST < getWarChestTarget(actor, allHouses, relationships, armyManager)) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SABOTAGE, log)) break;
-                actor.addGold(-GameParameters.AI_SABOTAGE_GOLD_COST);
-
-                double successChance = GameParameters.SABOTAGE_BASE_SUCCESS_CHANCE
-                        + cunning * GameParameters.SABOTAGE_CUNNING_BONUS_PER_POINT;
-                if (RNG.nextDouble() < successChance) {
-                    List<String> validZones = new ArrayList<>();
-                    for (String zid : sabTarget.getZoneIds()) {
-                        if (sabTarget.getFortificationFor(zid) > 0) validZones.add(zid);
-                    }
-                    if (!validZones.isEmpty()) {
-                        String sabZone = validZones.get(RNG.nextInt(validZones.size()));
-                        sabTarget.addFortification(sabZone, -1);
-                        log.add(actor.getName() + " sabotages " + sabTarget.getName()
-                                + "'s fortifications at " + sabZone + ".");
-                    }
-                } else {
-                    log.add(actor.getName() + "'s sabotage attempt against "
-                            + sabTarget.getName() + " fails.");
-                }
-            }
-        }
-
-        return log;
-    }
-
-    // ─── Ally defense ────────────────────────────────────────────────────────
-
-    private static void triggerAllyDefense(NobleHouse attacked, NobleHouse attacker,
-                                           List<NobleHouse> allHouses,
-                                           RelationshipManager relationships,
-                                           NobleArmyManager armyManager,
-                                           List<String> log) {
-        List<String> allIds = allHouseIds(allHouses);
-        List<String> allies = new ArrayList<>(
-                relationships.getAll(attacked.getId(), Relationship.ALLIED, allIds));
-
-        int attackerFieldArmy = exactPotentialFieldArmy(attacker, armyManager);
-
-        for (String allyId : allies) {
-            NobleHouse ally = findById(allyId, allHouses);
-            if (ally == null || ally.isEliminated()) continue;
-            Relationship allyWithAttacker = relationships.get(ally.getId(), attacker.getId());
-            if (allyWithAttacker == Relationship.ALLIED
-                    || allyWithAttacker == Relationship.FRIENDLY) continue;
-            int allyStrength = exactPotentialFieldArmy(ally, armyManager) + ally.getTotalGarrisonSize();
-            boolean strongEnough = allyStrength >= attackerFieldArmy * GameParameters.ALLY_DEFENSE_MIN_STRENGTH_FRACTION;
-            if (strongEnough) {
-                int allyMilitary = ally.getActiveCharacter() != null
-                        ? ally.getActiveCharacter().getMilitary() : 0;
-                ArmyForce allyForce = new ArmyForce(ally.getId(),
-                        ally.getTotalArmySize(), // garrison used for defense in battle
-                        attacked.getDefense(),
-                        allyMilitary);
-                ArmyForce atkForce = new ArmyForce(attacker.getId(),
-                        attackerFieldArmy, 0, 0);
-                CombatResult defResult = CombatResolver.resolve(atkForce, allyForce);
-                log.add(ally.getName() + " joins defense of " + attacked.getName() + "!");
-                log.addAll(defResult.getLog());
-                attacker.setTotalArmySize(atkForce.getArmySize());
-                ally.setTotalArmySize(allyForce.getArmySize());
-            } else {
-                relationships.worsen(ally.getId(), attacked.getId());
-                log.add(ally.getName() + " fails to honor alliance with "
-                        + attacked.getName() + ". Relations cool.");
-            }
-        }
-    }
-
-    // ─── Demand evaluation ───────────────────────────────────────────────────
-
-    public static boolean evaluateDemand(NobleHouse requester, NobleHouse target,
-                                         RelationshipManager relationships,
-                                         List<String> allIds,
-                                         int requesterDiplomacy,
-                                         NobleArmyManager armyManager) {
-        double score = GameParameters.DEMAND_BASE_SCORE;
-        score += (requester.getPrestige() - target.getPrestige()) * GameParameters.DEMAND_PRESTIGE_WEIGHT;
-        int requesterPower = exactPotentialFieldArmy(requester, armyManager);
-        int targetPower = estimatedPower(requester, target, armyManager) + target.getTotalGarrisonSize();
-        score += (requesterPower - targetPower) * GameParameters.DEMAND_ARMY_WEIGHT;
-        score += switch (relationships.get(requester.getId(), target.getId())) {
-            case ALLIED, FRIENDLY -> GameParameters.DEMAND_ALLIED_BONUS;
-            case NEUTRAL          -> 0;
-            case HOSTILE          -> GameParameters.DEMAND_RIVAL_PENALTY / 2.0;
-            case RIVAL            -> GameParameters.DEMAND_RIVAL_PENALTY;
-        };
-        if (relationships.shareRival(requester.getId(), target.getId(), allIds)) {
-            score += GameParameters.DEMAND_SHARED_RIVAL_BONUS;
-        }
-        score += requesterDiplomacy * GameParameters.DEMAND_DIPLOMACY_BONUS_PER_POINT;
-        score += (RNG.nextDouble() - 0.5) * 2 * GameParameters.DEMAND_RANDOM_RANGE;
-        return score >= GameParameters.DEMAND_ACCEPT_THRESHOLD;
-    }
-
-    private static boolean evaluateAcknowledgeSuperiority(NobleHouse demander, NobleHouse target) {
-        int demanderMilitary = demander.getActiveCharacter() != null
-                ? demander.getActiveCharacter().getMilitary() : 0;
-        int targetMilitary   = target.getActiveCharacter() != null
-                ? target.getActiveCharacter().getMilitary() : 0;
-        if (demanderMilitary <= targetMilitary) return false;
-        double base  = GameParameters.SUPERIORITY_BASE_ACCEPT_CHANCE;
-        double noise = (RNG.nextDouble() - 0.5) * GameParameters.SUPERIORITY_RANDOM_RANGE;
-        return (base + noise) >= 0.5;
-    }
-
-    // ─── Target finders (updated where needed) ──────────────────────────────
-
-    private static NobleHouse findAttackTarget(NobleHouse actor,
-                                               List<NobleHouse> allHouses,
-                                               RelationshipManager relationships,
-                                               ClaimManager claimManager,
-                                               NobleArmyManager armyManager) {
-        List<Claim> claims   = claimManager.getClaimsFor(actor.getId());
-        NobleHouse  best     = null;
-        int         bestArmy = Integer.MAX_VALUE;
-        for (Claim claim : claims) {
-            for (NobleHouse other : allHouses) {
-                if (other == actor || other.isEliminated()) continue;
-                if (!other.getZoneIds().contains(claim.getZoneId())) continue;
-                Relationship rel = relationships.get(actor.getId(), other.getId());
-                if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
-                int otherPower = estimatedPower(actor, other, armyManager);
-                if (otherPower < exactPotentialFieldArmy(actor, armyManager) && otherPower < bestArmy) {
-                    best     = other;
-                    bestArmy = otherPower;
-                }
-            }
-        }
-        return best;
-    }
-
-    private static NobleHouse findRaidTarget(NobleHouse actor,
-                                             List<NobleHouse> allHouses,
-                                             RelationshipManager relationships,
-                                             main.map.ZoneManager zoneManager) {
-        NobleHouse best     = null;
-        int        bestGold = 0;
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            Relationship rel = relationships.get(actor.getId(), other.getId());
-            if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
-            if (zoneManager != null && pickRaidableZone(other, zoneManager) == null) continue;
-            if (other.getGold() > bestGold) {
-                best     = other;
-                bestGold = other.getGold();
-            }
-        }
-        return best;
-    }
-
-    private static NobleHouse findDemandTarget(NobleHouse actor,
-                                               List<NobleHouse> allHouses,
-                                               RelationshipManager relationships) {
-        NobleHouse best      = null;
-        int        bestScore = Integer.MIN_VALUE;
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            if (relationships.get(actor.getId(), other.getId()) == Relationship.RIVAL) continue;
-            int score = -other.getGold();
-            if (score > bestScore) { best = other; bestScore = score; }
-        }
-        return best;
-    }
-
-    private static NobleHouse findSuperiorityTarget(NobleHouse actor,
-                                                    List<NobleHouse> allHouses,
-                                                    RelationshipManager relationships) {
-        int actorMilitary = actor.getActiveCharacter() != null
-                ? actor.getActiveCharacter().getMilitary() : 0;
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            if (relationships.get(actor.getId(), other.getId()) == Relationship.RIVAL) continue;
-            int otherMilitary = other.getActiveCharacter() != null
-                    ? other.getActiveCharacter().getMilitary() : 0;
-            if (actorMilitary > otherMilitary) return other;
-        }
-        return null;
-    }
-
-    private static NobleHouse findAllyTarget(NobleHouse actor,
-                                             List<NobleHouse> allHouses,
-                                             RelationshipManager relationships) {
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            if (relationships.get(actor.getId(), other.getId()) == Relationship.NEUTRAL) return other;
-        }
-        return null;
-    }
-
-    private static NobleHouse findGiftTarget(NobleHouse actor,
-                                             List<NobleHouse> allHouses,
-                                             RelationshipManager relationships,
-                                             NobleArmyManager armyManager) {
-        NobleHouse best     = null;
-        int        bestPower = 0;
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            Relationship rel = relationships.get(actor.getId(), other.getId());
-            if (rel == Relationship.RIVAL || rel == Relationship.ALLIED) continue;
-            int otherPower = estimatedPower(actor, other, armyManager);
-            if (otherPower > bestPower) {
-                best      = other;
-                bestPower = otherPower;
-            }
-        }
-        return best;
-    }
-
-    private static String findClaimTarget(NobleHouse actor,
-                                          List<NobleHouse> allHouses,
-                                          ClaimManager claimManager) {
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            for (String zoneId : other.getZoneIds()) {
-                if (!claimManager.hasClaim(actor.getId(), zoneId)) return zoneId;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Find a reckless claimless target: only for EXPANSION leaders with low cunning & high military.
-     * Target must be significantly weaker and more valuable than any claimed zone.
-     * Returns [targetHouse, zoneId] or null.
-     */
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager,
+List<String> log) {
+List<PendingBattle> battles = new ArrayList<>();
+debug.Debug.log("noble", "join-battle", actor.getName() + " scanning for battles to join");
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+for (NobleArmy a : armyManager.getArmiesForHouse(other.getId())) {
+if (a.getPendingOrder() == NobleArmy.OrderType.ATTACK
+&& a.getPendingTargetZoneId() != null) {
+NobleHouse defender = findZoneOwner(a.getPendingTargetZoneId(), allHouses);
+if (defender != null) {
+battles.add(new PendingBattle(other, defender, a.getPendingTargetZoneId()));
+}
+}
+}
+}
+
+if (battles.isEmpty()) return;
+
+List<PendingBattle> joinAsAttacker = new ArrayList<>();
+List<PendingBattle> joinAsDefender = new ArrayList<>();
+
+for (PendingBattle battle : battles) {
+Relationship relToAtk = relationships.get(actor.getId(), battle.attacker.getId());
+Relationship relToDef = relationships.get(actor.getId(), battle.defender.getId());
+
+if (battle.defender == actor) {
+joinAsDefender.add(battle);
+debug.Debug.log("noble", "join-battle", actor.getName() + " will defend own zone " + battle.zoneId);
+continue;
+}
+
+if (relToAtk == Relationship.HOSTILE || relToAtk == Relationship.RIVAL) {
+if (relToDef == Relationship.ALLIED
+|| actor.isThreatenedBy(battle.attacker.getId())) {
+joinAsDefender.add(battle);
+debug.Debug.log("noble", "join-battle", actor.getName() + " will defend " + battle.defender.getName() + " at " + battle.zoneId + " (hostile to attacker)");
+}
+continue;
+}
+
+boolean wantAttack = relToAtk == Relationship.ALLIED
+|| relToDef == Relationship.HOSTILE
+|| relToDef == Relationship.RIVAL
+|| actor.isThreatenedBy(battle.defender.getId());
+
+boolean wantDefend = relToDef == Relationship.ALLIED;
+
+if (wantAttack) {
+joinAsAttacker.add(battle);
+debug.Debug.log("noble", "join-battle", actor.getName() + " will attack " + battle.defender.getName() + " at " + battle.zoneId);
+} else if (wantDefend) {
+joinAsDefender.add(battle);
+debug.Debug.log("noble", "join-battle", actor.getName() + " will defend " + battle.defender.getName() + " at " + battle.zoneId);
+}
+}
+
+List<PendingBattle> toJoin = new ArrayList<>();
+toJoin.addAll(joinAsDefender);
+toJoin.addAll(joinAsAttacker);
+
+if (toJoin.isEmpty()) return;
+
+int availableManpower = actor.getNobleManpower();
+int availableGold = actor.getGold();
+int costPerSoldier = Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER);
+int maxAffordableJoin = Math.min(availableManpower, availableGold / costPerSoldier);
+if (maxAffordableJoin < GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+debug.Debug.log("noble", "join-battle", actor.getName() + " cannot afford even a minimal force (have " + availableManpower + " manpower, " + availableGold + " gold)");
+return;
+}
+
+boolean hasArmy = !armyManager.getArmiesForHouse(actor.getId()).isEmpty();
+if (!hasArmy) {
+NobleArmy recruited = armyManager.recruit(actor, maxAffordableJoin);
+if (recruited != null) {
+log.add(actor.getName() + " raises " + recruited.getSize() + " soldiers to join battle.");
+}
+}
+
+List<NobleArmy> available = new ArrayList<>();
+for (NobleArmy a : armyManager.getArmiesForHouse(actor.getId())) {
+if (!a.hasPendingOrder() && a.isAlive()) available.add(a);
+}
+if (available.isEmpty()) {
+debug.Debug.log("noble", "join-battle", actor.getName() + " has no available armies to join battles");
+return;
+}
+
+NobleArmy pool = available.get(0);
+for (int i = 1; i < available.size(); i++) {
+NobleArmy other = available.get(i);
+pool.setSize(pool.getSize() + other.getSize());
+armyManager.remove(other);
+}
+debug.Debug.log("noble", "join-battle", actor.getName() + " merged " + available.size() + " armies into pool of size " + pool.getSize());
+
+int battleCount = Math.min(toJoin.size(), 2);
+debug.Debug.log("noble", "join-battle", actor.getName() + " joining " + battleCount + " battle(s) out of " + toJoin.size());
+
+if (battleCount == 1) {
+PendingBattle b = toJoin.get(0);
+armyManager.moveArmy(pool, b.zoneId);
+NobleArmy finalArmy = armyManager.getFirstIdleArmyInZone(actor.getId(), b.zoneId);
+if (finalArmy == null) {
+debug.Debug.log("noble", "order-issued", actor.getName() + " ERROR: no surviving army after move to " + b.zoneId + " for JOIN_BATTLE");
+return;
+}
+finalArmy.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b.zoneId);
+debug.Debug.log("noble", "order-issued", actor.getName() + " issued JOIN_BATTLE order to army " + finalArmy.getId() + " at " + b.zoneId);
+log.add(actor.getName() + " marches to join battle at " + b.zoneId + ".");
+} else {
+int half = pool.getSize() / 2;
+if (half < 1) {
+PendingBattle b = toJoin.get(0);
+armyManager.moveArmy(pool, b.zoneId);
+NobleArmy finalArmy = armyManager.getFirstIdleArmyInZone(actor.getId(), b.zoneId);
+if (finalArmy == null) {
+debug.Debug.log("noble", "order-issued", actor.getName() + " ERROR: no surviving army after move to " + b.zoneId + " for JOIN_BATTLE");
+return;
+}
+finalArmy.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b.zoneId);
+debug.Debug.log("noble", "order-issued", actor.getName() + " issued JOIN_BATTLE order to army " + finalArmy.getId() + " at " + b.zoneId);
+log.add(actor.getName() + " marches to join battle at " + b.zoneId + ".");
+return;
+}
+NobleArmy split = armyManager.splitArmy(pool, half);
+PendingBattle b0 = toJoin.get(0);
+PendingBattle b1 = toJoin.get(1);
+armyManager.moveArmy(pool, b0.zoneId);
+NobleArmy finalArmy0 = armyManager.getFirstIdleArmyInZone(actor.getId(), b0.zoneId);
+if (finalArmy0 == null) {
+debug.Debug.log("noble", "order-issued", actor.getName() + " ERROR: no surviving army after move to " + b0.zoneId + " for JOIN_BATTLE");
+} else {
+finalArmy0.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b0.zoneId);
+debug.Debug.log("noble", "order-issued", actor.getName() + " issued JOIN_BATTLE order to army " + finalArmy0.getId() + " at " + b0.zoneId);
+}
+log.add(actor.getName() + " marches to join battle at " + b0.zoneId + ".");
+if (split != null) {
+armyManager.moveArmy(split, b1.zoneId);
+NobleArmy finalArmy1 = armyManager.getFirstIdleArmyInZone(actor.getId(), b1.zoneId);
+if (finalArmy1 == null) {
+debug.Debug.log("noble", "order-issued", actor.getName() + " ERROR: no surviving split army after move to " + b1.zoneId + " for JOIN_BATTLE");
+} else {
+finalArmy1.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b1.zoneId);
+debug.Debug.log("noble", "order-issued", actor.getName() + " issued JOIN_BATTLE order to split army " + finalArmy1.getId() + " at " + b1.zoneId);
+}
+log.add(actor.getName() + " sends split force to join battle at " + b1.zoneId + ".");
+}
+}
+}
+
+private static class PendingBattle {
+final NobleHouse attacker;
+final NobleHouse defender;
+final String     zoneId;
+PendingBattle(NobleHouse attacker, NobleHouse defender, String zoneId) {
+this.attacker = attacker;
+this.defender = defender;
+this.zoneId   = zoneId;
+}
+}
+
+private static NobleHouse findZoneOwner(String zoneId, List<NobleHouse> allHouses) {
+for (NobleHouse h : allHouses) {
+if (h.getZoneIds().contains(zoneId)) return h;
+}
+return null;
+}
+
+public static int exactPotentialFieldArmy(NobleHouse house, NobleArmyManager armyManager) {
+int manpower = house.getNobleManpower();
+int gold = house.getGold();
+int recruitable = Math.min(manpower, gold / GameParameters.NOBLE_RECRUIT_COST_PER_SOLDIER);
+int existingArmies = armyManager.getArmiesForHouse(house.getId()).stream()
+.mapToInt(NobleArmy::getSize).sum();
+return recruitable + existingArmies;
+}
+
+public static int estimatedPower(NobleHouse observer, NobleHouse target, NobleArmyManager armyManager) {
+int exact = exactPotentialFieldArmy(target, armyManager);
+int cunning = observer.getActiveCharacter() != null ? observer.getActiveCharacter().getCunning() : 0;
+return roughEstimate(exact, cunning);
+}
+
+private static int roughEstimate(int exactValue, int cunning) {
+double fuzzRange = (4 - cunning) * 0.13 + 0.07;
+double multiplier = 1.0 + (RNG.nextDouble() * 2 - 1) * fuzzRange;
+return Math.max(0, (int)(exactValue * multiplier));
+}
+
+public static void updateThreatenedStatus(NobleHouse attacker,
+List<NobleHouse> allHouses,
+RelationshipManager relationships) {
+updateThreatenedStatus(attacker, allHouses, relationships, 1.0);
+}
+
+public static void updateThreatenedStatus(NobleHouse attacker,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+double multiplier) {
+int attackerZones = attacker.getZoneIds().size();
+int totalZones    = 0;
+for (NobleHouse h : allHouses) totalZones += h.getZoneIds().size();
+
+for (NobleHouse observer : allHouses) {
+if (observer == attacker || observer.isEliminated()) continue;
+Relationship rel = relationships.get(attacker.getId(), observer.getId());
+if (rel != Relationship.NEUTRAL) continue;
+
+int observerZones = observer.getZoneIds().size();
+double chance = (double)(attackerZones - observerZones)
+/ Math.max(1, totalZones)
+* GameParameters.THREATENED_BASE_CHANCE_MULTIPLIER
+* multiplier;
+chance = Math.max(0, Math.min(1.0, chance));
+
+if (RNG.nextDouble() < chance) {
+observer.addThreat(attacker.getId());
+}
+}
+}
+
+public static void tickThreatenedDecay(List<NobleHouse> allHouses) {
+for (NobleHouse house : allHouses) {
+Set<String> threats = new HashSet<>(house.getThreatenedBy());
+for (String threatId : threats) {
+if (RNG.nextDouble() < GameParameters.THREATENED_DECAY_CHANCE) {
+house.removeThreat(threatId);
+}
+}
+}
+}
+
+private static void considerBreakingAlliances(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager,
+List<String> log) {
+List<String> allIds = allHouseIds(allHouses);
+List<String> allies = new ArrayList<>(
+relationships.getAll(actor.getId(), Relationship.ALLIED, allIds));
+
+for (String allyId : allies) {
+NobleHouse ally = findById(allyId, allHouses);
+if (ally == null || ally.isEliminated()) {
+relationships.set(actor.getId(), allyId, Relationship.NEUTRAL);
+continue;
+}
+int allyPower = estimatedPower(actor, ally, armyManager) + (int)(0.7 * ally.getTotalGarrisonSize());
+boolean tooWeak = allyPower < exactPotentialFieldArmy(actor, armyManager) * GameParameters.ALLIANCE_MIN_ARMY_FRACTION;
+if (tooWeak) {
+NobleCharacter c   = actor.getActiveCharacter();
+int            dip = c != null ? c.getDiplomacy() : 0;
+double cleanChance = GameParameters.ALLIANCE_BREAK_CLEAN_BASE
++ dip * GameParameters.ALLIANCE_BREAK_CLEAN_PER_DIPLOMACY;
+Relationship result = RNG.nextDouble() < cleanChance
+? Relationship.NEUTRAL : Relationship.HOSTILE;
+relationships.set(actor.getId(), allyId, result);
+log.add(actor.getName() + " breaks alliance with "
++ ally.getName() + ". New relation: " + result.name());
+}
+}
+}
+
+private static Motivation pickMotivation(NobleCharacter character) {
+if (character == null) return Motivation.SECURITY;
+return RNG.nextDouble() < GameParameters.AI_DOMINANT_MOTIVATION_CHANCE
+? character.getDominantMotivation()
+: character.getSecondaryMotivation();
+}
+
+private static NobleAction pickAction(NobleHouse actor, Motivation motivation,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+ClaimManager claimManager,
+NobleArmyManager armyManager) {
+List<String> allIds = allHouseIds(allHouses);
+
+if (shouldGift(actor, motivation, allHouses, relationships, armyManager)) {
+Debug.log("noble", "action-pick", actor.getName() + " -> GIFT (shouldGift)");
+return NobleAction.GIFT;
+}
+
+return switch (motivation) {
+case EXPANSION -> {
+boolean hasClaims = hasClaimOnNonAlliedZone(actor, allHouses, relationships, claimManager);
+NobleCharacter ch = actor.getActiveCharacter();
+boolean recklessEligible = ch != null && ch.getCunning() < 2 && ch.getMilitary() >= 2
+&& ch.getDominantMotivation() == Motivation.EXPANSION;
+Debug.log("noble", "action-pick", actor.getName() + " EXPANSION hasClaims=" + hasClaims + " recklessEligible=" + recklessEligible);
+if (hasClaims || recklessEligible) {
+Debug.log("noble", "action-pick", actor.getName() + " -> ATTACK");
+yield NobleAction.ATTACK;
+}
+Debug.log("noble", "action-pick", actor.getName() + " -> FABRICATE_CLAIM");
+yield NobleAction.FABRICATE_CLAIM;
+}
+case WEALTH -> {
+NobleHouse raidTarget = findRaidTarget(actor, allHouses, relationships, null);
+yield raidTarget != null ? NobleAction.RAID : NobleAction.DEMAND;
+}
+case SECURITY -> {
+List<String> rivals = relationships.getAll(actor.getId(), Relationship.RIVAL, allIds);
+List<String> hostiles = relationships.getAll(actor.getId(), Relationship.HOSTILE, allIds);
+if (!rivals.isEmpty() && actor.getDefense() < GameParameters.AI_FORTIFY_THRESHOLD) {
+yield NobleAction.FORTIFY;
+}
+int allyCount = relationships.getAll(actor.getId(), Relationship.ALLIED, allIds).size();
+if (!rivals.isEmpty() || !hostiles.isEmpty()) {
+NobleCharacter ch = actor.getActiveCharacter();
+if (ch != null && ch.getCunning() >= 2 && RNG.nextDouble() < 0.4) {
+yield NobleAction.SABOTAGE;
+}
+}
+yield allyCount < GameParameters.ALLIANCE_MAX_PER_HOUSE
+? NobleAction.ALLY : NobleAction.FORTIFY;
+}
+case PRESTIGE -> {
+NobleHouse supTarget = findSuperiorityTarget(actor, allHouses, relationships);
+if (supTarget != null) yield NobleAction.DEMAND;
+List<String> rivals = relationships.getAll(actor.getId(), Relationship.RIVAL, allIds);
+List<String> hostiles = relationships.getAll(actor.getId(), Relationship.HOSTILE, allIds);
+if (!rivals.isEmpty() || !hostiles.isEmpty()) {
+NobleCharacter ch = actor.getActiveCharacter();
+if (ch != null && ch.getCunning() >= 1 && RNG.nextDouble() < 0.5) {
+yield NobleAction.SABOTAGE;
+}
+}
+yield !rivals.isEmpty() ? NobleAction.SCHEME : NobleAction.FORTIFY;
+}
+};
+}
+
+private static List<String> execute(NobleHouse actor, NobleAction action,
+Motivation motivation,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+ClaimManager claimManager,
+main.map.ZoneManager zoneManager,
+NobleArmyManager armyManager) {
+List<String> log    = new ArrayList<>();
+List<String> allIds = allHouseIds(allHouses);
+NobleCharacter character = actor.getActiveCharacter();
+int cunning   = character != null ? character.getCunning()   : 0;
+int military  = character != null ? character.getMilitary()  : 0;
+int diplomacy = character != null ? character.getDiplomacy() : 0;
+
+switch (action) {
+
+case FABRICATE_CLAIM -> {
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_FABRICATE, log)) break;
+String targetZone = findClaimTarget(actor, allHouses, claimManager);
+if (targetZone == null) break;
+List<String> myZones = new ArrayList<>(actor.getZoneIds());
+int ownerCunning = 0;
+for (NobleHouse other : allHouses) {
+if (other.getZoneIds().contains(targetZone)) {
+ownerCunning = other.getActiveCharacter() != null ? other.getActiveCharacter().getCunning() : 0;
+break;
+}
+}
+boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, ownerCunning, RNG,
+myZones, zoneManager.getZones());
+if (success) {
+log.add(actor.getName() + " fabricates a claim on " + targetZone + ".");
+for (NobleHouse other : allHouses) {
+if (other.getZoneIds().contains(targetZone)) {
+relationships.set(actor.getId(), other.getId(), Relationship.RIVAL);
+log.add(other.getName() + " becomes rival with "
++ actor.getName() + " over the claim.");
+break;
+}
+}
+} else {
+log.add(actor.getName() + " fails to fabricate a claim. Cunning insufficient.");
+}
+}
+
+case ATTACK -> {
+int myPower = estimateAttackPower(actor, armyManager);
+Debug.log("noble", "attack", actor.getName() + " myPower=" + myPower);
+if (myPower <= 0) {
+Debug.log("noble", "attack", actor.getName() + " no power -> fallback");
+executeFallback(actor, motivation, allHouses, relationships, claimManager,
+zoneManager, armyManager, log);
+break;
+}
+
+NobleHouse bestClaimTarget = null;
+String bestClaimZone = null;
+double bestClaimValue = 0;
+List<Claim> claims = claimManager.getClaimsFor(actor.getId());
+Debug.log("noble", "attack-claim", actor.getName() + " evaluating " + claims.size() + " claims");
+for (Claim c : claims) {
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+if (!other.getZoneIds().contains(c.getZoneId())) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) {
+Debug.log("noble", "attack-claim", actor.getName() + " claim on " + c.getZoneId() + " owned by " + other.getName() + " SKIPPED (allied/friendly)");
+continue;
+}
+int defPower = estimateDefenderCombatPower(actor, other, c.getZoneId(), allHouses, armyManager, relationships);
+if (defPower <= 0) continue;
+main.map.Zone z = zoneManager.getZone(c.getZoneId());
+if (z == null) continue;
+double value = (double) z.getGoldProduction() / defPower;
+Debug.log("noble", "attack-claim", actor.getName() + " claim on " + c.getZoneId() + " owner=" + other.getName() + " defPower=" + defPower + " value=" + value);
+if (value > bestClaimValue) {
+bestClaimValue = value;
+bestClaimTarget = other;
+bestClaimZone = c.getZoneId();
+}
+break;
+}
+}
+Debug.log("noble", "attack-claim", actor.getName() + " bestClaimTarget=" + (bestClaimTarget != null ? bestClaimTarget.getName() : "null") + " zone=" + bestClaimZone + " value=" + bestClaimValue);
+
+NobleHouse recklessTarget = null;
+String recklessZone = null;
+double recklessValue = 0;
+boolean tryReckless = (character != null && cunning < 2 && military >= 2
+&& motivation == Motivation.EXPANSION);
+Debug.log("noble", "attack-reckless", actor.getName() + " tryReckless=" + tryReckless);
+if (tryReckless) {
+Object[] reckless = findRecklessClaimlessTarget(actor, allHouses, relationships,
+claimManager, zoneManager, armyManager);
+if (reckless != null) {
+recklessTarget = (NobleHouse) reckless[0];
+recklessZone = (String) reckless[1];
+int defPower = estimateDefenderCombatPower(actor, recklessTarget, recklessZone, allHouses, armyManager, relationships);
+main.map.Zone z = zoneManager.getZone(recklessZone);
+if (z != null && defPower > 0) {
+recklessValue = (double) z.getGoldProduction() / defPower;
+}
+Debug.log("noble", "attack-reckless", actor.getName() + " found target=" + recklessTarget.getName() + " zone=" + recklessZone + " value=" + recklessValue);
+} else {
+Debug.log("noble", "attack-reckless", actor.getName() + " no reckless target found");
+}
+}
+
+NobleHouse target = null;
+String attackZone = null;
+boolean isClaimless = false;
+
+if (recklessTarget != null && recklessValue >= bestClaimValue * GameParameters.RECKLESS_VALUE_MULTIPLIER) {
+target = recklessTarget;
+attackZone = recklessZone;
+isClaimless = true;
+Debug.log("noble", "attack-choose", actor.getName() + " -> RECKLESS " + attackZone);
+} else if (bestClaimTarget != null) {
+target = bestClaimTarget;
+attackZone = bestClaimZone;
+isClaimless = false;
+Debug.log("noble", "attack-choose", actor.getName() + " -> CLAIM " + attackZone);
+} else {
+Debug.log("noble", "attack-choose", actor.getName() + " -> no target yet");
+}
+
+if (target != null) {
+int defPower = estimateDefenderCombatPower(actor, target, attackZone, allHouses, armyManager, relationships);
+double threshold = defPower * GameParameters.NORMAL_ATTACK_STRENGTH_THRESHOLD;
+boolean feasible = myPower >= threshold;
+Debug.log("noble", "attack-feasibility", actor.getName() + " target=" + target.getName() + " zone=" + attackZone + " defPower=" + defPower + " needed=" + threshold + " myPower=" + myPower + " feasible=" + feasible);
+if (!feasible) {
+target = null;
+Debug.log("noble", "attack-feasibility", actor.getName() + " NOT FEASIBLE -> fallback");
+} else {
+Debug.log("noble", "attack-feasibility", actor.getName() + " feasible and proceeding");
+}
+}
+
+if (target == null) {
+executeFallback(actor, motivation, allHouses, relationships, claimManager,
+zoneManager, armyManager, log);
+break;
+}
+
+Debug.log("noble", "attack-exec", actor.getName() + " attacking " + attackZone + " isClaimless=" + isClaimless);
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_ATTACK, log)) break;
+
+List<NobleArmy> actorArmies = armyManager.getArmiesForHouse(actor.getId());
+NobleArmy army = null;
+for (NobleArmy a : actorArmies) {
+if (!a.hasPendingOrder()) { army = a; break; }
+}
+if (army == null) {
+int recruitSize = maxRecruitableSize(actor);
+if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+army = armyManager.recruit(actor, recruitSize);
+if (army != null) {
+log.add(actor.getName() + " raises an army of " + army.getSize() + " for the attack.");
+}
+}
+}
+if (army != null && !army.hasPendingOrder() && army.getSize() > 0) {
+armyManager.moveArmy(army, attackZone);
+NobleArmy finalArmy = armyManager.getFirstIdleArmyInZone(actor.getId(), attackZone);
+if (finalArmy == null) {
+debug.Debug.log("noble", "order-issued", actor.getName() + " ERROR: no surviving army after move to " + attackZone + " for ATTACK");
+break;
+}
+finalArmy.issueOrder(NobleArmy.OrderType.ATTACK, attackZone);
+debug.Debug.log("noble", "order-issued", actor.getName() + " issued ATTACK order to army " + finalArmy.getId() + " at " + attackZone);
+if (isClaimless) {
+log.add(actor.getName() + " marches on " + attackZone + " without a claim.");
+} else {
+log.add(actor.getName() + " marches on " + attackZone + ".");
+}
+updateThreatenedStatus(actor, allHouses, relationships,
+isClaimless ? GameParameters.THREATENED_CLAIMLESS_MULTIPLIER : 1.0);
+triggerAllyDefense(target, actor, allHouses, relationships, armyManager, log);
+}
+}
+
+case RAID -> {
+NobleHouse raidTarget = findRaidTarget(actor, allHouses, relationships, zoneManager);
+if (raidTarget == null) break;
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_RAID, log)) break;
+String raidedZone = pickRaidableZone(raidTarget, zoneManager);
+if (raidedZone == null) {
+log.add(actor.getName() + " finds no raidable zone in " + raidTarget.getName() + ".");
+break;
+}
+main.map.Zone targetZoneObj = zoneManager.getZone(raidedZone);
+int zoneGold = targetZoneObj != null ? targetZoneObj.getGoldProduction() : GameParameters.ZONE_VILLAGE_GOLD;
+int maxStealFromZone = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
+int maxAffordable = Math.min(actor.getNobleManpower(), actor.getGold() / Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER));
+int desiredSize = Math.min(maxStealFromZone, maxAffordable);
+List<NobleArmy> actorArmies = armyManager.getArmiesForHouse(actor.getId());
+NobleArmy raidArmy = null;
+for (NobleArmy a : actorArmies) {
+if (!a.hasPendingOrder()) { raidArmy = a; break; }
+}
+if (raidArmy == null && desiredSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+raidArmy = armyManager.recruit(actor, desiredSize);
+if (raidArmy != null) {
+log.add(actor.getName() + " raises a raiding party of " + raidArmy.getSize() + ".");
+}
+}
+if (raidArmy != null && !raidArmy.hasPendingOrder() && raidArmy.getSize() > 0) {
+armyManager.moveArmy(raidArmy, raidedZone);
+NobleArmy finalRaidArmy = armyManager.getFirstIdleArmyInZone(actor.getId(), raidedZone);
+if (finalRaidArmy == null) {
+debug.Debug.log("noble", "order-issued", actor.getName() + " ERROR: no surviving army after move to " + raidedZone + " for RAID");
+break;
+}
+finalRaidArmy.issueOrder(NobleArmy.OrderType.RAID, raidedZone);
+debug.Debug.log("noble", "order-issued", actor.getName() + " issued RAID order to army " + finalRaidArmy.getId() + " at " + raidedZone);
+log.add(actor.getName() + " sends raiders toward " + raidedZone + ".");
+}
+}
+
+case DEMAND -> {
+if (motivation == Motivation.PRESTIGE) {
+NobleHouse supTarget = findSuperiorityTarget(actor, allHouses, relationships);
+if (supTarget == null) break;
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_DEMAND, log)) break;
+boolean accepted = evaluateAcknowledgeSuperiority(actor, supTarget);
+if (accepted) {
+supTarget.addPrestige(-GameParameters.DEMAND_PRESTIGE_AMOUNT);
+actor.addPrestige(GameParameters.DEMAND_PRESTIGE_AMOUNT);
+log.add(supTarget.getName() + " acknowledges the superiority of "
++ actor.getName() + ". Prestige transferred.");
+} else {
+log.add(supTarget.getName() + " refuses to acknowledge "
++ actor.getName() + "'s superiority.");
+relationships.worsen(actor.getId(), supTarget.getId());
+}
+break;
+}
+NobleHouse demTarget = findDemandTarget(actor, allHouses, relationships);
+if (demTarget == null) break;
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_DEMAND, log)) break;
+DemandType type = demandTypeForMotivation(motivation);
+boolean accepted = evaluateDemand(actor, demTarget, relationships, allIds, diplomacy, armyManager);
+if (accepted) {
+applyDemand(actor, demTarget, type, log);
+} else {
+log.add(demTarget.getName() + " refuses " + actor.getName() + "'s demand.");
+relationships.worsen(actor.getId(), demTarget.getId());
+}
+}
+
+case SCHEME -> {
+List<String> rivals = relationships.getAll(actor.getId(), Relationship.RIVAL, allIds);
+if (rivals.isEmpty()) break;
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SCHEME, log)) break;
+String targetId = rivals.get(RNG.nextInt(rivals.size()));
+NobleHouse schemeTarget = findById(targetId, allHouses);
+if (schemeTarget == null) break;
+double successChance = GameParameters.SCHEME_BASE_SUCCESS_CHANCE
++ cunning * GameParameters.SCHEME_CUNNING_BONUS_PER_POINT;
+if (RNG.nextDouble() < successChance) {
+schemeTarget.addPrestige(-GameParameters.AI_SCHEME_PRESTIGE_LOSS);
+actor.addPrestige(GameParameters.AI_SCHEME_PRESTIGE_GAIN);
+log.add(actor.getName() + " schemes against " + schemeTarget.getName()
++ ". Their prestige suffers.");
+} else {
+log.add(actor.getName() + "'s scheme against " + schemeTarget.getName()
++ " is discovered. Relation worsens.");
+relationships.worsen(actor.getId(), schemeTarget.getId());
+}
+}
+
+case FORTIFY -> {
+int cost = GameParameters.AI_FORTIFY_GOLD_COST;
+if (actor.getGold() < cost) break;
+if (actor.getGold() - cost < getWarChestTarget(actor, allHouses, relationships, armyManager)) break;
+actor.addGold(-cost);
+actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
+String fortZone = actor.getCapitalZoneId();
+if (fortZone != null) {
+actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
+}
+log.add(actor.getName() + " fortifies. Defense +"
++ GameParameters.AI_FORTIFY_DEFENSE_GAIN
++ ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
+}
+
+case ALLY -> {
+List<String> currentAllies = relationships.getAll(actor.getId(), Relationship.ALLIED, allIds);
+if (currentAllies.size() >= GameParameters.ALLIANCE_MAX_PER_HOUSE) break;
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_ALLY, log)) break;
+NobleHouse allyTarget = findAllyTarget(actor, allHouses, relationships);
+if (allyTarget == null) break;
+Relationship currentRel = relationships.get(actor.getId(), allyTarget.getId());
+if (currentRel == Relationship.FRIENDLY || currentRel == Relationship.ALLIED) break;
+int candidateStrength = estimatedPower(actor, allyTarget, armyManager) + allyTarget.getTotalGarrisonSize();
+int myStrength = exactPotentialFieldArmy(actor, armyManager) + actor.getTotalGarrisonSize();
+boolean tooWeak = candidateStrength < myStrength * GameParameters.ALLIANCE_MIN_ARMY_FRACTION;
+if (tooWeak) {
+log.add(actor.getName() + " considers alliance with "
++ allyTarget.getName() + " but deems them too weak.");
+break;
+}
+double acceptChance = GameParameters.ALLY_BASE_ACCEPT_CHANCE
++ diplomacy * GameParameters.ALLY_DIPLOMACY_BONUS_PER_POINT;
+if (RNG.nextDouble() < acceptChance) {
+relationships.set(actor.getId(), allyTarget.getId(), Relationship.ALLIED);
+log.add(actor.getName() + " and " + allyTarget.getName() + " form an alliance.");
+} else {
+log.add(allyTarget.getName() + " declines alliance with " + actor.getName() + ".");
+}
+}
+
+case GIFT -> {
+NobleHouse giftTarget = findGiftTarget(actor, allHouses, relationships, armyManager);
+if (giftTarget == null) break;
+List<Claim> actorClaims = claimManager.getClaimsFor(actor.getId());
+Claim claimOnTarget = actorClaims.stream()
+.filter(c -> giftTarget.getZoneIds().contains(c.getZoneId()))
+.findFirst().orElse(null);
+if (claimOnTarget != null) {
+claimManager.removeClaim(actor.getId(), claimOnTarget.getZoneId());
+relationships.improve(actor.getId(), giftTarget.getId());
+log.add(actor.getName() + " forfeits claim on " + claimOnTarget.getZoneId()
++ " as gift to " + giftTarget.getName() + ". Relations improve.");
+} else if (actor.getGold() >= GameParameters.GIFT_MONEY_AMOUNT
+&& actor.getGold() - GameParameters.GIFT_MONEY_AMOUNT >= getWarChestTarget(actor, allHouses, relationships, armyManager)) {
+actor.addGold(-GameParameters.GIFT_MONEY_AMOUNT);
+giftTarget.addGold(GameParameters.GIFT_MONEY_AMOUNT);
+relationships.improve(actor.getId(), giftTarget.getId());
+log.add(actor.getName() + " gifts " + GameParameters.GIFT_MONEY_AMOUNT
++ " gold to " + giftTarget.getName() + ". Relations improve.");
+}
+}
+
+case SUPPORT_RIVAL -> {
+List<String> allies = relationships.getAll(actor.getId(), Relationship.ALLIED, allIds);
+if (allies.isEmpty()) break;
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SUPPORT, log)) break;
+String allyId = allies.get(RNG.nextInt(allies.size()));
+NobleHouse ally = findById(allyId, allHouses);
+if (ally == null) break;
+int support = (int)(actor.getGold() * GameParameters.AI_SUPPORT_GOLD_FRACTION);
+actor.addGold(-support);
+ally.addGold(support);
+log.add(actor.getName() + " sends " + support
++ " gold to " + ally.getName() + " in support.");
+}
+
+case SABOTAGE -> {
+NobleHouse sabTarget = findSabotageTarget(actor, allHouses, relationships);
+if (sabTarget == null) break;
+if (actor.getGold() < GameParameters.AI_SABOTAGE_GOLD_COST) break;
+if (actor.getGold() - GameParameters.AI_SABOTAGE_GOLD_COST < getWarChestTarget(actor, allHouses, relationships, armyManager)) break;
+if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SABOTAGE, log)) break;
+actor.addGold(-GameParameters.AI_SABOTAGE_GOLD_COST);
+
+double successChance = GameParameters.SABOTAGE_BASE_SUCCESS_CHANCE
++ cunning * GameParameters.SABOTAGE_CUNNING_BONUS_PER_POINT;
+if (RNG.nextDouble() < successChance) {
+List<String> validZones = new ArrayList<>();
+for (String zid : sabTarget.getZoneIds()) {
+if (sabTarget.getFortificationFor(zid) > 0) validZones.add(zid);
+}
+if (!validZones.isEmpty()) {
+String sabZone = validZones.get(RNG.nextInt(validZones.size()));
+sabTarget.addFortification(sabZone, -1);
+log.add(actor.getName() + " sabotages " + sabTarget.getName()
++ "'s fortifications at " + sabZone + ".");
+}
+} else {
+log.add(actor.getName() + "'s sabotage attempt against "
++ sabTarget.getName() + " fails.");
+}
+}
+}
+
+return log;
+}
+
+private static void triggerAllyDefense(NobleHouse attacked, NobleHouse attacker,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager,
+List<String> log) {
+List<String> allIds = allHouseIds(allHouses);
+List<String> allies = new ArrayList<>(
+relationships.getAll(attacked.getId(), Relationship.ALLIED, allIds));
+
+int attackerFieldArmy = exactPotentialFieldArmy(attacker, armyManager);
+
+for (String allyId : allies) {
+NobleHouse ally = findById(allyId, allHouses);
+if (ally == null || ally.isEliminated()) continue;
+Relationship allyWithAttacker = relationships.get(ally.getId(), attacker.getId());
+if (allyWithAttacker == Relationship.ALLIED
+|| allyWithAttacker == Relationship.FRIENDLY) continue;
+int allyStrength = exactPotentialFieldArmy(ally, armyManager) + ally.getTotalGarrisonSize();
+boolean strongEnough = allyStrength >= attackerFieldArmy * GameParameters.ALLY_DEFENSE_MIN_STRENGTH_FRACTION;
+if (strongEnough) {
+int allyMilitary = ally.getActiveCharacter() != null
+? ally.getActiveCharacter().getMilitary() : 0;
+ArmyForce allyForce = new ArmyForce(ally.getId(),
+ally.getTotalArmySize(),
+attacked.getDefense(),
+allyMilitary);
+ArmyForce atkForce = new ArmyForce(attacker.getId(),
+attackerFieldArmy, 0, 0);
+CombatResult defResult = CombatResolver.resolve(atkForce, allyForce);
+log.add(ally.getName() + " joins defense of " + attacked.getName() + "!");
+log.addAll(defResult.getLog());
+attacker.setTotalArmySize(atkForce.getArmySize());
+ally.setTotalArmySize(allyForce.getArmySize());
+} else {
+relationships.worsen(ally.getId(), attacked.getId());
+log.add(ally.getName() + " fails to honor alliance with "
++ attacked.getName() + ". Relations cool.");
+}
+}
+}
+
+public static boolean evaluateDemand(NobleHouse requester, NobleHouse target,
+RelationshipManager relationships,
+List<String> allIds,
+int requesterDiplomacy,
+NobleArmyManager armyManager) {
+double score = GameParameters.DEMAND_BASE_SCORE;
+score += (requester.getPrestige() - target.getPrestige()) * GameParameters.DEMAND_PRESTIGE_WEIGHT;
+int requesterPower = exactPotentialFieldArmy(requester, armyManager);
+int targetPower = estimatedPower(requester, target, armyManager) + target.getTotalGarrisonSize();
+score += (requesterPower - targetPower) * GameParameters.DEMAND_ARMY_WEIGHT;
+score += switch (relationships.get(requester.getId(), target.getId())) {
+case ALLIED, FRIENDLY -> GameParameters.DEMAND_ALLIED_BONUS;
+case NEUTRAL          -> 0;
+case HOSTILE          -> GameParameters.DEMAND_RIVAL_PENALTY / 2.0;
+case RIVAL            -> GameParameters.DEMAND_RIVAL_PENALTY;
+};
+if (relationships.shareRival(requester.getId(), target.getId(), allIds)) {
+score += GameParameters.DEMAND_SHARED_RIVAL_BONUS;
+}
+score += requesterDiplomacy * GameParameters.DEMAND_DIPLOMACY_BONUS_PER_POINT;
+score += (RNG.nextDouble() - 0.5) * 2 * GameParameters.DEMAND_RANDOM_RANGE;
+return score >= GameParameters.DEMAND_ACCEPT_THRESHOLD;
+}
+
+private static boolean evaluateAcknowledgeSuperiority(NobleHouse demander, NobleHouse target) {
+int demanderMilitary = demander.getActiveCharacter() != null
+? demander.getActiveCharacter().getMilitary() : 0;
+int targetMilitary   = target.getActiveCharacter() != null
+? target.getActiveCharacter().getMilitary() : 0;
+if (demanderMilitary <= targetMilitary) return false;
+double base  = GameParameters.SUPERIORITY_BASE_ACCEPT_CHANCE;
+double noise = (RNG.nextDouble() - 0.5) * GameParameters.SUPERIORITY_RANDOM_RANGE;
+return (base + noise) >= 0.5;
+}
+
+private static NobleHouse findAttackTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+ClaimManager claimManager,
+NobleArmyManager armyManager) {
+List<Claim> claims   = claimManager.getClaimsFor(actor.getId());
+NobleHouse  best     = null;
+int         bestArmy = Integer.MAX_VALUE;
+for (Claim claim : claims) {
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+if (!other.getZoneIds().contains(claim.getZoneId())) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
+int otherPower = estimatedPower(actor, other, armyManager);
+if (otherPower < exactPotentialFieldArmy(actor, armyManager) && otherPower < bestArmy) {
+best     = other;
+bestArmy = otherPower;
+}
+}
+}
+return best;
+}
+
+private static NobleHouse findRaidTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+main.map.ZoneManager zoneManager) {
+NobleHouse best     = null;
+int        bestGold = 0;
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
+if (zoneManager != null && pickRaidableZone(other, zoneManager) == null) continue;
+if (other.getGold() > bestGold) {
+best     = other;
+bestGold = other.getGold();
+}
+}
+return best;
+}
+
+private static NobleHouse findDemandTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships) {
+NobleHouse best      = null;
+int        bestScore = Integer.MIN_VALUE;
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+if (relationships.get(actor.getId(), other.getId()) == Relationship.RIVAL) continue;
+int score = -other.getGold();
+if (score > bestScore) { best = other; bestScore = score; }
+}
+return best;
+}
+
+private static NobleHouse findSuperiorityTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships) {
+int actorMilitary = actor.getActiveCharacter() != null
+? actor.getActiveCharacter().getMilitary() : 0;
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+if (relationships.get(actor.getId(), other.getId()) == Relationship.RIVAL) continue;
+int otherMilitary = other.getActiveCharacter() != null
+? other.getActiveCharacter().getMilitary() : 0;
+if (actorMilitary > otherMilitary) return other;
+}
+return null;
+}
+
+private static NobleHouse findAllyTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships) {
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+if (relationships.get(actor.getId(), other.getId()) == Relationship.NEUTRAL) return other;
+}
+return null;
+}
+
+private static NobleHouse findGiftTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager) {
+NobleHouse best     = null;
+int        bestPower = 0;
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel == Relationship.RIVAL || rel == Relationship.ALLIED) continue;
+int otherPower = estimatedPower(actor, other, armyManager);
+if (otherPower > bestPower) {
+best      = other;
+bestPower = otherPower;
+}
+}
+return best;
+}
+
+private static String findClaimTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+ClaimManager claimManager) {
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+for (String zoneId : other.getZoneIds()) {
+if (!claimManager.hasClaim(actor.getId(), zoneId)) return zoneId;
+}
+}
+return null;
+}
 
 private static Object[] findRecklessClaimlessTarget(NobleHouse actor,
-                                                        List<NobleHouse> allHouses,
-                                                        RelationshipManager relationships,
-                                                        ClaimManager claimManager,
-                                                        main.map.ZoneManager zoneManager,
-                                                        NobleArmyManager armyManager) {
-        int myPower = estimateAttackPower(actor, armyManager);
-        Debug.log("noble", "reckless-scan", actor.getName() + " myPower=" + myPower);
-        if (myPower <= 0) {
-            Debug.log("noble", "reckless-scan", actor.getName() + " no power -> abort");
-            return null;
-        }
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+ClaimManager claimManager,
+main.map.ZoneManager zoneManager,
+NobleArmyManager armyManager) {
+int myPower = estimateAttackPower(actor, armyManager);
+Debug.log("noble", "reckless-scan", actor.getName() + " myPower=" + myPower);
+if (myPower <= 0) {
+Debug.log("noble", "reckless-scan", actor.getName() + " no power -> abort");
+return null;
+}
 
-        // compute best value among claimed zones THAT CAN ACTUALLY BE ATTACKED
-        double bestClaimedValue = 0;
-        for (Claim c : claimManager.getClaimsFor(actor.getId())) {
-            for (NobleHouse other : allHouses) {
-                if (other == actor || other.isEliminated()) continue;
-                if (!other.getZoneIds().contains(c.getZoneId())) continue;
-                Relationship rel = relationships.get(actor.getId(), other.getId());
-                if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
-                int defPower = estimateDefenderCombatPower(actor, other, c.getZoneId(), allHouses, armyManager, relationships);
-                if (defPower <= 0) continue;
-                main.map.Zone z = zoneManager.getZone(c.getZoneId());
-                if (z == null) continue;
-                double value = (double) z.getGoldProduction() / defPower;
-                if (value > bestClaimedValue) bestClaimedValue = value;
-                break;
-            }
-        }
-        Debug.log("noble", "reckless-scan", actor.getName() + " bestClaimedValue (attackable)=" + bestClaimedValue);
+double bestClaimedValue = 0;
+for (Claim c : claimManager.getClaimsFor(actor.getId())) {
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+if (!other.getZoneIds().contains(c.getZoneId())) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) continue;
+int defPower = estimateDefenderCombatPower(actor, other, c.getZoneId(), allHouses, armyManager, relationships);
+if (defPower <= 0) continue;
+main.map.Zone z = zoneManager.getZone(c.getZoneId());
+if (z == null) continue;
+double value = (double) z.getGoldProduction() / defPower;
+if (value > bestClaimedValue) bestClaimedValue = value;
+break;
+}
+}
+Debug.log("noble", "reckless-scan", actor.getName() + " bestClaimedValue (attackable)=" + bestClaimedValue);
 
-        // scan rivals/hostiles for high-value weak zones
-        NobleHouse bestTarget = null;
-        String bestZone = null;
-        double bestValue = 0;
-        int scanned = 0, rejectedTooStrong = 0;
+NobleHouse bestTarget = null;
+String bestZone = null;
+double bestValue = 0;
+int scanned = 0, rejectedTooStrong = 0;
 
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            Relationship rel = relationships.get(actor.getId(), other.getId());
-            if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) {
-                continue;
-            }
-            for (String zid : other.getZoneIds()) {
-                scanned++;
-                int defPower = estimateDefenderCombatPower(actor, other, zid, allHouses, armyManager, relationships);
-                if (defPower <= 0) continue;
-                double neededPower = defPower * GameParameters.RECKLESS_MIN_STRENGTH;
-                boolean strongEnough = myPower >= neededPower;
-                main.map.Zone z = zoneManager.getZone(zid);
-                if (z == null) continue;
-                double value = (double) z.getGoldProduction() / defPower;
-                Debug.log("noble", "reckless-scan", actor.getName() + " zone=" + zid
-                        + " owner=" + other.getName()
-                        + " defPower=" + defPower
-                        + " neededPower=" + neededPower
-                        + " strongEnough=" + strongEnough
-                        + " value=" + value);
-                if (!strongEnough) {
-                    rejectedTooStrong++;
-                    continue;
-                }
-                if (value > bestValue) {
-                    bestValue = value;
-                    bestTarget = other;
-                    bestZone = zid;
-                }
-            }
-        }
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) {
+continue;
+}
+for (String zid : other.getZoneIds()) {
+scanned++;
+int defPower = estimateDefenderCombatPower(actor, other, zid, allHouses, armyManager, relationships);
+if (defPower <= 0) continue;
+double neededPower = defPower * GameParameters.RECKLESS_MIN_STRENGTH;
+boolean strongEnough = myPower >= neededPower;
+main.map.Zone z = zoneManager.getZone(zid);
+if (z == null) continue;
+double value = (double) z.getGoldProduction() / defPower;
+Debug.log("noble", "reckless-scan", actor.getName() + " zone=" + zid
++ " owner=" + other.getName()
++ " defPower=" + defPower
++ " neededPower=" + neededPower
++ " strongEnough=" + strongEnough
++ " value=" + value);
+if (!strongEnough) {
+rejectedTooStrong++;
+continue;
+}
+if (value > bestValue) {
+bestValue = value;
+bestTarget = other;
+bestZone = zid;
+}
+}
+}
 
-        Debug.log("noble", "reckless-scan", actor.getName() + " scanned=" + scanned
-                + " rejectedTooStrong=" + rejectedTooStrong
-                + " bestTarget=" + (bestTarget != null ? bestTarget.getName() : "null")
-                + " bestZone=" + bestZone + " bestValue=" + bestValue);
+Debug.log("noble", "reckless-scan", actor.getName() + " scanned=" + scanned
++ " rejectedTooStrong=" + rejectedTooStrong
++ " bestTarget=" + (bestTarget != null ? bestTarget.getName() : "null")
++ " bestZone=" + bestZone + " bestValue=" + bestValue);
 
-        if (bestTarget == null) {
-            Debug.log("noble", "reckless-scan", actor.getName() + " no valid target -> abort");
-            return null;
-        }
+if (bestTarget == null) {
+Debug.log("noble", "reckless-scan", actor.getName() + " no valid target -> abort");
+return null;
+}
 
-        double requiredValue = bestClaimedValue * GameParameters.RECKLESS_VALUE_MULTIPLIER;
-        boolean passes = bestValue >= requiredValue;
-        Debug.log("noble", "reckless-scan", actor.getName() + " bestValue=" + bestValue
-                + " requiredValue=" + requiredValue + " passes=" + passes);
-        if (!passes) {
-            Debug.log("noble", "reckless-scan", actor.getName() + " not better enough -> abort");
-            return null;
-        }
+double requiredValue = bestClaimedValue * GameParameters.RECKLESS_VALUE_MULTIPLIER;
+boolean passes = bestValue >= requiredValue;
+Debug.log("noble", "reckless-scan", actor.getName() + " bestValue=" + bestValue
++ " requiredValue=" + requiredValue + " passes=" + passes);
+if (!passes) {
+Debug.log("noble", "reckless-scan", actor.getName() + " not better enough -> abort");
+return null;
+}
 
-        Debug.log("noble", "reckless-scan", actor.getName() + " -> FOUND " + bestZone);
-        return new Object[] { bestTarget, bestZone };
-    }
+Debug.log("noble", "reckless-scan", actor.getName() + " -> FOUND " + bestZone);
+return new Object[] { bestTarget, bestZone };
+}
 
 private static NobleHouse findClaimlessAttackTarget(NobleHouse actor,
-                                                        List<NobleHouse> allHouses,
-                                                        RelationshipManager relationships,
-                                                        NobleArmyManager armyManager) {
-        NobleHouse best     = null;
-        int        bestArmy = Integer.MAX_VALUE;
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            Relationship rel = relationships.get(actor.getId(), other.getId());
-            if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) continue;
-            int otherPower = estimatedPower(actor, other, armyManager);
-            if (otherPower < exactPotentialFieldArmy(actor, armyManager) && otherPower < bestArmy) {
-                best     = other;
-                bestArmy = otherPower;
-            }
-        }
-        return best;
-    }
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager) {
+NobleHouse best     = null;
+int        bestArmy = Integer.MAX_VALUE;
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) continue;
+int otherPower = estimatedPower(actor, other, armyManager);
+if (otherPower < exactPotentialFieldArmy(actor, armyManager) && otherPower < bestArmy) {
+best     = other;
+bestArmy = otherPower;
+}
+}
+return best;
+}
 
-    private static NobleHouse findSabotageTarget(NobleHouse actor,
-                                                 List<NobleHouse> allHouses,
-                                                 RelationshipManager relationships) {
-        List<NobleHouse> candidates = new ArrayList<>();
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            Relationship rel = relationships.get(actor.getId(), other.getId());
-            if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) continue;
-            // Must have at least one zone with fortification > 0
-            boolean hasFort = false;
-            for (String zid : other.getZoneIds()) {
-                if (other.getFortificationFor(zid) > 0) { hasFort = true; break; }
-            }
-            if (hasFort) candidates.add(other);
-        }
-        if (candidates.isEmpty()) return null;
-        return candidates.get(RNG.nextInt(candidates.size()));
-    }
+private static NobleHouse findSabotageTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships) {
+List<NobleHouse> candidates = new ArrayList<>();
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) continue;
+boolean hasFort = false;
+for (String zid : other.getZoneIds()) {
+if (other.getFortificationFor(zid) > 0) { hasFort = true; break; }
+}
+if (hasFort) candidates.add(other);
+}
+if (candidates.isEmpty()) return null;
+return candidates.get(RNG.nextInt(candidates.size()));
+}
 
-    private static String pickRaidableZone(NobleHouse target,
-                                           main.map.ZoneManager zoneManager) {
-        for (String zoneId : target.getZoneIds()) {
-            ZoneState state = zoneManager.getState(zoneId);
-            if (state != null && !state.isRecentlyRaided()) return zoneId;
-        }
-        return null;
-    }
+private static String pickRaidableZone(NobleHouse target,
+main.map.ZoneManager zoneManager) {
+for (String zoneId : target.getZoneIds()) {
+ZoneState state = zoneManager.getState(zoneId);
+if (state != null && !state.isRecentlyRaided()) return zoneId;
+}
+return null;
+}
 
-    // ─── Demand application ──────────────────────────────────────────────────
+private static void applyDemand(NobleHouse requester, NobleHouse target,
+DemandType type, List<String> log) {
+switch (type) {
+case WEALTH -> {
+int amount = (int)(target.getGold() * GameParameters.DEMAND_WEALTH_FRACTION);
+target.addGold(-amount);
+requester.addGold(amount);
+log.add(target.getName() + " yields " + amount + " gold to " + requester.getName() + ".");
+}
+case ARMY -> {
+requester.addToRaisedArmy(GameParameters.DEMAND_ARMY_AMOUNT);
+log.add(target.getName() + " sends " + GameParameters.DEMAND_ARMY_AMOUNT
++ " soldiers to " + requester.getName() + ".");
+}
+case ACKNOWLEDGE_SUPERIORITY -> {
+target.addPrestige(-GameParameters.DEMAND_PRESTIGE_AMOUNT);
+requester.addPrestige(GameParameters.DEMAND_PRESTIGE_AMOUNT);
+log.add(target.getName() + " acknowledges the superiority of " + requester.getName() + ".");
+}
+}
+}
 
-    private static void applyDemand(NobleHouse requester, NobleHouse target,
-                                    DemandType type, List<String> log) {
-        switch (type) {
-            case WEALTH -> {
-                int amount = (int)(target.getGold() * GameParameters.DEMAND_WEALTH_FRACTION);
-                target.addGold(-amount);
-                requester.addGold(amount);
-                log.add(target.getName() + " yields " + amount + " gold to " + requester.getName() + ".");
-            }
-            case ARMY -> {
-                requester.addToRaisedArmy(GameParameters.DEMAND_ARMY_AMOUNT);
-                log.add(target.getName() + " sends " + GameParameters.DEMAND_ARMY_AMOUNT
-                        + " soldiers to " + requester.getName() + ".");
-            }
-            case ACKNOWLEDGE_SUPERIORITY -> {
-                target.addPrestige(-GameParameters.DEMAND_PRESTIGE_AMOUNT);
-                requester.addPrestige(GameParameters.DEMAND_PRESTIGE_AMOUNT);
-                log.add(target.getName() + " acknowledges the superiority of " + requester.getName() + ".");
-            }
-        }
-    }
-
-    private static DemandType demandTypeForMotivation(Motivation m) {
-        return switch (m) {
-            case WEALTH              -> DemandType.WEALTH;
-            case EXPANSION, SECURITY -> DemandType.ARMY;
-            case PRESTIGE            -> DemandType.ACKNOWLEDGE_SUPERIORITY;
-        };
-    }
-
-    // ─── Power estimation helpers (updated) ───────────────────────────────
-
-    /** Max army size a house could recruit this turn (raw soldiers). */
+private static DemandType demandTypeForMotivation(Motivation m) {
+return switch (m) {
+case WEALTH              -> DemandType.WEALTH;
+case EXPANSION, SECURITY -> DemandType.ARMY;
+case PRESTIGE            -> DemandType.ACKNOWLEDGE_SUPERIORITY;
+};
+}
 
 private static int maxRecruitableSize(NobleHouse house) {
-        int manpower = house.getNobleManpower();
-        int gold     = house.getGold();
-        int minSize  = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
-        if (manpower < minSize || gold < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) return 0;
-        int maxByManpower = manpower;
-        int maxByGold     = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-        return Math.max(minSize, Math.min(maxByManpower, maxByGold));
-    }
+int manpower = house.getNobleManpower();
+int gold     = house.getGold();
+int minSize  = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
+if (manpower < minSize || gold < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) return 0;
+int maxByManpower = manpower;
+int maxByGold     = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+return Math.max(minSize, Math.min(maxByManpower, maxByGold));
+}
 
-/** Effective combat power a house can field RIGHT NOW or after recruiting. */
-    public static int estimateAttackPower(NobleHouse house, NobleArmyManager armyManager) {
-        int milSkill = house.getActiveCharacter() != null ? house.getActiveCharacter().getMilitary() : 0;
-        double mult  = 1.0 + milSkill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
-        // existing idle army
-        for (NobleArmy a : armyManager.getArmiesForHouse(house.getId())) {
-            if (!a.hasPendingOrder() && a.getSize() > 0) {
-                return (int)(a.getSize() * mult);
-            }
-        }
-        // can recruit?
-        int size = maxRecruitableSize(house);
-        return (int)(size * mult);
-    }
+public static int estimateAttackPower(NobleHouse house, NobleArmyManager armyManager) {
+int milSkill = house.getActiveCharacter() != null ? house.getActiveCharacter().getMilitary() : 0;
+double mult  = 1.0 + milSkill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+for (NobleArmy a : armyManager.getArmiesForHouse(house.getId())) {
+if (!a.hasPendingOrder() && a.getSize() > 0) {
+return (int)(a.getSize() * mult);
+}
+}
+int size = maxRecruitableSize(house);
+return (int)(size * mult);
+}
 
-    /** Effective combat power a member could bring to a coalition (same logic). */
-    public static int estimateMemberPower(NobleHouse member, NobleArmyManager armyManager) {
-        return estimateAttackPower(member, armyManager);
-    }
+public static int estimateMemberPower(NobleHouse member, NobleArmyManager armyManager) {
+return estimateAttackPower(member, armyManager);
+}
 
-    /** Effective defender power at a specific zone, including garrison, fort, military skill, and estimated field army and allies. */
-    public static int estimateDefenderCombatPower(NobleHouse attacker, NobleHouse defender, String zoneId,
-                                                   List<NobleHouse> allHouses, NobleArmyManager armyManager,
-                                                   RelationshipManager relationships) {
-        int garrison = defender.getGarrisonFor(zoneId);
-        int fort     = defender.getFortificationFor(zoneId);
-        int mil      = defender.getActiveCharacter() != null ? defender.getActiveCharacter().getMilitary() : 0;
-        double mult  = 1.0 + mil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
-        double defReduction = 1.0 - (fort / 100.0) * GameParameters.COMBAT_DEFENSE_REDUCTION;
-        int baseDefPower = (int)(garrison * mult * defReduction);
-        int fieldArmyEstimate = estimatedPower(attacker, defender, armyManager);
-        int allyHelp = 0;
-        List<String> allies = relationships.getAll(defender.getId(), Relationship.ALLIED, allHouseIds(allHouses));
-        for (String allyId : allies) {
-            NobleHouse ally = findById(allyId, allHouses);
-            if (ally != null && !ally.isEliminated() && ally != attacker) {
-                Relationship allyWithAttacker = relationships.get(ally.getId(), attacker.getId());
-                if (allyWithAttacker != Relationship.ALLIED && allyWithAttacker != Relationship.FRIENDLY) {
-                    allyHelp += estimatedPower(attacker, ally, armyManager);
-                }
-            }
-        }
-        return baseDefPower + fieldArmyEstimate + allyHelp;
-    }
+public static int estimateDefenderCombatPower(NobleHouse attacker, NobleHouse defender, String zoneId,
+List<NobleHouse> allHouses, NobleArmyManager armyManager,
+RelationshipManager relationships) {
+int garrison = defender.getGarrisonFor(zoneId);
+int fort     = defender.getFortificationFor(zoneId);
+int mil      = defender.getActiveCharacter() != null ? defender.getActiveCharacter().getMilitary() : 0;
+double mult  = 1.0 + mil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+double defReduction = 1.0 - (fort / 100.0) * GameParameters.COMBAT_DEFENSE_REDUCTION;
+int baseDefPower = (int)(garrison * mult * defReduction);
+int fieldArmyEstimate = estimatedPower(attacker, defender, armyManager);
+int allyHelp = 0;
+List<String> allies = relationships.getAll(defender.getId(), Relationship.ALLIED, allHouseIds(allHouses));
+for (String allyId : allies) {
+NobleHouse ally = findById(allyId, allHouses);
+if (ally != null && !ally.isEliminated() && ally != attacker) {
+Relationship allyWithAttacker = relationships.get(ally.getId(), attacker.getId());
+if (allyWithAttacker != Relationship.ALLIED && allyWithAttacker != Relationship.FRIENDLY) {
+allyHelp += estimatedPower(attacker, ally, armyManager);
+}
+}
+}
+return baseDefPower + fieldArmyEstimate + allyHelp;
+}
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+private static double militaryMultiplier(int military) {
+return 1.0 + military * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+}
 
-    private static double militaryMultiplier(int military) {
-        return 1.0 + military * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
-    }
+private static boolean canSpendInfluence(NobleHouse house, int cost, List<String> log) {
+if (house.getInfluence() < cost) return false;
+house.addInfluence(-cost);
+return true;
+}
 
-    private static boolean canSpendInfluence(NobleHouse house, int cost, List<String> log) {
-        if (house.getInfluence() < cost) return false;
-        house.addInfluence(-cost);
-        return true;
-    }
+private static List<String> allHouseIds(List<NobleHouse> houses) {
+List<String> ids = new ArrayList<>();
+for (NobleHouse h : houses) ids.add(h.getId());
+return ids;
+}
 
-    private static List<String> allHouseIds(List<NobleHouse> houses) {
-        List<String> ids = new ArrayList<>();
-        for (NobleHouse h : houses) ids.add(h.getId());
-        return ids;
-    }
+private static NobleHouse findById(String id, List<NobleHouse> houses) {
+for (NobleHouse h : houses) if (h.getId().equals(id)) return h;
+return null;
+}
 
-    private static NobleHouse findById(String id, List<NobleHouse> houses) {
-        for (NobleHouse h : houses) if (h.getId().equals(id)) return h;
-        return null;
-    }
-
-    // ─── Attack fallback ────────────────────────────────────────────────────
-
-    /** Called when an ATTACK action is not feasible. Picks a non-attack action. */
-    private static void executeFallback(NobleHouse actor, Motivation motivation,
-                                        List<NobleHouse> allHouses,
-                                        RelationshipManager relationships,
-                                        ClaimManager claimManager,
-                                        main.map.ZoneManager zoneManager,
-                                        NobleArmyManager armyManager,
-                                        List<String> log) {
-        Debug.log("noble", "fallback", actor.getName() + " motivation=" + motivation + " trying alternatives");
-        if (motivation == Motivation.EXPANSION) {
-            if (claimManager.getClaimsFor(actor.getId()).isEmpty()
-                    && actor.getInfluence() >= GameParameters.AI_INFLUENCE_COST_FABRICATE) {
-                String targetZone = findClaimTarget(actor, allHouses, claimManager);
-                if (targetZone != null) {
-                    List<String> myZones = new ArrayList<>(actor.getZoneIds());
-                    NobleCharacter ch = actor.getActiveCharacter();
-                    int cunning = ch != null ? ch.getCunning() : 0;
-                    // Find owner of targetZone and get their cunning
-                    int ownerCunning = 0;
-                    for (NobleHouse other : allHouses) {
-                        if (other.getZoneIds().contains(targetZone)) {
-                            ownerCunning = other.getActiveCharacter() != null ? other.getActiveCharacter().getCunning() : 0;
-                            break;
-                        }
-                    }
-                    boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, ownerCunning, RNG,
-                            myZones, zoneManager.getZones());
-                    if (success) {
-                        log.add(actor.getName() + " fabricates a claim on " + targetZone + ".");
-                        for (NobleHouse other : allHouses) {
-                            if (other.getZoneIds().contains(targetZone)) {
-                                relationships.set(actor.getId(), other.getId(), Relationship.RIVAL);
-                                log.add(other.getName() + " becomes rival with "
-                                        + actor.getName() + " over the claim.");
-                                break;
-                            }
-                        }
-                    } else {
-                        log.add(actor.getName() + " fails to fabricate a claim. Cunning insufficient.");
-                    }
-                    return;
-                }
-            }
-            NobleHouse raidTarget = findRaidTarget(actor, allHouses, relationships, zoneManager);
-            if (raidTarget != null && actor.getInfluence() >= GameParameters.AI_INFLUENCE_COST_RAID) {
-                String raidedZone = pickRaidableZone(raidTarget, zoneManager);
-                if (raidedZone != null) {
-                    NobleArmy raidArmy = null;
-                    for (NobleArmy a : armyManager.getArmiesForHouse(actor.getId())) {
-                        if (!a.hasPendingOrder()) { raidArmy = a; break; }
-                    }
-                    if (raidArmy == null) {
-                        int recruitSize = maxRecruitableSize(actor);
-                        if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
-                            raidArmy = armyManager.recruit(actor, recruitSize);
-                            if (raidArmy != null) {
-                                log.add(actor.getName() + " raises a raiding party of " + raidArmy.getSize() + ".");
-                            }
-                        }
-                    }
-                    if (raidArmy != null && !raidArmy.hasPendingOrder() && raidArmy.getSize() > 0) {
-                        armyManager.moveArmy(raidArmy, raidedZone);
-                        raidArmy.issueOrder(NobleArmy.OrderType.RAID, raidedZone);
-                        log.add(actor.getName() + " sends raiders toward " + raidedZone + ".");
-                        return;
-                    }
-                }
-            }
-            if (actor.getGold() >= GameParameters.AI_FORTIFY_GOLD_COST) {
-                actor.addGold(-GameParameters.AI_FORTIFY_GOLD_COST);
-                actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
-                String fortZone = actor.getCapitalZoneId();
-                if (fortZone != null) {
-                    actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
-                }
-                log.add(actor.getName() + " fortifies. Defense +"
-                        + GameParameters.AI_FORTIFY_DEFENSE_GAIN
-                        + ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
-            }
-        } else {
-            if (actor.getGold() >= GameParameters.AI_FORTIFY_GOLD_COST) {
-                actor.addGold(-GameParameters.AI_FORTIFY_GOLD_COST);
-                actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
-                String fortZone = actor.getCapitalZoneId();
-                if (fortZone != null) {
-                    actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
-                }
-                log.add(actor.getName() + " fortifies. Defense +"
-                        + GameParameters.AI_FORTIFY_DEFENSE_GAIN
-                        + ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
-            }
-        }
-    }
-
-    // ─── Claim decay ────────────────────────────────────────────────────────
+private static void executeFallback(NobleHouse actor, Motivation motivation,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+ClaimManager claimManager,
+main.map.ZoneManager zoneManager,
+NobleArmyManager armyManager,
+List<String> log) {
+Debug.log("noble", "fallback", actor.getName() + " motivation=" + motivation + " trying alternatives");
+if (motivation == Motivation.EXPANSION) {
+if (claimManager.getClaimsFor(actor.getId()).isEmpty()
+&& actor.getInfluence() >= GameParameters.AI_INFLUENCE_COST_FABRICATE) {
+String targetZone = findClaimTarget(actor, allHouses, claimManager);
+if (targetZone != null) {
+List<String> myZones = new ArrayList<>(actor.getZoneIds());
+NobleCharacter ch = actor.getActiveCharacter();
+int cunning = ch != null ? ch.getCunning() : 0;
+int ownerCunning = 0;
+for (NobleHouse other : allHouses) {
+if (other.getZoneIds().contains(targetZone)) {
+ownerCunning = other.getActiveCharacter() != null ? other.getActiveCharacter().getCunning() : 0;
+break;
+}
+}
+boolean success = claimManager.fabricate(actor.getId(), targetZone, cunning, ownerCunning, RNG,
+myZones, zoneManager.getZones());
+if (success) {
+log.add(actor.getName() + " fabricates a claim on " + targetZone + ".");
+for (NobleHouse other : allHouses) {
+if (other.getZoneIds().contains(targetZone)) {
+relationships.set(actor.getId(), other.getId(), Relationship.RIVAL);
+log.add(other.getName() + " becomes rival with "
++ actor.getName() + " over the claim.");
+break;
+}
+}
+} else {
+log.add(actor.getName() + " fails to fabricate a claim. Cunning insufficient.");
+}
+return;
+}
+}
+NobleHouse raidTarget = findRaidTarget(actor, allHouses, relationships, zoneManager);
+if (raidTarget != null && actor.getInfluence() >= GameParameters.AI_INFLUENCE_COST_RAID) {
+String raidedZone = pickRaidableZone(raidTarget, zoneManager);
+if (raidedZone != null) {
+NobleArmy raidArmy = null;
+for (NobleArmy a : armyManager.getArmiesForHouse(actor.getId())) {
+if (!a.hasPendingOrder()) { raidArmy = a; break; }
+}
+if (raidArmy == null) {
+int recruitSize = maxRecruitableSize(actor);
+if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+raidArmy = armyManager.recruit(actor, recruitSize);
+if (raidArmy != null) {
+log.add(actor.getName() + " raises a raiding party of " + raidArmy.getSize() + ".");
+}
+}
+}
+if (raidArmy != null && !raidArmy.hasPendingOrder() && raidArmy.getSize() > 0) {
+armyManager.moveArmy(raidArmy, raidedZone);
+NobleArmy finalRaidArmy = armyManager.getFirstIdleArmyInZone(actor.getId(), raidedZone);
+if (finalRaidArmy == null) {
+debug.Debug.log("noble", "raid-fallback", actor.getName() + " no surviving army after move");
+return;
+}
+finalRaidArmy.issueOrder(NobleArmy.OrderType.RAID, raidedZone);
+log.add(actor.getName() + " sends raiders toward " + raidedZone + ".");
+return;
+}
+}
+}
+if (actor.getGold() >= GameParameters.AI_FORTIFY_GOLD_COST) {
+actor.addGold(-GameParameters.AI_FORTIFY_GOLD_COST);
+actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
+String fortZone = actor.getCapitalZoneId();
+if (fortZone != null) {
+actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
+}
+log.add(actor.getName() + " fortifies. Defense +"
++ GameParameters.AI_FORTIFY_DEFENSE_GAIN
++ ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
+}
+} else {
+if (actor.getGold() >= GameParameters.AI_FORTIFY_GOLD_COST) {
+actor.addGold(-GameParameters.AI_FORTIFY_GOLD_COST);
+actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
+String fortZone = actor.getCapitalZoneId();
+if (fortZone != null) {
+actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
+}
+log.add(actor.getName() + " fortifies. Defense +"
++ GameParameters.AI_FORTIFY_DEFENSE_GAIN
++ ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
+}
+}
+}
 
 public static void tickClaimDecay(List<NobleHouse> allHouses,
-                                      RelationshipManager relationships,
-                                      ClaimManager claimManager,
-                                      List<String> log) {
-        for (NobleHouse house : allHouses) {
-            if (house.isEliminated()) continue;
+RelationshipManager relationships,
+ClaimManager claimManager,
+List<String> log) {
+for (NobleHouse house : allHouses) {
+if (house.isEliminated()) continue;
 
-            Claim decayed = claimManager.rollClaimDecay(house.getId(), RNG);
-            if (decayed == null) continue;
+Claim decayed = claimManager.rollClaimDecay(house.getId(), RNG);
+if (decayed == null) continue;
 
-            boolean keep = false;
-            for (NobleHouse other : allHouses) {
-                if (other.getZoneIds().contains(decayed.getZoneId())) {
-                    Relationship rel = relationships.get(house.getId(), other.getId());
-                    if (rel == Relationship.RIVAL || rel == Relationship.HOSTILE) {
-                        keep = true;
-                        break;
-                    }
-                    // If the zone owner is allied/friendly, only keep if swimming in influence
-                    if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) {
-                        if (house.getInfluence() >= GameParameters.CLAIM_DECAY_INFLUENCE_COST * 10) {
-                            keep = true;
-                        }
-                        // else: keep stays false — let it decay to free up influence
-                    }
-                }
-            }
-            if (!keep && house.getActiveCharacter() != null
-                    && house.getActiveCharacter().getDominantMotivation() == Motivation.EXPANSION) {
-                keep = true;
-            }
-
-            if (keep && house.getInfluence() >= GameParameters.CLAIM_DECAY_INFLUENCE_COST) {
-                house.addInfluence(-GameParameters.CLAIM_DECAY_INFLUENCE_COST);
-            } else {
-                claimManager.removeClaim(house.getId(), decayed.getZoneId());
-            }
-        }
-    }
-
-// ─── War chest ──────────────────────────────────────────────────────────
-
-    /** Compute the gold target this house wants to keep in reserve. */
-    private static int getWarChestTarget(NobleHouse actor,
-                                         List<NobleHouse> allHouses,
-                                         RelationshipManager relationships,
-                                         NobleArmyManager armyManager) {
-        int maxEnemyPower = 0;
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            Relationship rel = relationships.get(actor.getId(), other.getId());
-            if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) continue;
-            int enemyPower = estimatedPower(actor, other, armyManager);
-            if (enemyPower > maxEnemyPower) maxEnemyPower = enemyPower;
-        }
-        if (maxEnemyPower < 5) maxEnemyPower = 5;
-
-        int myMil = actor.getActiveCharacter() != null ? actor.getActiveCharacter().getMilitary() : 0;
-        double myMult = 1.0 + myMil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
-        int neededSoldiers = (int) Math.ceil(maxEnemyPower / myMult);
-
-        int recruitCost = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-        int upkeepCost  = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER * GameParameters.WAR_CHEST_UPKEEP_TURNS;
-        int baseGold = recruitCost + upkeepCost;
-
-        NobleCharacter ch = actor.getActiveCharacter();
-        Motivation dom = ch != null ? ch.getDominantMotivation() : Motivation.SECURITY;
-        Motivation sec = ch != null ? ch.getSecondaryMotivation() : Motivation.SECURITY;
-        double domPriority = motivationPriority(dom);
-        double secPriority = motivationPriority(sec);
-        double priority = 0.75 * domPriority + 0.25 * secPriority;
-
-        int cunning = ch != null ? ch.getCunning() : 0;
-        double fuzzRange = GameParameters.WAR_CHEST_FUZZ_BASE
-                + (4 - cunning) * GameParameters.WAR_CHEST_FUZZ_PER_MISSING;
-        double fuzz = 1.0 + (RNG.nextDouble() * 2 - 1) * fuzzRange;
-
-        int target = (int) (baseGold * priority * fuzz);
-        // Never let the war‑chest drop below the cost of recruiting a minimal army.
-        if (target < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-            target = GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD;
-        }
-        return Math.max(0, target);
-    }
-
-    private static double motivationPriority(Motivation m) {
-        return switch (m) {
-            case EXPANSION -> GameParameters.WAR_CHEST_PRIORITY_EXPANSION;
-            case SECURITY  -> GameParameters.WAR_CHEST_PRIORITY_SECURITY;
-            case WEALTH    -> GameParameters.WAR_CHEST_PRIORITY_WEALTH;
-            case PRESTIGE  -> GameParameters.WAR_CHEST_PRIORITY_PRESTIGE;
-        };
-    }
-
-    // ─── shouldGift (new) ──────────────────────────────────────────────────
-
-    private static boolean shouldGift(NobleHouse actor, Motivation motivation,
-                                      List<NobleHouse> allHouses,
-                                      RelationshipManager relationships,
-                                      NobleArmyManager armyManager) {
-        double weight = switch (motivation) {
-            case SECURITY  -> GameParameters.GIFT_WEIGHT_SECURITY;
-            case WEALTH    -> actor.getGold() > GameParameters.GIFT_WEALTH_GOLD_THRESHOLD
-                    ? GameParameters.GIFT_WEIGHT_WEALTH : 0.0;
-            case PRESTIGE  -> GameParameters.GIFT_WEIGHT_PRESTIGE;
-            case EXPANSION -> GameParameters.GIFT_WEIGHT_EXPANSION;
-        };
-        if (RNG.nextDouble() > weight) return false;
-
-        int selfStrength = exactPotentialFieldArmy(actor, armyManager) + actor.getTotalGarrisonSize();
-        for (NobleHouse other : allHouses) {
-            if (other == actor || other.isEliminated()) continue;
-            Relationship rel = relationships.get(actor.getId(), other.getId());
-            if (rel == Relationship.HOSTILE || rel == Relationship.NEUTRAL) {
-                int otherStrength = estimatedPower(actor, other, armyManager);
-                if (otherStrength > selfStrength) return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Returns true if the house has at least one claim on a zone owned by a non-allied, non-friendly house.
-     */
-    private static boolean hasClaimOnNonAlliedZone(NobleHouse actor,
-                                                   List<NobleHouse> allHouses,
-                                                   RelationshipManager relationships,
-                                                   ClaimManager claimManager) {
-        for (Claim c : claimManager.getClaimsFor(actor.getId())) {
-            for (NobleHouse other : allHouses) {
-                if (other == actor || other.isEliminated()) continue;
-                if (other.getZoneIds().contains(c.getZoneId())) {
-                    Relationship rel = relationships.get(actor.getId(), other.getId());
-                    if (rel != Relationship.ALLIED && rel != Relationship.FRIENDLY) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
+boolean keep = false;
+for (NobleHouse other : allHouses) {
+if (other.getZoneIds().contains(decayed.getZoneId())) {
+Relationship rel = relationships.get(house.getId(), other.getId());
+if (rel == Relationship.RIVAL || rel == Relationship.HOSTILE) {
+keep = true;
+break;
 }
+if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) {
+if (house.getInfluence() >= GameParameters.CLAIM_DECAY_INFLUENCE_COST * 10) {
+keep = true;
+}
+}
+}
+}
+if (!keep && house.getActiveCharacter() != null
+&& house.getActiveCharacter().getDominantMotivation() == Motivation.EXPANSION) {
+keep = true;
+}
+
+if (keep && house.getInfluence() >= GameParameters.CLAIM_DECAY_INFLUENCE_COST) {
+house.addInfluence(-GameParameters.CLAIM_DECAY_INFLUENCE_COST);
+} else {
+claimManager.removeClaim(house.getId(), decayed.getZoneId());
+}
+}
+}
+
+private static int getWarChestTarget(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager) {
+int maxEnemyPower = 0;
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel != Relationship.RIVAL && rel != Relationship.HOSTILE) continue;
+int enemyPower = estimatedPower(actor, other, armyManager);
+if (enemyPower > maxEnemyPower) maxEnemyPower = enemyPower;
+}
+if (maxEnemyPower < 5) maxEnemyPower = 5;
+
+int myMil = actor.getActiveCharacter() != null ? actor.getActiveCharacter().getMilitary() : 0;
+double myMult = 1.0 + myMil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+int neededSoldiers = (int) Math.ceil(maxEnemyPower / myMult);
+
+int recruitCost = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+int upkeepCost  = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER * GameParameters.WAR_CHEST_UPKEEP_TURNS;
+int baseGold = recruitCost + upkeepCost;
+
+NobleCharacter ch = actor.getActiveCharacter();
+Motivation dom = ch != null ? ch.getDominantMotivation() : Motivation.SECURITY;
+Motivation sec = ch != null ? ch.getSecondaryMotivation() : Motivation.SECURITY;
+double domPriority = motivationPriority(dom);
+double secPriority = motivationPriority(sec);
+double priority = 0.75 * domPriority + 0.25 * secPriority;
+
+int cunning = ch != null ? ch.getCunning() : 0;
+double fuzzRange = GameParameters.WAR_CHEST_FUZZ_BASE
++ (4 - cunning) * GameParameters.WAR_CHEST_FUZZ_PER_MISSING;
+double fuzz = 1.0 + (RNG.nextDouble() * 2 - 1) * fuzzRange;
+
+int target = (int) (baseGold * priority * fuzz);
+if (target < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
+target = GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD;
+}
+return Math.max(0, target);
+}
+
+private static double motivationPriority(Motivation m) {
+return switch (m) {
+case EXPANSION -> GameParameters.WAR_CHEST_PRIORITY_EXPANSION;
+case SECURITY  -> GameParameters.WAR_CHEST_PRIORITY_SECURITY;
+case WEALTH    -> GameParameters.WAR_CHEST_PRIORITY_WEALTH;
+case PRESTIGE  -> GameParameters.WAR_CHEST_PRIORITY_PRESTIGE;
+};
+}
+
+private static boolean shouldGift(NobleHouse actor, Motivation motivation,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+NobleArmyManager armyManager) {
+double weight = switch (motivation) {
+case SECURITY  -> GameParameters.GIFT_WEIGHT_SECURITY;
+case WEALTH    -> actor.getGold() > GameParameters.GIFT_WEALTH_GOLD_THRESHOLD
+? GameParameters.GIFT_WEIGHT_WEALTH : 0.0;
+case PRESTIGE  -> GameParameters.GIFT_WEIGHT_PRESTIGE;
+case EXPANSION -> GameParameters.GIFT_WEIGHT_EXPANSION;
+};
+if (RNG.nextDouble() > weight) return false;
+
+int selfStrength = exactPotentialFieldArmy(actor, armyManager) + actor.getTotalGarrisonSize();
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel == Relationship.HOSTILE || rel == Relationship.NEUTRAL) {
+int otherStrength = estimatedPower(actor, other, armyManager);
+if (otherStrength > selfStrength) return true;
+}
+}
+return false;
+}
+
+private static boolean hasClaimOnNonAlliedZone(NobleHouse actor,
+List<NobleHouse> allHouses,
+RelationshipManager relationships,
+ClaimManager claimManager) {
+for (Claim c : claimManager.getClaimsFor(actor.getId())) {
+for (NobleHouse other : allHouses) {
+if (other == actor || other.isEliminated()) continue;
+if (other.getZoneIds().contains(c.getZoneId())) {
+Relationship rel = relationships.get(actor.getId(), other.getId());
+if (rel != Relationship.ALLIED && rel != Relationship.FRIENDLY) {
+return true;
+}
+}
+}
+}
+return false;
+}
+}
+
+
