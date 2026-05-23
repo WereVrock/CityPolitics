@@ -9,7 +9,6 @@ import main.map.ZoneState;
 import main.parameters.GameParameters;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import main.map.Zone;
 
 /**
@@ -48,12 +47,22 @@ this.coalitionManager = coalitionManager;
 public NobleArmy recruit(NobleHouse house, int size) {
 if (size <= 0) return null;
 String zoneId = house.getCapitalZoneId();
-if (zoneId == null) return null; // no capital, can't place army
+if (zoneId == null) {
+debug.Debug.log("noble", "recruit", house.getName() + " cannot recruit (no capital zone)");
+return null;
+}
 
 int manpowerCost = size;
 int goldCost     = size * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-if (house.getNobleManpower() < manpowerCost) return null;
-if (house.getGold() < goldCost) return null;
+if (house.getNobleManpower() < manpowerCost) {
+debug.Debug.log("noble", "recruit", house.getName() + " insufficient manpower: have " + house.getNobleManpower() + ", need " + manpowerCost);
+return null;
+}
+if (house.getGold() < goldCost) {
+    
+debug.Debug.log("noble", "recruit", house.getName() + " insufficient gold: have " + house.getGold() + ", need " + goldCost);
+return null;
+}
 
 house.spendNobleManpower(manpowerCost);
 house.addGold(-goldCost);
@@ -62,6 +71,7 @@ String    id   = "noble_army_" + (nextId++);
 NobleArmy army = new NobleArmy(id, house.getId(), size, zoneId);
 army.setSkipNextUpkeep(true);  // skip first-turn upkeep
 add(army);
+debug.Debug.log("noble", "recruit", house.getName() + " recruited " + size + " soldiers at " + zoneId + " (cost " + goldCost + " gold, " + manpowerCost + " manpower)");
 return army;
 }
 
@@ -74,12 +84,19 @@ public boolean reinforceArmy(NobleHouse house, NobleArmy army, int additionalSiz
 if (additionalSize <= 0) return false;
 int manpowerCost = additionalSize;
 int goldCost     = additionalSize * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-if (house.getNobleManpower() < manpowerCost) return false;
-if (house.getGold() < goldCost) return false;
+if (house.getNobleManpower() < manpowerCost) {
+debug.Debug.log("noble", "reinforce", house.getName() + " cannot reinforce: need " + manpowerCost + " manpower, have " + house.getNobleManpower());
+return false;
+}
+if (house.getGold() < goldCost) {
+debug.Debug.log("noble", "reinforce", house.getName() + " cannot reinforce: need " + goldCost + " gold, have " + house.getGold());
+return false;
+}
 
 house.spendNobleManpower(manpowerCost);
 house.addGold(-goldCost);
 army.setSize(army.getSize() + additionalSize);
+debug.Debug.log("noble", "reinforce", house.getName() + " reinforced army " + army.getId() + " by " + additionalSize + " soldiers (new size " + army.getSize() + ")");
 return true;
 }
 
@@ -628,6 +645,8 @@ private double militaryMult(int skill) {
 return 1.0 + skill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
 }
 }
+
+
 
 
 

@@ -98,6 +98,11 @@ public List<String> processTurn(ResourcePool playerResources) {
         for (NobleHouse house : houses) {
             if (!house.isEliminated()) {
                 house.tickGarrisons();
+            } else {
+                // Clean up armies of eliminated houses
+                for (NobleArmy a : new ArrayList<>(armyManager.getArmiesForHouse(house.getId()))) {
+                    armyManager.remove(a);
+                }
             }
         }
 

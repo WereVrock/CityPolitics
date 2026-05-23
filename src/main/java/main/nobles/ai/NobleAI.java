@@ -69,7 +69,8 @@ public class NobleAI {
      * Priority: own zones under attack first, then ally attacks, then ally defenses.
      * Splits army if supporting two battles; joins whole pool to one battle otherwise.
      */
-    private static void issueJoinBattleOrders(NobleHouse actor,
+
+private static void issueJoinBattleOrders(NobleHouse actor,
                                                List<NobleHouse> allHouses,
                                                RelationshipManager relationships,
                                                NobleArmyManager armyManager,
@@ -142,19 +143,26 @@ public class NobleAI {
 
         if (toJoin.isEmpty()) return;
 
-        // Recruit if we have nothing deployed
+        // ---------- RECRUITMENT (after decision) ----------
+        // Calculate how many soldiers we can afford right now
+        int availableManpower = actor.getNobleManpower();
+        int availableGold = actor.getGold();
+        int costPerSoldier = Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER);
+        int maxAffordableJoin = Math.min(availableManpower, availableGold / costPerSoldier);
+        if (maxAffordableJoin < GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+            debug.Debug.log("noble", "join-battle", actor.getName() + " cannot afford even a minimal force (have " + availableManpower + " manpower, " + availableGold + " gold)");
+            return;
+        }
+
         boolean hasArmy = !armyManager.getArmiesForHouse(actor.getId()).isEmpty();
-        if (!hasArmy
-                && actor.getNobleManpower() >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE
-                && actor.getGold() >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-            int size = Math.max(GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE,
-                (int)(actor.getNobleManpower() * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
-            NobleArmy recruited = armyManager.recruit(actor, size);
+        if (!hasArmy) {
+            NobleArmy recruited = armyManager.recruit(actor, maxAffordableJoin);
             if (recruited != null) {
-                log.add(actor.getName() + " raises " + size + " soldiers to join battle.");
+                log.add(actor.getName() + " raises " + recruited.getSize() + " soldiers to join battle.");
             }
         }
 
+        // Collect available (idle) armies – including the freshly recruited one
         List<NobleArmy> available = new ArrayList<>();
         for (NobleArmy a : armyManager.getArmiesForHouse(actor.getId())) {
             if (!a.hasPendingOrder() && a.isAlive()) available.add(a);
@@ -185,7 +193,6 @@ public class NobleAI {
             // Split pool evenly between two battles
             int half = pool.getSize() / 2;
             if (half < 1) {
-                // Too small to split — join priority battle
                 PendingBattle b = toJoin.get(0);
                 armyManager.moveArmy(pool, b.zoneId);
                 pool.issueOrder(NobleArmy.OrderType.JOIN_BATTLE, b.zoneId);
@@ -206,7 +213,7 @@ public class NobleAI {
         }
     }
 
-    /** Lightweight struct for a battle visible this turn. */
+/** Lightweight struct for a battle visible this turn. */
     private static class PendingBattle {
         final NobleHouse attacker;
         final NobleHouse defender;
@@ -563,14 +570,13 @@ public class NobleAI {
                 for (NobleArmy a : actorArmies) {
                     if (!a.hasPendingOrder()) { army = a; break; }
                 }
-                if (army == null
-                        && actor.getNobleManpower() >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE
-                        && actor.getGold() >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-                    int recruitSize = Math.max(GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE,
-                            (int)(actor.getNobleManpower() * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
-                    army = armyManager.recruit(actor, recruitSize);
-                    if (army != null) {
-                        log.add(actor.getName() + " raises an army of " + army.getSize() + " for the attack.");
+                if (army == null) {
+                    int recruitSize = maxRecruitableSize(actor);
+                    if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+                        army = armyManager.recruit(actor, recruitSize);
+                        if (army != null) {
+                            log.add(actor.getName() + " raises an army of " + army.getSize() + " for the attack.");
+                        }
                     }
                 }
                 if (army != null && !army.hasPendingOrder() && army.getSize() > 0) {
@@ -596,17 +602,19 @@ public class NobleAI {
                     log.add(actor.getName() + " finds no raidable zone in " + raidTarget.getName() + ".");
                     break;
                 }
+                // Calculate how many soldiers are worth bringing – more than the zone's max yield is wasteful
+                main.map.Zone targetZoneObj = zoneManager.getZone(raidedZone);
+                int zoneGold = targetZoneObj != null ? targetZoneObj.getGoldProduction() : GameParameters.ZONE_VILLAGE_GOLD;
+                int maxStealFromZone = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
+                int maxAffordable = Math.min(actor.getNobleManpower(), actor.getGold() / Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER));
+                int desiredSize = Math.min(maxStealFromZone, maxAffordable);
                 List<NobleArmy> actorArmies = armyManager.getArmiesForHouse(actor.getId());
                 NobleArmy raidArmy = null;
                 for (NobleArmy a : actorArmies) {
                     if (!a.hasPendingOrder()) { raidArmy = a; break; }
                 }
-                if (raidArmy == null
-                        && actor.getNobleManpower() >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE
-                        && actor.getGold() >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-                    int recruitSize = Math.max(GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE,
-                            (int)(actor.getNobleManpower() * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
-                    raidArmy = armyManager.recruit(actor, recruitSize);
+                if (raidArmy == null && desiredSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+                    raidArmy = armyManager.recruit(actor, desiredSize);
                     if (raidArmy != null) {
                         log.add(actor.getName() + " raises a raiding party of " + raidArmy.getSize() + ".");
                     }
@@ -1155,17 +1163,18 @@ private static NobleHouse findClaimlessAttackTarget(NobleHouse actor,
     // ─── Power estimation helpers (updated) ───────────────────────────────
 
     /** Max army size a house could recruit this turn (raw soldiers). */
-    private static int maxRecruitableSize(NobleHouse house) {
+
+private static int maxRecruitableSize(NobleHouse house) {
         int manpower = house.getNobleManpower();
         int gold     = house.getGold();
         int minSize  = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
         if (manpower < minSize || gold < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) return 0;
-        int maxSustainableSize = (int)(gold / (GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER * 2.0));
-        int rawSize = Math.max(minSize, (int)(manpower * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
-        return Math.max(minSize, Math.min(rawSize, maxSustainableSize));
+        int maxByManpower = manpower;
+        int maxByGold     = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+        return Math.max(minSize, Math.min(maxByManpower, maxByGold));
     }
 
-    /** Effective combat power a house can field RIGHT NOW or after recruiting. */
+/** Effective combat power a house can field RIGHT NOW or after recruiting. */
     public static int estimateAttackPower(NobleHouse house, NobleArmyManager armyManager) {
         int milSkill = house.getActiveCharacter() != null ? house.getActiveCharacter().getMilitary() : 0;
         double mult  = 1.0 + milSkill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
@@ -1286,14 +1295,13 @@ private static NobleHouse findClaimlessAttackTarget(NobleHouse actor,
                     for (NobleArmy a : armyManager.getArmiesForHouse(actor.getId())) {
                         if (!a.hasPendingOrder()) { raidArmy = a; break; }
                     }
-                    if (raidArmy == null
-                            && actor.getNobleManpower() >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE
-                            && actor.getGold() >= GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-                        int recruitSize = Math.max(GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE,
-                                (int)(actor.getNobleManpower() * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
-                        raidArmy = armyManager.recruit(actor, recruitSize);
-                        if (raidArmy != null) {
-                            log.add(actor.getName() + " raises a raiding party of " + raidArmy.getSize() + ".");
+                    if (raidArmy == null) {
+                        int recruitSize = maxRecruitableSize(actor);
+                        if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+                            raidArmy = armyManager.recruit(actor, recruitSize);
+                            if (raidArmy != null) {
+                                log.add(actor.getName() + " raises a raiding party of " + raidArmy.getSize() + ".");
+                            }
                         }
                     }
                     if (raidArmy != null && !raidArmy.hasPendingOrder() && raidArmy.getSize() > 0) {

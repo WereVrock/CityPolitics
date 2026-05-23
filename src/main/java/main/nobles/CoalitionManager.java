@@ -348,13 +348,16 @@ private NobleArmy getOrRecruitIdleArmy(NobleHouse house) {
 for (NobleArmy a : armyManager.getArmiesForHouse(house.getId())) {
 if (!a.hasPendingOrder() && a.getSize() > 0) return a;
 }
-// Try to recruit
+
+// Try to recruit – max affordable, no fraction gating
 int manpower = house.getNobleManpower();
 int gold     = house.getGold();
 int minSize  = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
-if (manpower < minSize || gold < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) return null;
-int size = Math.max(minSize, (int)(manpower * GameParameters.NOBLE_ARMY_RECRUIT_FRACTION));
-return armyManager.recruit(house, size);
+int maxByManpower = manpower;
+int maxByGold     = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER; // recruit cost = upkeep cost per your design
+int maxAffordable = Math.min(maxByManpower, maxByGold);
+if (maxAffordable < minSize) return null;
+return armyManager.recruit(house, maxAffordable);
 }
 }
 

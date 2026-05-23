@@ -222,7 +222,7 @@ public final class GameParameters {
     public static final int    NOBLE_STANDING_ARMY_MANPOWER_MULTIPLIER = 5;
 
     /** Gold cost to recruit one soldier into the raised army. */
-    public static final int    NOBLE_RECRUIT_COST_PER_SOLDIER        = 3;
+    public static final int    NOBLE_RECRUIT_COST_PER_SOLDIER        = 1; // there is a bug about using upkeep instead of this. until it is fixed should stay teh same as upkeep
 
     /** Gold cost per soldier per turn to maintain the raised army. */
     public static final int    NOBLE_UPKEEP_COST_PER_SOLDIER         = 1;
@@ -400,8 +400,7 @@ public final class GameParameters {
     // =========================================================
     /** Minimum army size the AI will recruit. */
     public static final int    NOBLE_ARMY_MIN_RECRUIT_SIZE              = 5;
-    /** AI recruits this fraction of available noble manpower per turn. */
-    public static final double NOBLE_ARMY_RECRUIT_FRACTION              = 0.5;
+  
     /** AI won't recruit if gold below this threshold. */
     public static final int    NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD        = 30;
     /** AI disbands army if gold below this threshold (to avoid forced disband). */
