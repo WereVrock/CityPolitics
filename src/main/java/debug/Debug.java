@@ -68,11 +68,9 @@ public class Debug {
         DebugUIManager.getInstance().setFlushDelay(ms);
     }
 
-    /** Prints all accumulated logs to the console. */
-    public static void printLogsToConsole() {
-        for (LogEntry entry : DebugCore.getInstance().getAllLogs()) {
-            System.out.println("[" + entry.formattedTimestamp() + "] [" + entry.category() + "] [" + entry.type() + "] " + entry.message());
-        }
+    /** Returns all accumulated logs. */
+    public static java.util.List<LogEntry> getLogs() {
+        return DebugCore.getInstance().getAllLogs();
     }
 
     // Package-private access

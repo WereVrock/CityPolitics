@@ -4,6 +4,7 @@ import ui.politics.PartiesOverviewPanel;
 import ui.map.MapView;
 import ui.politics.VoteSessionPanel;
 import main.actions.ActionResult;
+import main.automation.AutomationManager;
 import main.core.GameState;
 
 import javax.swing.*;
@@ -28,6 +29,7 @@ public class MainWindow extends JFrame {
     private final ui.nobles.NobleHousesPanel nobleHousesPanel;
     private final VoteSessionPanel       voteSessionPanel;
     private final MapView                mapView;
+    private final AutomationManager      automationManager;
 
     private final JPanel  centerPanel;
     private  JButton partiesBtn;
@@ -58,6 +60,7 @@ public class MainWindow extends JFrame {
         nobleHousesPanel     = new ui.nobles.NobleHousesPanel(gameState, this::showMainView);
         voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteFinalized, this::swapCenter);
         mapView              = new MapView(gameState, this::showMainView);
+        automationManager    = new AutomationManager(gameState);
 
         // Left sidebar
         JPanel leftSidebar = new JPanel(new BorderLayout());
@@ -244,11 +247,7 @@ private JButton buildBarButton(String label) {
     }
 
     private void endMultiTurn(int count) {
-        for (int i = 0; i < count; i++) {
-            endTurn();
-            if (gameState.hasActiveSession()) break;
-        }
-        debug.Debug.printLogsToConsole();
+        automationManager.processMultiTurn(count, this::endTurn);
     }
 
 private void endTurn() {
