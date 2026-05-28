@@ -7,6 +7,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -18,7 +19,9 @@ public class CalendarPanel extends JPanel {
     private final JLabel            dateLabel;
     private final JLabel            countdownLabel;
     private       JButton           endTurnBtn;
+    private       JButton           multiEndTurnBtn;
     private       Runnable          onEndTurn;
+    private       Consumer<Integer> onEndMultiTurn;
     private       Supplier<Boolean> isBlocked;
 
     public CalendarPanel(GameState gameState) {
@@ -63,19 +66,47 @@ public class CalendarPanel extends JPanel {
         endTurnBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         endTurnBtn.addActionListener(e -> { if (onEndTurn != null) onEndTurn.run(); });
 
+        multiEndTurnBtn = new JButton("END X  ▶▶");
+        multiEndTurnBtn.setFont(new Font("Serif", Font.BOLD, 14));
+        multiEndTurnBtn.setForeground(UITheme.TEXT_SECONDARY);
+        multiEndTurnBtn.setBackground(new Color(35, 35, 45));
+        multiEndTurnBtn.setBorderPainted(false);
+        multiEndTurnBtn.setFocusPainted(false);
+        multiEndTurnBtn.setPreferredSize(new Dimension(100, 44));
+        multiEndTurnBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        multiEndTurnBtn.addActionListener(e -> {
+            String input = JOptionPane.showInputDialog(this, "How many turns to skip?", "End Multi-Turn", JOptionPane.QUESTION_MESSAGE);
+            if (input != null && !input.isEmpty()) {
+                try {
+                    int count = Integer.parseInt(input);
+                    if (count > 0 && onEndMultiTurn != null) {
+                        onEndMultiTurn.accept(count);
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+        });
+
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        btnPanel.setBackground(UITheme.BG_PANEL);
+        btnPanel.add(multiEndTurnBtn);
+        btnPanel.add(endTurnBtn);
+
         add(titleLabel, BorderLayout.WEST);
         add(dateBlock,  BorderLayout.CENTER);
-        add(endTurnBtn, BorderLayout.EAST);
+        add(btnPanel,   BorderLayout.EAST);
 
         refresh();
     }
 
     public void setEndTurnCallback(Runnable onEndTurn)          { this.onEndTurn = onEndTurn; }
+    public void setEndMultiTurnCallback(Consumer<Integer> callback) { this.onEndMultiTurn = callback; }
     public void setBlockedSupplier(Supplier<Boolean> supplier)  { this.isBlocked = supplier; }
 
     public void updateEndTurnState(boolean blocked, boolean hasPendingVote) {
         endTurnBtn.setEnabled(!blocked);
         endTurnBtn.setBackground(blocked ? UITheme.BUTTON_DISABLED : new Color(25, 45, 65));
+        multiEndTurnBtn.setEnabled(!blocked);
+        multiEndTurnBtn.setBackground(blocked ? UITheme.BUTTON_DISABLED : new Color(35, 35, 45));
         endTurnBtn.setText(hasPendingVote ? "VOTE PENDING  ⚠" : "END TURN  ▶");
         endTurnBtn.setForeground(hasPendingVote ? UITheme.TEXT_GOLD : UITheme.ACCENT_FROST);
     }

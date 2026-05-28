@@ -47,6 +47,7 @@ public class MainWindow extends JFrame {
 
         calendarPanel        = new CalendarPanel(gameState);
         calendarPanel.setEndTurnCallback(this::endTurn);
+        calendarPanel.setEndMultiTurnCallback(this::endMultiTurn);
         calendarPanel.setBlockedSupplier(() -> gameState.hasActiveSession());
         resourcePanel        = new ResourcePanel(gameState);
         popPanel             = new PopPanel(gameState);
@@ -240,6 +241,14 @@ private JButton buildBarButton(String label) {
         calendarPanel.updateEndTurnState(blocked, blocked);
         partiesBtn.setVisible(!blocked);
         openVoteBtn.setVisible(blocked);
+    }
+
+    private void endMultiTurn(int count) {
+        for (int i = 0; i < count; i++) {
+            endTurn();
+            if (gameState.hasActiveSession()) break;
+        }
+        debug.Debug.printLogsToConsole();
     }
 
 private void endTurn() {
