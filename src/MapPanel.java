@@ -21,7 +21,7 @@ private static final Color COLOR_FOOD_TEXT      = new Color(110, 185, 95);
 private static final Color COLOR_BG             = new Color(188, 158, 110);   // parchment
 private static final Color COLOR_PARCH_GRAIN    = new Color(100, 72,  35,  22); // subtle grain lines
 
-// ── Fonts ─────────────────────────────────────────────────────────────────
+// ── Fonts  ─────────────────────────────────────────────────────────────────
 private static final Font FONT_ZONE_NAME  = new Font("Serif", Font.BOLD,        13);
 private static final Font FONT_ZONE_STATS = new Font("Serif", Font.ITALIC,      10);
 private static final Font FONT_SETTLEMENT = new Font("Serif", Font.PLAIN,       11);
