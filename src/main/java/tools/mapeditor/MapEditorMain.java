@@ -1,6 +1,6 @@
 package tools.mapeditor;
 
-import main.map.Zone;
+import main.map.ZoneDecorationRegistry;
 import main.map.ZoneManager;
 import main.map.WorldGeography;
 
@@ -13,8 +13,9 @@ public class MapEditorMain {
         SwingUtilities.invokeLater(() -> {
             ZoneManager zoneManager = new ZoneManager();
             WorldGeography geography = new WorldGeography();
+            ZoneDecorationRegistry decorationRegistry = new ZoneDecorationRegistry();
 
-            EditorState state = new EditorState(zoneManager);
+            EditorState state = new EditorState(zoneManager, decorationRegistry, geography);
             OutputPanel outputPanel = new OutputPanel(state);
             MapEditorCanvas canvas = new MapEditorCanvas(state, geography, outputPanel);
             EditorToolbar toolbar = new EditorToolbar(state, canvas, outputPanel);

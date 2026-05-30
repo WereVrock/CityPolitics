@@ -58,7 +58,7 @@ public class EditorToolbar extends JPanel {
 
         JButton clearSelBtn = makeButton("Deselect");
         clearSelBtn.addActionListener(e -> {
-            state.setSelectedZone(null);
+            state.clearSelection();
             canvas.repaint();
         });
         add(clearSelBtn);
@@ -66,7 +66,7 @@ public class EditorToolbar extends JPanel {
         addSeparator();
 
         JLabel hint = new JLabel(
-            "Click zone to select  |  Drag vertex  |  Double-click edge to add vertex  |  Right-click vertex to delete  |  Drag name dot to move label");
+            "Click zone/river/sea to select  |  Drag vertex  |  Double‑click edge to add vertex  |  Right‑click vertex to delete  |  Drag name dot to move label");
         hint.setForeground(new Color(150, 145, 130));
         hint.setFont(new Font("SansSerif", Font.PLAIN, 11));
         add(hint);

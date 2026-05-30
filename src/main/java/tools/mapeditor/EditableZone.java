@@ -1,6 +1,7 @@
 package tools.mapeditor;
 
 import main.map.Zone;
+import main.map.ZoneDecoration;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -11,17 +12,24 @@ public class EditableZone {
     private final String id;
     private final String displayName;
     private final Zone.SettlementType settlementType;
+    private ZoneDecoration.TerrainSymbol terrainSymbol;
+    private final List<int[]> mountainEdges; // each int[]{indexA, indexB}
 
     private final List<int[]> vertices; // each int[]{x, y}
     private int labelX;
     private int labelY;
 
-    public EditableZone(Zone zone) {
+    public EditableZone(Zone zone, ZoneDecoration decoration) {
         this.id             = zone.getId();
         this.displayName    = zone.getDisplayName();
         this.settlementType = zone.getSettlement();
         this.labelX         = zone.getLabelX();
         this.labelY         = zone.getLabelY();
+        this.terrainSymbol  = decoration.getSymbol();
+        this.mountainEdges  = new ArrayList<>(decoration.getMountainEdges().size());
+        for (int[] edge : decoration.getMountainEdges()) {
+            mountainEdges.add(new int[]{edge[0], edge[1]});
+        }
 
         this.vertices = new ArrayList<>();
         int[] px = zone.getPolyX();
@@ -39,6 +47,42 @@ public class EditableZone {
     public int getLabelY()                       { return labelY; }
     public void setLabelX(int x)                { this.labelX = x; }
     public void setLabelY(int y)                { this.labelY = y; }
+
+    public ZoneDecoration.TerrainSymbol getTerrainSymbol()   { return terrainSymbol; }
+    public void setTerrainSymbol(ZoneDecoration.TerrainSymbol sym) { this.terrainSymbol = sym; }
+
+    public List<int[]> getMountainEdges()       { return mountainEdges; }
+    public void addMountainEdge(int a, int b) {
+        if (!isMountainEdge(a)) {
+            mountainEdges.add(new int[]{a, b});
+        }
+    }
+    public void removeMountainEdge(int edgeIndex) {
+        int n = vertices.size();
+        if (edgeIndex < 0 || edgeIndex >= n) return;
+        mountainEdges.removeIf(e -> 
+            (e[0] == edgeIndex && e[1] == (edgeIndex + 1) % n) ||
+            (e[0] == (edgeIndex + 1) % n && e[1] == edgeIndex));
+    }
+    public boolean isMountainEdge(int edgeIndex) {
+        int n = vertices.size();
+        if (edgeIndex < 0 || edgeIndex >= n) return false;
+        int next = (edgeIndex + 1) % n;
+        for (int[] e : mountainEdges) {
+            if ((e[0] == edgeIndex && e[1] == next) || (e[0] == next && e[1] == edgeIndex))
+                return true;
+        }
+        return false;
+    }
+    public void toggleMountainEdge(int edgeIndex) {
+        if (isMountainEdge(edgeIndex)) {
+            removeMountainEdge(edgeIndex);
+        } else {
+            int n = vertices.size();
+            if (edgeIndex < 0 || edgeIndex >= n) return;
+            addMountainEdge(edgeIndex, (edgeIndex + 1) % n);
+        }
+    }
 
     public boolean isDesolate() {
         return settlementType == Zone.SettlementType.DESOLATE;
@@ -68,22 +112,39 @@ public class EditableZone {
         return vertices.stream().mapToInt(v -> v[1]).toArray();
     }
 
-    /** Inserts a new vertex after the vertex at insertAfterIndex. */
     public void insertVertex(int insertAfterIndex, int x, int y) {
         vertices.add(insertAfterIndex + 1, new int[]{x, y});
+        // Adjust mountain edges that cross the split
+        int n = vertices.size() - 1; // count before insertion
+        if (n == 0) return;
+        int oldEdgeIdx = insertAfterIndex;
+        int oldNext = (oldEdgeIdx + 1) % n;
+        List<int[]> toAdd = new ArrayList<>();
+        mountainEdges.removeIf(e -> {
+            if (e[0] == oldEdgeIdx && e[1] == oldNext) { toAdd.add(new int[]{oldEdgeIdx, oldEdgeIdx+1}); toAdd.add(new int[]{oldEdgeIdx+1, oldEdgeIdx+2}); return true; }
+            if (e[0] == oldNext && e[1] == oldEdgeIdx) { toAdd.add(new int[]{oldEdgeIdx+1, oldEdgeIdx}); toAdd.add(new int[]{oldEdgeIdx+2, oldEdgeIdx+1}); return true; }
+            return false;
+        });
+        mountainEdges.addAll(toAdd);
     }
 
-    /** Removes vertex at index, only if zone has more than 3 vertices. */
     public void removeVertex(int index) {
-        if (vertices.size() > 3) {
-            vertices.remove(index);
+        if (vertices.size() <= 3) return;
+        int n = vertices.size();
+        int prevIdx = (index - 1 + n) % n;
+        int nextIdx = (index + 1) % n;
+        // Remove mountain edges involving vertex index
+        mountainEdges.removeIf(e -> e[0] == index || e[1] == index);
+        // Merge mountain edges that would connect prev->index and index->next
+        boolean hasPrevIdx = mountainEdges.stream().anyMatch(e -> (e[0] == prevIdx && e[1] == index) || (e[0] == index && e[1] == prevIdx));
+        boolean hasNextIdx = mountainEdges.stream().anyMatch(e -> (e[0] == index && e[1] == nextIdx) || (e[0] == nextIdx && e[1] == index));
+        mountainEdges.removeIf(e -> (e[0] == prevIdx && e[1] == index) || (e[0] == index && e[1] == prevIdx) || (e[0] == index && e[1] == nextIdx) || (e[0] == nextIdx && e[1] == index));
+        if (hasPrevIdx && hasNextIdx && prevIdx != nextIdx) {
+            mountainEdges.add(new int[]{prevIdx, nextIdx});
         }
+        vertices.remove(index);
     }
 
-    /**
-     * Returns the index of a vertex within SNAP_RADIUS pixels of (wx, wy),
-     * or -1 if none.
-     */
     public int hitTestVertex(int wx, int wy, int snapRadius) {
         for (int i = 0; i < vertices.size(); i++) {
             int dx = vertices.get(i)[0] - wx;
@@ -93,10 +154,6 @@ public class EditableZone {
         return -1;
     }
 
-    /**
-     * Returns the index of the first vertex of the edge closest to (wx, wy)
-     * within snapRadius, or -1 if none.
-     */
     public int hitTestEdge(int wx, int wy, int snapRadius) {
         int n = vertices.size();
         for (int i = 0; i < n; i++) {
@@ -108,7 +165,6 @@ public class EditableZone {
         return -1;
     }
 
-    /** Midpoint of edge starting at edgeIndex. */
     public int[] edgeMidpoint(int edgeIndex) {
         int[] a = vertices.get(edgeIndex);
         int[] b = vertices.get((edgeIndex + 1) % vertices.size());
