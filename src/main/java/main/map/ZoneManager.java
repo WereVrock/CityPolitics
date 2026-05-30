@@ -128,8 +128,8 @@ GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParamete
 List.of("iceveil_tundra", "eastern_plains", "trade_coast", "stonepass")));
 
 list.add(new Zone("trade_coast", "Trade Coast", Zone.SettlementType.TOWN,
-new int[]{650, 680, 770, 780, 789, 744, 670, 640},
-new int[]{220, 180, 220, 310, 347, 370, 380, 310},
+new int[]{650, 680, 767, 780, 789, 744, 670, 640},
+new int[]{220, 180, 216, 310, 347, 370, 380, 310},
 710, 295,
 GameParameters.ZONE_TOWN_GOLD, GameParameters.ZONE_TOWN_FOOD, GameParameters.ZONE_TOWN_POPS,
 List.of("iceveil_tundra", "ashfield", "far_east", "waste_northeast")));
@@ -242,29 +242,29 @@ List.of("wetmarsh", "duskfall", "ashenveil")));
 // ── Desolate wilderness zones ─────────────────────────────────────────
 
 list.add(new Zone("waste_northeast", "The Ashen Reaches", Zone.SettlementType.DESOLATE,
-new int[]{708, 816, 953, 770, 680, 660},
-new int[]{90, 80, 151, 220, 180, 90},
+new int[]{708, 816, 953, 767, 680, 660},
+new int[]{90, 80, 151, 216, 180, 90},
 720, 155,
 0, 0, 0,
 List.of("iceveil_tundra", "trade_coast")));
 
 list.add(new Zone("waste_east", "The Sundered Expanse", Zone.SettlementType.DESOLATE,
-new int[]{900, 1089, 1100, 991, 980, 949, 903, 887},
+new int[]{900, 1089, 1100, 989, 980, 949, 903, 887},
 new int[]{375, 425, 490, 493, 460, 454, 446, 422},
 975, 440,
 0, 0, 0,
 List.of("far_east", "bramblewood")));
 
 list.add(new Zone("waste_se_upper", "The Rotting Shore", Zone.SettlementType.DESOLATE,
-new int[]{991, 1100, 1110, 1080, 980, 971, 1000},
-new int[]{493, 490, 580, 620, 610, 592, 540},
+new int[]{989, 1100, 1110, 1067, 970, 971, 1000},
+new int[]{494, 490, 580, 585, 610, 592, 540},
 1040, 565,
 0, 0, 0,
 List.of("bramblewood", "port_reach")));
 
 list.add(new Zone("waste_se_lower", "The Drowned Cliffs", Zone.SettlementType.DESOLATE,
-new int[]{970, 1100, 1110, 1090, 975, 966},
-new int[]{610, 580, 640, 680, 670, 640},
+new int[]{970, 1100, 1110, 1090, 975, 969},
+new int[]{610, 580, 640, 680, 670, 647},
 1030, 640,
 0, 0, 0,
 List.of("port_reach")));
@@ -287,6 +287,11 @@ return list;
 }
 
 }
+
+
+
+
+
 
 
 

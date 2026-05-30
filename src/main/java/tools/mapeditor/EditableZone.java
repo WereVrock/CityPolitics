@@ -185,4 +185,47 @@ public class EditableZone {
         int dy = wy - labelY;
         return dx * dx + dy * dy <= snapRadius * snapRadius;
     }
+
+public FeatureSnapshot createSnapshot() {
+        List<int[]> vertsCopy = new ArrayList<>();
+        for (int[] v : vertices) vertsCopy.add(new int[]{v[0], v[1]});
+        List<int[]> edgesCopy = new ArrayList<>();
+        for (int[] e : mountainEdges) edgesCopy.add(new int[]{e[0], e[1]});
+        return new ZoneSnapshot(id, vertsCopy, labelX, labelY, terrainSymbol, edgesCopy);
+    }
+
+    private static class ZoneSnapshot implements FeatureSnapshot {
+        private final String id;
+        private final List<int[]> vertices;
+        private final int labelX, labelY;
+        private final ZoneDecoration.TerrainSymbol terrainSymbol;
+        private final List<int[]> mountainEdges;
+
+        ZoneSnapshot(String id, List<int[]> vertices, int labelX, int labelY,
+                     ZoneDecoration.TerrainSymbol terrainSymbol, List<int[]> mountainEdges) {
+            this.id = id;
+            this.vertices = vertices;
+            this.labelX = labelX;
+            this.labelY = labelY;
+            this.terrainSymbol = terrainSymbol;
+            this.mountainEdges = mountainEdges;
+        }
+
+        @Override
+        public void restore(EditorState state) {
+            for (EditableZone z : state.getZones()) {
+                if (z.id.equals(id)) {
+                    z.vertices.clear();
+                    for (int[] v : vertices) z.vertices.add(new int[]{v[0], v[1]});
+                    z.labelX = labelX;
+                    z.labelY = labelY;
+                    z.terrainSymbol = terrainSymbol;
+                    z.mountainEdges.clear();
+                    for (int[] e : mountainEdges) z.mountainEdges.add(new int[]{e[0], e[1]});
+                    break;
+                }
+            }
+        }
+    }
+
 }

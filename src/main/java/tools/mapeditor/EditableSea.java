@@ -90,4 +90,45 @@ public class EditableSea {
         t = Math.max(0, Math.min(1, t));
         return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
     }
+
+public FeatureSnapshot createSnapshot() {
+        List<int[]> vertsCopy = new ArrayList<>();
+        for (int[] v : vertices) vertsCopy.add(new int[]{v[0], v[1]});
+        return new SeaSnapshot(name, vertsCopy, labelX, labelY);
+    }
+
+    private static class SeaSnapshot implements FeatureSnapshot {
+        private final String name;
+        private final List<int[]> vertices;
+        private final int labelX, labelY;
+
+        SeaSnapshot(String name, List<int[]> vertices, int labelX, int labelY) {
+            this.name = name;
+            this.vertices = vertices;
+            this.labelX = labelX;
+            this.labelY = labelY;
+        }
+
+        @Override
+        public void restore(EditorState state) {
+            for (EditableSea s : state.getSeas()) {
+                if (s.name.equals(name)) {
+                    s.vertices.clear();
+                    for (int[] v : vertices) s.vertices.add(new int[]{v[0], v[1]});
+                    s.labelX = labelX;
+                    s.labelY = labelY;
+                    break;
+                }
+            }
+        }
+    }
+
+public int[] getPolyX() {
+        return vertices.stream().mapToInt(v -> v[0]).toArray();
+    }
+
+    public int[] getPolyY() {
+        return vertices.stream().mapToInt(v -> v[1]).toArray();
+    }
+
 }

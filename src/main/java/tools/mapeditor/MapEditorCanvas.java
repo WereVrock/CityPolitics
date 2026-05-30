@@ -42,14 +42,22 @@ public class MapEditorCanvas extends JPanel {
     // Zone interaction
     private int     dragZoneVertexIndex = -1;
     private boolean draggingZoneLabel   = false;
+    private FeatureSnapshot zoneDragSnapshot = null;
 
     // River interaction
     private int     dragRiverWaypointIndex = -1;
     private boolean draggingRiverLabel     = false;
+    private FeatureSnapshot riverDragSnapshot = null;
 
     // Sea interaction
     private int     dragSeaVertexIndex = -1;
     private boolean draggingSeaLabel   = false;
+    private FeatureSnapshot seaDragSnapshot = null;
+
+    // Cycle selection
+    private Point lastCycleClickWorld = null;
+    private java.util.List<Object> cycleList = null;
+    private int cycleIndex = 0;
 
     private Point lastDragWorld;
 
@@ -82,12 +90,14 @@ public class MapEditorCanvas extends JPanel {
                     if (selZone.isLabelHit(world.x, world.y, SNAP_RADIUS + 4)) {
                         draggingZoneLabel = true;
                         lastDragWorld = world;
+                        zoneDragSnapshot = selZone.createSnapshot();
                         return;
                     }
                     int vi = selZone.hitTestVertex(world.x, world.y, SNAP_RADIUS);
                     if (vi >= 0) {
                         dragZoneVertexIndex = vi;
                         lastDragWorld = world;
+                        zoneDragSnapshot = selZone.createSnapshot();
                         return;
                     }
                 }
@@ -97,12 +107,14 @@ public class MapEditorCanvas extends JPanel {
                     if (selRiver.isLabelHit(world.x, world.y, SNAP_RADIUS + 4)) {
                         draggingRiverLabel = true;
                         lastDragWorld = world;
+                        riverDragSnapshot = selRiver.createSnapshot();
                         return;
                     }
                     int wi = selRiver.hitTestWaypointIndex(world.x, world.y, SNAP_RADIUS);
                     if (wi >= 0) {
                         dragRiverWaypointIndex = wi;
                         lastDragWorld = world;
+                        riverDragSnapshot = selRiver.createSnapshot();
                         return;
                     }
                 }
@@ -112,57 +124,72 @@ public class MapEditorCanvas extends JPanel {
                     if (selSea.isLabelHit(world.x, world.y, SNAP_RADIUS + 4)) {
                         draggingSeaLabel = true;
                         lastDragWorld = world;
+                        seaDragSnapshot = selSea.createSnapshot();
                         return;
                     }
                     int vi = selSea.hitTestVertex(world.x, world.y, SNAP_RADIUS);
                     if (vi >= 0) {
                         dragSeaVertexIndex = vi;
                         lastDragWorld = world;
+                        seaDragSnapshot = selSea.createSnapshot();
                         return;
                     }
                 }
 
-                // Select a new feature
-                EditableZone hitZone = state.getZoneAt(world.x, world.y);
-                if (hitZone != null) {
-                    state.setSelectedZone(hitZone);
-                    dragZoneVertexIndex = -1; draggingZoneLabel = false;
-                    dragRiverWaypointIndex = -1; draggingRiverLabel = false;
-                    dragSeaVertexIndex = -1; draggingSeaLabel = false;
+                // Cycle selection on left click
+                if (SwingUtilities.isLeftMouseButton(e)) {
+                    boolean nearLast = lastCycleClickWorld != null &&
+                        Math.abs(world.x - lastCycleClickWorld.x) <= 5 &&
+                        Math.abs(world.y - lastCycleClickWorld.y) <= 5;
+
+                    java.util.List<Object> features = getFeaturesAt(world);
+                    if (!nearLast || cycleList == null) {
+                        cycleList = features;
+                        cycleIndex = 0;
+                        lastCycleClickWorld = world;
+                    } else {
+                        if (cycleList != null && !cycleList.isEmpty()) {
+                            cycleIndex = (cycleIndex + 1) % cycleList.size();
+                        }
+                    }
+
+                    if (cycleList != null && !cycleList.isEmpty()) {
+                        Object feature = cycleList.get(cycleIndex);
+                        if (feature instanceof EditableZone) {
+                            state.setSelectedZone((EditableZone) feature);
+                        } else if (feature instanceof EditableRiver) {
+                            state.setSelectedRiver((EditableRiver) feature);
+                        } else if (feature instanceof EditableSea) {
+                            state.setSelectedSea((EditableSea) feature);
+                        }
+                    } else {
+                        state.clearSelection();
+                        cycleList = null;
+                    }
+
+                    dragZoneVertexIndex = -1; draggingZoneLabel = false; zoneDragSnapshot = null;
+                    dragRiverWaypointIndex = -1; draggingRiverLabel = false; riverDragSnapshot = null;
+                    dragSeaVertexIndex = -1; draggingSeaLabel = false; seaDragSnapshot = null;
                     repaint();
                     return;
                 }
-
-                EditableRiver hitRiver = state.getRiverAt(world.x, world.y, SNAP_RADIUS);
-                if (hitRiver != null) {
-                    state.setSelectedRiver(hitRiver);
-                    dragZoneVertexIndex = -1; draggingZoneLabel = false;
-                    dragRiverWaypointIndex = -1; draggingRiverLabel = false;
-                    dragSeaVertexIndex = -1; draggingSeaLabel = false;
-                    repaint();
-                    return;
-                }
-
-                EditableSea hitSea = state.getSeaAt(world.x, world.y);
-                if (hitSea != null) {
-                    state.setSelectedSea(hitSea);
-                    dragZoneVertexIndex = -1; draggingZoneLabel = false;
-                    dragRiverWaypointIndex = -1; draggingRiverLabel = false;
-                    dragSeaVertexIndex = -1; draggingSeaLabel = false;
-                    repaint();
-                    return;
-                }
-
-                // Nothing hit → clear selection
-                state.clearSelection();
-                dragZoneVertexIndex = -1; draggingZoneLabel = false;
-                dragRiverWaypointIndex = -1; draggingRiverLabel = false;
-                dragSeaVertexIndex = -1; draggingSeaLabel = false;
-                repaint();
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (zoneDragSnapshot != null) {
+                    state.pushUndo(zoneDragSnapshot);
+                    zoneDragSnapshot = null;
+                }
+                if (riverDragSnapshot != null) {
+                    state.pushUndo(riverDragSnapshot);
+                    riverDragSnapshot = null;
+                }
+                if (seaDragSnapshot != null) {
+                    state.pushUndo(seaDragSnapshot);
+                    seaDragSnapshot = null;
+                }
+
                 dragZoneVertexIndex = -1; draggingZoneLabel = false;
                 dragRiverWaypointIndex = -1; draggingRiverLabel = false;
                 dragSeaVertexIndex = -1; draggingSeaLabel = false;
@@ -179,6 +206,7 @@ public class MapEditorCanvas extends JPanel {
                     if (zone != null) {
                         int vi = zone.hitTestVertex(world.x, world.y, SNAP_RADIUS);
                         if (vi >= 0) {
+                            pushUndoForFeature(zone);
                             zone.removeVertex(vi);
                             state.markChanged(zone.getId());
                             repaint();
@@ -189,6 +217,7 @@ public class MapEditorCanvas extends JPanel {
                     if (river != null) {
                         int wi = river.hitTestWaypointIndex(world.x, world.y, SNAP_RADIUS);
                         if (wi >= 0 && river.getWaypoints().size() > 2) {
+                            pushUndoForFeature(river);
                             river.removeWaypoint(wi);
                             state.markRiverChanged(river.getName());
                             repaint();
@@ -199,6 +228,7 @@ public class MapEditorCanvas extends JPanel {
                     if (sea != null) {
                         int vi = sea.hitTestVertex(world.x, world.y, SNAP_RADIUS);
                         if (vi >= 0 && sea.getVertices().size() > 3) {
+                            pushUndoForFeature(sea);
                             sea.removeVertex(vi);
                             state.markSeaChanged(sea.getName());
                             repaint();
@@ -211,6 +241,7 @@ public class MapEditorCanvas extends JPanel {
                     if (zone != null) {
                         int ei = zone.hitTestEdge(world.x, world.y, SNAP_RADIUS + 4);
                         if (ei >= 0) {
+                            pushUndoForFeature(zone);
                             int[] mid = zone.edgeMidpoint(ei);
                             zone.insertVertex(ei, mid[0], mid[1]);
                             state.markChanged(zone.getId());
@@ -222,6 +253,7 @@ public class MapEditorCanvas extends JPanel {
                     if (river != null) {
                         int si = river.hitTestSegment(world.x, world.y, SNAP_RADIUS + 4);
                         if (si >= 0) {
+                            pushUndoForFeature(river);
                             int[] mid = river.edgeMidpoint(si);
                             river.insertWaypoint(si, mid[0], mid[1]);
                             state.markRiverChanged(river.getName());
@@ -233,6 +265,7 @@ public class MapEditorCanvas extends JPanel {
                     if (sea != null) {
                         int ei = sea.hitTestEdge(world.x, world.y, SNAP_RADIUS + 4);
                         if (ei >= 0) {
+                            pushUndoForFeature(sea);
                             int[] mid = sea.edgeMidpoint(ei);
                             sea.insertVertex(ei, mid[0], mid[1]);
                             state.markSeaChanged(sea.getName());
@@ -602,4 +635,35 @@ public class MapEditorCanvas extends JPanel {
         panX = 0; panY = 0; zoom = 1.0f;
         repaint();
     }
+
+private java.util.List<Object> getFeaturesAt(Point world) {
+        java.util.List<Object> list = new java.util.ArrayList<>();
+        for (EditableRiver river : state.getRivers()) {
+            if (river.hitTestPolyline(world.x, world.y, SNAP_RADIUS)) {
+                list.add(river);
+            }
+        }
+        for (EditableZone zone : state.getZones()) {
+            if (zone.containsPoint(world.x, world.y)) {
+                list.add(zone);
+            }
+        }
+        for (EditableSea sea : state.getSeas()) {
+            if (sea.containsPoint(world.x, world.y)) {
+                list.add(sea);
+            }
+        }
+        return list;
+    }
+
+    private void pushUndoForFeature(Object feature) {
+        if (feature instanceof EditableZone) {
+            state.pushUndo(((EditableZone) feature).createSnapshot());
+        } else if (feature instanceof EditableRiver) {
+            state.pushUndo(((EditableRiver) feature).createSnapshot());
+        } else if (feature instanceof EditableSea) {
+            state.pushUndo(((EditableSea) feature).createSnapshot());
+        }
+    }
+
 }

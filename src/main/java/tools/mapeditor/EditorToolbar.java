@@ -63,6 +63,15 @@ public class EditorToolbar extends JPanel {
         });
         add(clearSelBtn);
 
+        JButton undoBtn = makeButton("Undo");
+        undoBtn.addActionListener(e -> {
+            if (state.canUndo()) {
+                state.undo();
+                canvas.repaint();
+            }
+        });
+        add(undoBtn);
+
         addSeparator();
 
         JLabel hint = new JLabel(

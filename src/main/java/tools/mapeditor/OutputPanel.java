@@ -57,13 +57,12 @@ public class OutputPanel extends JPanel {
         add(new JScrollPane(textArea), BorderLayout.CENTER);
     }
 
-    public void generate(boolean changedOnly) {
-        List<EditableZone> zones = state.getZones();
+public void generate(boolean changedOnly) {
         StringBuilder sb = new StringBuilder();
 
-        for (EditableZone ez : zones) {
+        // Zones
+        for (EditableZone ez : state.getZones()) {
             if (changedOnly && !state.isChanged(ez.getId())) continue;
-
             sb.append("ZONE: ").append(ez.getId()).append("\n");
             sb.append("  name:    ").append(ez.getDisplayName()).append("\n");
             sb.append("  type:    ").append(ez.getSettlementType().name()).append("\n");
@@ -71,6 +70,33 @@ public class OutputPanel extends JPanel {
             sb.append("  polyY:   ").append(intArrayToString(ez.getPolyY())).append("\n");
             sb.append("  labelX:  ").append(ez.getLabelX()).append("\n");
             sb.append("  labelY:  ").append(ez.getLabelY()).append("\n");
+            sb.append("\n");
+        }
+
+        // Rivers
+        for (EditableRiver river : state.getRivers()) {
+            if (changedOnly && !state.isRiverChanged(river.getName())) continue;
+            sb.append("RIVER: ").append(river.getName()).append("\n");
+            sb.append("  waypoints: ");
+            List<int[]> pts = river.getWaypoints();
+            for (int i = 0; i < pts.size(); i++) {
+                if (i > 0) sb.append(", ");
+                sb.append(pts.get(i)[0]).append(",").append(pts.get(i)[1]);
+            }
+            sb.append("\n");
+            sb.append("  labelX:  ").append(river.getLabelX()).append("\n");
+            sb.append("  labelY:  ").append(river.getLabelY()).append("\n");
+            sb.append("\n");
+        }
+
+        // Seas
+        for (EditableSea sea : state.getSeas()) {
+            if (changedOnly && !state.isSeaChanged(sea.getName())) continue;
+            sb.append("SEA: ").append(sea.getName()).append("\n");
+            sb.append("  polyX:   ").append(intArrayToString(sea.getPolyX())).append("\n");
+            sb.append("  polyY:   ").append(intArrayToString(sea.getPolyY())).append("\n");
+            sb.append("  labelX:  ").append(sea.getLabelX()).append("\n");
+            sb.append("  labelY:  ").append(sea.getLabelY()).append("\n");
             sb.append("\n");
         }
 
@@ -82,7 +108,7 @@ public class OutputPanel extends JPanel {
         textArea.setCaretPosition(0);
     }
 
-    private String intArrayToString(int[] arr) {
+private String intArrayToString(int[] arr) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < arr.length; i++) {
             if (i > 0) sb.append(", ");

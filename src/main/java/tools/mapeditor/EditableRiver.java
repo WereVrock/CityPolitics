@@ -86,4 +86,37 @@ public class EditableRiver {
         t = Math.max(0, Math.min(1, t));
         return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
     }
+
+public FeatureSnapshot createSnapshot() {
+        List<int[]> ptsCopy = new ArrayList<>();
+        for (int[] p : waypoints) ptsCopy.add(new int[]{p[0], p[1]});
+        return new RiverSnapshot(name, ptsCopy, labelX, labelY);
+    }
+
+    private static class RiverSnapshot implements FeatureSnapshot {
+        private final String name;
+        private final List<int[]> waypoints;
+        private final int labelX, labelY;
+
+        RiverSnapshot(String name, List<int[]> waypoints, int labelX, int labelY) {
+            this.name = name;
+            this.waypoints = waypoints;
+            this.labelX = labelX;
+            this.labelY = labelY;
+        }
+
+        @Override
+        public void restore(EditorState state) {
+            for (EditableRiver r : state.getRivers()) {
+                if (r.name.equals(name)) {
+                    r.waypoints.clear();
+                    for (int[] p : waypoints) r.waypoints.add(new int[]{p[0], p[1]});
+                    r.labelX = labelX;
+                    r.labelY = labelY;
+                    break;
+                }
+            }
+        }
+    }
+
 }

@@ -92,7 +92,31 @@ public class EditorState {
     public void markRiverChanged(String riverName) { changedRiverIds.add(riverName); }
     public void markSeaChanged(String seaName) { changedSeaIds.add(seaName); }
 
-    public Set<String> getChangedZoneIds() { return changedZoneIds; }
+private final java.util.Deque<UndoAction> undoStack = new java.util.ArrayDeque<>();
+
+    public void pushUndo(FeatureSnapshot snapshot) {
+        if (snapshot != null) {
+            undoStack.push(new UndoAction(snapshot));
+        }
+    }
+
+    public boolean canUndo() {
+        return !undoStack.isEmpty();
+    }
+
+    public void undo() {
+        if (!undoStack.isEmpty()) {
+            UndoAction action = undoStack.pop();
+            action.snapshot.restore(this);
+        }
+    }
+
+    public static class UndoAction {
+        public final FeatureSnapshot snapshot;
+        public UndoAction(FeatureSnapshot snapshot) { this.snapshot = snapshot; }
+    }
+
+public Set<String> getChangedZoneIds() { return changedZoneIds; }
     public Set<String> getChangedRiverIds() { return changedRiverIds; }
     public Set<String> getChangedSeaIds() { return changedSeaIds; }
 
