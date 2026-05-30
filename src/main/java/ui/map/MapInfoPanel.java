@@ -143,49 +143,83 @@ cardLayout.show(cards, CARD_EMPTY);
 }
 
 public void showZone(Zone zone) {
-if (zone == null) { clearZone(); return; }
-ZoneState state = zoneManager.getState(zone.getId());
+    if (zone == null) { clearZone(); return; }
 
-zoneTitleLabel.setText(zone.getDisplayName());
-zoneTypeLabel.setText(capitalize(zone.getSettlement().name()));
+    if (zone.isDesolate()) {
+        showDesolateZone(zone);
+        return;
+    }
 
-for (java.awt.event.ActionListener al : ownerButton.getActionListeners())
-ownerButton.removeActionListener(al);
+    ZoneState state = zoneManager.getState(zone.getId());
 
-main.nobles.NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
-if (owner != null) {
-ownerButton.setText("<html><body>⚑ " + owner.getName() + "</body></html>");
-ownerButton.setForeground(new Color(220, 190, 130));
-ownerButton.addActionListener(e -> showHouseDialog(owner));
-} else {
-ownerButton.setText("<html><body>Unowned</body></html>");
-ownerButton.setForeground(UITheme.TEXT_SECONDARY);
+    zoneTitleLabel.setText(zone.getDisplayName());
+    zoneTypeLabel.setText(capitalize(zone.getSettlement().name()));
+
+    for (java.awt.event.ActionListener al : ownerButton.getActionListeners())
+        ownerButton.removeActionListener(al);
+
+    main.nobles.NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
+    if (owner != null) {
+        ownerButton.setText("<html><body>⚑ " + owner.getName() + "</body></html>");
+        ownerButton.setForeground(new Color(220, 190, 130));
+        ownerButton.addActionListener(e -> showHouseDialog(owner));
+    } else {
+        ownerButton.setText("<html><body>Unowned</body></html>");
+        ownerButton.setForeground(UITheme.TEXT_SECONDARY);
+    }
+
+    goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
+    foodLabel.setText("Food/turn:  " + zone.getFoodProduction());
+    popsLabel.setText("Pops:       " + zone.getZonePops());
+    supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%");
+    damageLabel.setText("Damage:     " + state.getDamage() + "%");
+
+    main.nobles.NobleHouse zoneOwner = nobleHouseManager.getOwnerOfZone(zone.getId());
+    if (zoneOwner != null) {
+        int fort     = zoneOwner.getFortificationFor(zone.getId());
+        int garrison = zoneOwner.getGarrisonFor(zone.getId());
+        int maxGarr  = zoneOwner.getMaxGarrisonFor(zone.getId());
+        supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%"
+            + "   Fort: " + fort);
+        damageLabel.setText("Damage:     " + state.getDamage() + "%"
+            + "   Garrison: " + garrison + "/" + maxGarr);
+    }
+
+    StringBuilder sb = new StringBuilder();
+    for (String adjId : zone.getAdjacentIds()) {
+        Zone adj = zoneManager.getZone(adjId);
+        if (adj != null) sb.append(adj.getDisplayName()).append("\n");
+    }
+    adjacentArea.setText(sb.toString().trim());
+    cardLayout.show(cards, CARD_ZONE);
 }
 
-goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
-foodLabel.setText("Food/turn:  " + zone.getFoodProduction());
-popsLabel.setText("Pops:       " + zone.getZonePops());
-supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%");
-damageLabel.setText("Damage:     " + state.getDamage() + "%");
+private void showDesolateZone(Zone zone) {
+    zoneTitleLabel.setText(zone.getDisplayName());
+    zoneTypeLabel.setText("Desolate Wastes");
 
-main.nobles.NobleHouse zoneOwner = nobleHouseManager.getOwnerOfZone(zone.getId());
-if (zoneOwner != null) {
-    int fort     = zoneOwner.getFortificationFor(zone.getId());
-    int garrison = zoneOwner.getGarrisonFor(zone.getId());
-    int maxGarr  = zoneOwner.getMaxGarrisonFor(zone.getId());
-    supplyLabel.setText("Supply:     " + state.getSupplyLevel() + "%"
-        + "   Fort: " + fort);
-    damageLabel.setText("Damage:     " + state.getDamage() + "%"
-        + "   Garrison: " + garrison + "/" + maxGarr);
-}
+    for (java.awt.event.ActionListener al : ownerButton.getActionListeners())
+        ownerButton.removeActionListener(al);
+    ownerButton.setText("<html><body>No ruler. No law.</body></html>");
+    ownerButton.setForeground(new Color(100, 95, 90));
 
-StringBuilder sb = new StringBuilder();
-for (String adjId : zone.getAdjacentIds()) {
-Zone adj = zoneManager.getZone(adjId);
-if (adj != null) sb.append(adj.getDisplayName()).append("\n");
-}
-adjacentArea.setText(sb.toString().trim());
-cardLayout.show(cards, CARD_ZONE);
+    goldLabel.setText("Gold/turn:  —");
+    foodLabel.setText("Food/turn:  —");
+    popsLabel.setText("Pops:       —");
+    supplyLabel.setText("");
+    damageLabel.setText("");
+
+    String flavour = switch (zone.getId()) {
+        case "waste_northeast" -> "Bitter winds scour these cracked plains. Nothing that enters ever returns the same.";
+        case "waste_east"      -> "A sundered land of jagged rock and silence. Travellers speak of shapes moving at dusk.";
+        case "waste_se_upper"  -> "The coast rots here. Black sand, dead tide, and the stench of old iron.";
+        case "waste_se_lower"  -> "Cliffs that crumble into a churning void. The sea below swallows everything.";
+        case "waste_southwest" -> "A moor without end. Fog clings to the ground even in high summer.";
+        case "waste_farSW"     -> "Whatever once lived here left no trace. Only the wind remains, and it mourns.";
+        default                -> "These lands lie beyond the reach of civilisation.";
+    };
+    adjacentArea.setText(flavour);
+    cardLayout.show(cards, CARD_ZONE);
 }
 
 public void showArmy(Army army, ZoneManager zm) {

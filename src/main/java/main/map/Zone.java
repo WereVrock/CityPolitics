@@ -9,7 +9,7 @@ import java.util.List;
  */
 public class Zone {
 
-    public enum SettlementType { CAPITAL, TOWN, VILLAGE }
+    public enum SettlementType { CAPITAL, TOWN, VILLAGE, DESOLATE }
 
     private final String         id;
     private final String         displayName;
@@ -51,4 +51,6 @@ public class Zone {
     public int            getFoodProduction() { return foodProduction; }
     public int            getZonePops()       { return zonePops; }
     public List<String>   getAdjacentIds()    { return adjacentIds; }
+
+    public boolean isDesolate() { return settlement == SettlementType.DESOLATE; }
 }

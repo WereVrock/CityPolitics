@@ -17,9 +17,11 @@ public class MapRenderer {
 
     public static final Color COLOR_BG = new Color(188, 158, 110);
 
-    private static final Color COLOR_CAPITAL = new Color(110, 72,  35);
-    private static final Color COLOR_TOWN    = new Color(52,  88,  55);
-    private static final Color COLOR_VILLAGE = new Color(148, 118, 76);
+    private static final Color COLOR_CAPITAL   = new Color(110, 72,  35);
+    private static final Color COLOR_TOWN      = new Color(52,  88,  55);
+    private static final Color COLOR_VILLAGE   = new Color(148, 118, 76);
+    private static final Color COLOR_DESOLATE  = new Color(38,  38,  42);
+    private static final Color COLOR_DESOLATE_BORDER = new Color(60, 60, 65);
 
     private static final Color TERRAIN_NONE     = new Color(148, 118, 76);
     private static final Color TERRAIN_FOREST   = new Color(55,  100, 50);
@@ -170,6 +172,17 @@ private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered)
     Polygon   poly  = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
     ZoneState state = zoneManager.getState(zone.getId());
 
+    if (zone.isDesolate()) {
+        Color base = zone == selected ? COLOR_DESOLATE.brighter() : COLOR_DESOLATE;
+        g2.setColor(base);
+        g2.fillPolygon(poly);
+        if (zone == hovered && zone != selected) {
+            g2.setColor(new Color(255, 255, 255, 18));
+            g2.fillPolygon(poly);
+        }
+        return;
+    }
+
     switch (viewMode) {
         case POLITICAL -> {
             NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
@@ -198,9 +211,10 @@ private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered)
         }
         case SETTLEMENT -> {
             Color base = switch (zone.getSettlement()) {
-                case CAPITAL -> COLOR_CAPITAL;
-                case TOWN    -> COLOR_TOWN;
-                case VILLAGE -> COLOR_VILLAGE;
+                case CAPITAL  -> COLOR_CAPITAL;
+                case TOWN     -> COLOR_TOWN;
+                case VILLAGE  -> COLOR_VILLAGE;
+                case DESOLATE -> COLOR_DESOLATE;
             };
             if (zone == selected) base = base.brighter();
             g2.setColor(base);
@@ -220,20 +234,38 @@ private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered)
 }
 
 private void drawZoneBorder(Graphics2D g2, Zone zone, Zone selected) {
-        Polygon poly = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
+    Polygon poly = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
+    if (zone.isDesolate()) {
+        g2.setColor(zone == selected ? COLOR_DESOLATE_BORDER.brighter() : COLOR_DESOLATE_BORDER);
+        g2.setStroke(new BasicStroke(1.5f));
+    } else {
         g2.setColor(zone == selected ? COLOR_BORDER_SEL : COLOR_BORDER);
         g2.setStroke(new BasicStroke(zone == selected ? 3f : 2f));
-        g2.drawPolygon(poly);
-        g2.setStroke(new BasicStroke(1f));
     }
+    g2.drawPolygon(poly);
+    g2.setStroke(new BasicStroke(1f));
+}
 
 private void drawZoneLabels(Graphics2D g2, Zone zone) {
+    if (zone.isDesolate()) {
+        // Minimal italic label, muted colour
+        g2.setFont(new Font("Serif", Font.ITALIC, 11));
+        FontMetrics fm = g2.getFontMetrics();
+        int tw = fm.stringWidth(zone.getDisplayName());
+        int lx = zone.getLabelX();
+        int ly = zone.getLabelY() + ICON_LABEL_OFFSET;
+        g2.setColor(new Color(10, 8, 8, 160));
+        g2.drawString(zone.getDisplayName(), lx - tw / 2 + 1, ly + 1);
+        g2.setColor(new Color(110, 105, 100, 200));
+        g2.drawString(zone.getDisplayName(), lx - tw / 2, ly);
+        return;
+    }
+
     ZoneDecoration dec     = decorationRegistry.get(zone.getId());
     boolean        hasIcon = dec.getSymbol() != ZoneDecoration.TerrainSymbol.NONE;
 
     int lx = zone.getLabelX();
     int ly = zone.getLabelY() + ICON_LABEL_OFFSET;
-
     int nameX = hasIcon ? lx + 6 : lx;
 
     g2.setFont(FONT_ZONE_NAME);

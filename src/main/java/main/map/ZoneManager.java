@@ -97,7 +97,7 @@ private static List<Zone> buildZones() {
         new int[]{90, 90, 180, 220, 230, 184},
         570, 160,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("far_north", "ashfield", "trade_coast")));
+        List.of("far_north", "ashfield", "trade_coast", "waste_northeast")));
 
     list.add(new Zone("westgate", "Westgate", Zone.SettlementType.TOWN,
         new int[]{93, 168, 200, 190, 110, 60},
@@ -132,14 +132,14 @@ private static List<Zone> buildZones() {
         new int[]{220, 210, 310, 370, 380, 310},
         710, 295,
         GameParameters.ZONE_TOWN_GOLD, GameParameters.ZONE_TOWN_FOOD, GameParameters.ZONE_TOWN_POPS,
-        List.of("iceveil_tundra", "ashfield", "far_east")));
+        List.of("iceveil_tundra", "ashfield", "far_east", "waste_northeast")));
 
     list.add(new Zone("stonepass", "Stonepass", Zone.SettlementType.VILLAGE,
         new int[]{640, 739, 767, 748, 660, 620},
         new int[]{380, 373, 458, 494, 510, 460},
         700, 440,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("ashfield", "highland_gap", "thornwood", "ashveil")));
+        List.of("ashfield", "highland_gap", "thornwood", "ashenveil")));
 
     list.add(new Zone("highland_gap", "Highland Gap", Zone.SettlementType.VILLAGE,
         new int[]{480, 620, 660, 630, 490, 430},
@@ -153,21 +153,21 @@ private static List<Zone> buildZones() {
         new int[]{371, 347, 375, 460, 492, 455},
         840, 435,
         GameParameters.ZONE_TOWN_GOLD, GameParameters.ZONE_TOWN_FOOD, GameParameters.ZONE_TOWN_POPS,
-        List.of("trade_coast", "bramblewood")));
+        List.of("trade_coast", "bramblewood", "waste_east")));
 
     list.add(new Zone("greenvale", "Greenvale", Zone.SettlementType.VILLAGE,
         new int[]{110, 190, 240, 218, 117, 90},
         new int[]{420, 380, 461, 528, 548, 480},
         155, 475,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("westgate", "heartland", "river_bend", "southern_march")));
+        List.of("westgate", "heartland", "river_bend", "southern_march", "waste_southwest")));
 
     list.add(new Zone("river_bend", "River Bend", Zone.SettlementType.VILLAGE,
         new int[]{240, 340, 399, 429, 400, 280, 220},
         new int[]{460, 450, 464, 487, 570, 590, 530},
         320, 520,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("heartland", "greenvale", "eastern_plains", "duskfall", "westmarsh")));
+        List.of("heartland", "greenvale", "eastern_plains", "duskfall", "wetmarsh")));
 
     list.add(new Zone("southern_march", "Southern March", Zone.SettlementType.TOWN,
         new int[]{110, 220, 280, 202, 129, 90},
@@ -181,35 +181,35 @@ private static List<Zone> buildZones() {
         new int[]{492, 570, 570, 635, 650, 569},
         450, 580,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("river_bend", "highland_gap", "westmarsh", "redcliff", "saltmere")));
+        List.of("river_bend", "highland_gap", "wetmarsh", "redcliff", "saltmere")));
 
     list.add(new Zone("redcliff", "Redcliff", Zone.SettlementType.VILLAGE,
         new int[]{522, 656, 651, 640, 584, 541},
         new int[]{570, 558, 580, 630, 604, 582},
         575, 575,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("duskfall", "ashveil")));
+        List.of("duskfall", "ashenveil")));
 
     list.add(new Zone("thornwood", "Thornwood", Zone.SettlementType.VILLAGE,
         new int[]{750, 883, 898, 870, 770, 700},
         new int[]{496, 489, 561, 600, 610, 504},
         820, 545,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("bramblewood", "port_reach", "ashveil", "stonepass")));
+        List.of("bramblewood", "port_reach", "ashenveil", "stonepass")));
 
     list.add(new Zone("bramblewood", "Bramblewood", Zone.SettlementType.VILLAGE,
         new int[]{880, 980, 1000, 970, 878, 898},
         new int[]{460, 460, 540, 590, 597, 561},
         935, 525,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("far_east", "thornwood", "port_reach")));
+        List.of("far_east", "thornwood", "port_reach", "waste_east", "waste_se_upper")));
 
     list.add(new Zone("ironhaven", "Ironhaven", Zone.SettlementType.VILLAGE,
         new int[]{90, 130, 200, 197, 110, 80},
         new int[]{600, 624, 641, 675, 690, 645},
         150, 645,
         GameParameters.ZONE_VILLAGE_GOLD, GameParameters.ZONE_VILLAGE_FOOD, GameParameters.ZONE_VILLAGE_POPS,
-        List.of("southern_march", "westmarsh")));
+        List.of("southern_march", "wetmarsh", "waste_farSW")));
 
     list.add(new Zone("wetmarsh", "Wetmarsh", Zone.SettlementType.VILLAGE,
         new int[]{280, 400, 407, 413, 362, 230, 200},
@@ -230,14 +230,58 @@ private static List<Zone> buildZones() {
         new int[]{614, 600, 592, 647, 641, 621},
         882, 624,
         GameParameters.ZONE_TOWN_GOLD, GameParameters.ZONE_TOWN_FOOD, GameParameters.ZONE_TOWN_POPS,
-        List.of("thornwood", "bramblewood")));
+        List.of("thornwood", "bramblewood", "waste_se_upper", "waste_se_lower")));
 
     list.add(new Zone("saltmere", "Saltmere", Zone.SettlementType.TOWN,
         new int[]{279, 418, 633, 760, 707, 630, 414, 335},
         new int[]{672, 652, 636, 640, 654, 659, 682, 681},
         485, 656,
         GameParameters.ZONE_TOWN_GOLD, GameParameters.ZONE_TOWN_FOOD, GameParameters.ZONE_TOWN_POPS,
-        List.of("westmarsh", "duskfall", "ashveil")));
+        List.of("wetmarsh", "duskfall", "ashenveil")));
+
+    // ── Desolate wilderness zones ─────────────────────────────────────────
+
+    list.add(new Zone("waste_northeast", "The Ashen Reaches", Zone.SettlementType.DESOLATE,
+        new int[]{660, 790, 800, 770, 680, 660},
+        new int[]{90, 95, 210, 220, 200, 130},
+        720, 155,
+        0, 0, 0,
+        List.of("iceveil_tundra", "trade_coast")));
+
+    list.add(new Zone("waste_east", "The Sundered Expanse", Zone.SettlementType.DESOLATE,
+        new int[]{900, 1050, 1060, 1020, 900, 885},
+        new int[]{375, 360, 470, 510, 500, 420},
+        975, 440,
+        0, 0, 0,
+        List.of("far_east", "bramblewood")));
+
+    list.add(new Zone("waste_se_upper", "The Rotting Shore", Zone.SettlementType.DESOLATE,
+        new int[]{975, 1100, 1110, 1080, 980, 970},
+        new int[]{510, 490, 580, 620, 610, 545},
+        1040, 565,
+        0, 0, 0,
+        List.of("bramblewood", "port_reach")));
+
+    list.add(new Zone("waste_se_lower", "The Drowned Cliffs", Zone.SettlementType.DESOLATE,
+        new int[]{970, 1100, 1110, 1090, 975, 966},
+        new int[]{610, 580, 640, 680, 670, 640},
+        1030, 640,
+        0, 0, 0,
+        List.of("port_reach")));
+
+    list.add(new Zone("waste_southwest", "The Forsaken Moor", Zone.SettlementType.DESOLATE,
+        new int[]{55, 110, 115, 90, 50, 30},
+        new int[]{420, 418, 550, 600, 590, 490},
+        72, 505,
+        0, 0, 0,
+        List.of("greenvale")));
+
+    list.add(new Zone("waste_farSW", "The Hollow Reaches", Zone.SettlementType.DESOLATE,
+        new int[]{30, 90, 95, 70, 25, 10},
+        new int[]{590, 600, 670, 695, 690, 635},
+        55, 645,
+        0, 0, 0,
+        List.of("ironhaven")));
 
     return list;
 }

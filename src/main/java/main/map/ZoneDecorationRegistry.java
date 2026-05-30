@@ -63,6 +63,14 @@ private void build() {
     put("ashenveil",      ZoneDecoration.TerrainSymbol.VOLCANO);
     put("port_reach",     ZoneDecoration.TerrainSymbol.COASTAL);
     put("saltmere",       ZoneDecoration.TerrainSymbol.COASTAL);
+
+    // Desolate zones — no terrain symbol
+    put("waste_northeast", ZoneDecoration.TerrainSymbol.NONE);
+    put("waste_east",      ZoneDecoration.TerrainSymbol.NONE);
+    put("waste_se_upper",  ZoneDecoration.TerrainSymbol.NONE);
+    put("waste_se_lower",  ZoneDecoration.TerrainSymbol.NONE);
+    put("waste_southwest", ZoneDecoration.TerrainSymbol.NONE);
+    put("waste_farSW",     ZoneDecoration.TerrainSymbol.NONE);
 }
 
 }
