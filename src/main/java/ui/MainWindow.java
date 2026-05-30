@@ -5,6 +5,7 @@ import ui.map.MapView;
 import ui.politics.VoteSessionPanel;
 import main.actions.ActionResult;
 import main.core.GameState;
+import main.Main;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -29,12 +30,19 @@ public class MainWindow extends JFrame {
     private final VoteSessionPanel       voteSessionPanel;
     private final MapView                mapView;
 
+    // version & build info
+    private String buildNo = "?";
+    private String buildTime = "?";
+    private boolean buildInfoLoaded = false;
+    private JLabel versionLabel;
+
     private final JPanel  centerPanel;
     private  JButton partiesBtn;
     private  JButton openVoteBtn;
 
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
+        loadBuildInfo();
 
         setTitle("FrostVeil");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -83,14 +91,20 @@ public class MainWindow extends JFrame {
         add(calendarPanel, BorderLayout.NORTH);
         add(leftSidebar,   BorderLayout.WEST);
         add(centerPanel,   BorderLayout.CENTER);
-        add(eventLogPanel, BorderLayout.SOUTH);
+
+        // Build bottom area: event log + status bar (version info)
+        JPanel bottomArea = new JPanel(new BorderLayout());
+        bottomArea.setBackground(UITheme.BG_DARK);
+        bottomArea.add(eventLogPanel, BorderLayout.CENTER);
+        bottomArea.add(createStatusBar(), BorderLayout.SOUTH);
+        add(bottomArea, BorderLayout.SOUTH);
 
         refreshAll();
         eventLogPanel.appendLine("=== FrostVeil begins. " + gameState.getCalendar().getDisplayString() + " ===");
         eventLogPanel.appendLine("The realm awaits your guidance. The Frost Giants stir in the north.");
     }
 
-private JPanel buildSaveLoadBar() {
+    private JPanel buildSaveLoadBar() {
         JButton newBtn  = buildBarButton("NEW");
         JButton saveBtn = buildBarButton("SAVE");
         JButton loadBtn = buildBarButton("LOAD");
@@ -114,7 +128,7 @@ private JPanel buildSaveLoadBar() {
         return bar;
     }
 
-private JButton buildBarButton(String label) {
+    private JButton buildBarButton(String label) {
         JButton btn = new JButton(label);
         btn.setFont(UITheme.FONT_BUTTON);
         btn.setForeground(UITheme.TEXT_SECONDARY);
@@ -242,7 +256,7 @@ private JButton buildBarButton(String label) {
         openVoteBtn.setVisible(blocked);
     }
 
-private void endTurn() {
+    private void endTurn() {
         List<String> log = gameState.getTurnProcessor().processTurn(
             gameState,
             gameState.getResources(),
@@ -269,7 +283,7 @@ private void endTurn() {
         }
     }
 
-private void handleActionResult(ActionResult result) {
+    private void handleActionResult(ActionResult result) {
         if (result.isPending()) {
             eventLogPanel.appendLine("⚑ " + result.getMessage());
             showVoteSession();
@@ -296,4 +310,83 @@ private void handleActionResult(ActionResult result) {
         popPanel.refresh();
         actionsPanel.refresh();
     }
+
+private void loadBuildInfo() {
+        if (buildInfoLoaded) return;
+        java.util.Properties p = new java.util.Properties();
+        boolean loaded = false;
+
+        // 1. Try classpath (for JAR or IDE when resources are copied)
+        try (java.io.InputStream is = MainWindow.class.getResourceAsStream("/buildinfo.properties")) {
+            if (is != null) {
+                p.load(is);
+                loaded = true;
+            }
+        } catch (java.io.IOException e) {
+            // fall through
+        }
+
+        // 2. Try local file in working directory
+        if (!loaded) {
+            try (java.io.FileReader fr = new java.io.FileReader("buildinfo.properties")) {
+                p.load(fr);
+                loaded = true;
+            } catch (java.io.IOException e) {
+                // fall through
+            }
+        }
+
+        // 3. Try src/main/java relative to working directory (NetBeans typical)
+        if (!loaded) {
+            try (java.io.FileReader fr = new java.io.FileReader("src/main/java/buildinfo.properties")) {
+                p.load(fr);
+                loaded = true;
+            } catch (java.io.IOException e) {
+                // fall through
+            }
+        }
+
+        if (loaded) {
+            buildNo = p.getProperty("BUILD_NO", "?");
+            buildTime = p.getProperty("LAST_UPDATED", "?");
+            buildInfoLoaded = true;
+            // Optionally log to event log if available
+            if (eventLogPanel != null) {
+                eventLogPanel.appendLine("[Build] Loaded: " + buildNo + " (" + buildTime + ")");
+            }
+        } else {
+            // keep default "?" values
+            if (eventLogPanel != null) {
+                eventLogPanel.appendLine("[Build] No buildinfo.properties found");
+            }
+        }
+    }
+
+private JPanel createStatusBar() {
+        JPanel statusBar = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 2));
+        statusBar.setBackground(UITheme.BG_DARK);
+        statusBar.setBorder(javax.swing.BorderFactory.createEmptyBorder(2, 8, 2, 8));
+
+        // Configure global tooltip behaviour for this application
+        javax.swing.ToolTipManager ttm = javax.swing.ToolTipManager.sharedInstance();
+        ttm.setInitialDelay(0);
+        ttm.setDismissDelay(Integer.MAX_VALUE); // effectively infinite
+
+        versionLabel = new JLabel("v" + Main.VERSION);
+        versionLabel.setFont(UITheme.FONT_SMALL);
+        versionLabel.setForeground(UITheme.TEXT_SECONDARY);
+        String tooltipText;
+        if (buildInfoLoaded && !"?".equals(buildNo) && !"?".equals(buildTime)) {
+            tooltipText = String.format("Build: %s (%s)", buildNo, buildTime);
+        } else if (buildInfoLoaded && !"?".equals(buildNo)) {
+            tooltipText = String.format("Build: %s (timestamp unknown)", buildNo);
+        } else {
+            tooltipText = "No build info available";
+        }
+        versionLabel.setToolTipText(tooltipText);
+        statusBar.add(versionLabel);
+
+        return statusBar;
+    }
+
 }

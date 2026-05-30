@@ -9,6 +9,7 @@ import javax.swing.*;
  * Entry point for FrostVeil.
  */
 public class Main {
+    public static final String VERSION = "0.5";
 
     public static void main(String[] args) {
          System.setProperty("sun.java2d.uiScale", "1");
