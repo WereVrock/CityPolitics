@@ -70,6 +70,10 @@ public void generate(boolean changedOnly) {
             sb.append("  polyY:   ").append(intArrayToString(ez.getPolyY())).append("\n");
             sb.append("  labelX:  ").append(ez.getLabelX()).append("\n");
             sb.append("  labelY:  ").append(ez.getLabelY()).append("\n");
+            java.util.Set<String> adj = ez.getAdjacentIds();
+            if (!adj.isEmpty()) {
+                sb.append("  adjacent: ").append(String.join(", ", adj)).append("\n");
+            }
             sb.append("\n");
         }
 

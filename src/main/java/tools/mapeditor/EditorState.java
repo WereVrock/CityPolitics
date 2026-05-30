@@ -27,7 +27,8 @@ public class EditorState {
                        WorldGeography geography) {
         this.zones = new ArrayList<>();
         for (Zone zone : zoneManager.getZones()) {
-            zones.add(new EditableZone(zone, decorationRegistry.get(zone.getId())));
+            zones.add(new EditableZone(zone, decorationRegistry.get(zone.getId()),
+                         zone.getAdjacentIds()));
         }
 
         // Build rivers from geography
@@ -124,7 +125,24 @@ public Set<String> getChangedZoneIds() { return changedZoneIds; }
     public boolean isRiverChanged(String name) { return changedRiverIds.contains(name); }
     public boolean isSeaChanged(String name) { return changedSeaIds.contains(name); }
 
-    public boolean isSnappingEnabled() { return snappingEnabled; }
+private boolean adjacencyMode = false;
+
+    public boolean isAdjacencyModeEnabled() { return adjacencyMode; }
+    public void setAdjacencyModeEnabled(boolean enabled) { this.adjacencyMode = enabled; }
+
+    public void toggleAdjacency(EditableZone a, EditableZone b) {
+        if (a.isAdjacentTo(b.getId())) {
+            a.removeAdjacent(b.getId());
+            b.removeAdjacent(a.getId());
+        } else {
+            a.addAdjacent(b.getId());
+            b.addAdjacent(a.getId());
+        }
+        markChanged(a.getId());
+        markChanged(b.getId());
+    }
+
+public boolean isSnappingEnabled() { return snappingEnabled; }
     public void setSnappingEnabled(boolean val) { this.snappingEnabled = val; }
 
     public int[] findSnapTarget(int wx, int wy, Object exclude, int snapRadius) {

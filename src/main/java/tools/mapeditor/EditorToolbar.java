@@ -72,6 +72,15 @@ public class EditorToolbar extends JPanel {
         });
         add(undoBtn);
 
+        JToggleButton adjBtn = new JToggleButton("Adjacency Mode");
+        adjBtn.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        adjBtn.setForeground(new Color(200, 200, 200));
+        adjBtn.setBackground(new Color(55, 50, 45));
+        adjBtn.setFocusPainted(false);
+        adjBtn.setToolTipText("Click another zone to toggle mutual adjacency with selected zone");
+        adjBtn.addActionListener(e -> state.setAdjacencyModeEnabled(adjBtn.isSelected()));
+        add(adjBtn);
+
         addSeparator();
 
         JLabel hint = new JLabel(

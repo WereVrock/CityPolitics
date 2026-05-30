@@ -174,7 +174,7 @@ new int[]{110, 220, 280, 202, 129, 90, 100},
 new int[]{550, 530, 591, 640, 622, 600, 575},
 160, 595,
 GameParameters.ZONE_TOWN_GOLD, GameParameters.ZONE_TOWN_FOOD, GameParameters.ZONE_TOWN_POPS,
-List.of("greenvale", "ironhaven")));
+List.of("greenvale", "ironhaven", "waste_southwest")));
 
 list.add(new Zone("duskfall", "Duskfall", Zone.SettlementType.VILLAGE,
 new int[]{429, 490, 520, 640, 420, 403},
@@ -274,7 +274,7 @@ new int[]{55, 110, 90, 111, 110, 90, 50, 30},
 new int[]{420, 418, 480, 533, 550, 600, 590, 490},
 72, 505,
 0, 0, 0,
-List.of("greenvale")));
+List.of("greenvale", "southern_march")));
 
 list.add(new Zone("waste_farSW", "The Hollow Reaches", Zone.SettlementType.DESOLATE,
 new int[]{30, 90, 80, 110, 65, 25, 10},
@@ -287,6 +287,8 @@ return list;
 }
 
 }
+
+
 
 
 

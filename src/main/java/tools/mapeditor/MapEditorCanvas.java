@@ -27,6 +27,7 @@ public class MapEditorCanvas extends JPanel {
     private static final Color  COLOR_RIVER          = new Color(40, 120, 200, 200);
     private static final Color  COLOR_RIVER_SELECTED = new Color(100, 200, 255, 220);
     private static final Color  COLOR_MOUNTAIN_EDGE  = new Color(100, 70, 40, 220);
+    private static final Color  COLOR_ADJACENT_BORDER = new Color(220, 80, 220, 220);
     private static final Font   FONT_LABEL           = new Font("Serif", Font.BOLD, 12);
     private static final Font   FONT_LABEL_SMALL     = new Font("Serif", Font.ITALIC, 10);
 
@@ -84,6 +85,10 @@ public class MapEditorCanvas extends JPanel {
 
                 Point world = screenToWorld(e.getPoint());
 
+                if (!SwingUtilities.isLeftMouseButton(e)) {
+                    return; // middle / right drag only pans
+                }
+
                 // Check drag targets on already selected features (priority to zone, then river, then sea)
                 EditableZone selZone = state.getSelectedZone();
                 if (selZone != null) {
@@ -136,8 +141,23 @@ public class MapEditorCanvas extends JPanel {
                     }
                 }
 
-                // Cycle selection on left click
+                // Handle left-click selection / adjacency
                 if (SwingUtilities.isLeftMouseButton(e)) {
+                    // In adjacency mode, click another zone to toggle adjacency
+                    if (state.isAdjacencyModeEnabled() && state.getSelectedZone() != null) {
+                        EditableZone hit = state.getZoneAt(world.x, world.y);
+                        if (hit != null && hit != state.getSelectedZone()) {
+                            pushUndoForFeature(state.getSelectedZone());
+                            pushUndoForFeature(hit);
+                            state.toggleAdjacency(state.getSelectedZone(), hit);
+                            repaint();
+                            return;
+                        }
+                        // Clicking on nothing or same zone does nothing
+                        return;
+                    }
+
+                    // Normal cycle selection
                     boolean nearLast = lastCycleClickWorld != null &&
                         Math.abs(world.x - lastCycleClickWorld.x) <= 5 &&
                         Math.abs(world.y - lastCycleClickWorld.y) <= 5;
@@ -171,7 +191,6 @@ public class MapEditorCanvas extends JPanel {
                     dragRiverWaypointIndex = -1; draggingRiverLabel = false; riverDragSnapshot = null;
                     dragSeaVertexIndex = -1; draggingSeaLabel = false; seaDragSnapshot = null;
                     repaint();
-                    return;
                 }
             }
 
@@ -442,17 +461,32 @@ public class MapEditorCanvas extends JPanel {
             }
             g2.fillPolygon(poly);
 
-            // Changed tint
+            // Changed tint (green overlay)
             if (state.isChanged(ez.getId())) {
                 g2.setColor(COLOR_CHANGED);
                 g2.fillPolygon(poly);
             }
 
-            // Border
-            g2.setColor(ez == sel ? COLOR_BORDER_SEL : COLOR_BORDER);
-            g2.setStroke(new BasicStroke(ez == sel ? 2.5f : 1.5f));
-            g2.drawPolygon(poly);
-            g2.setStroke(new BasicStroke(1f));
+            // Regular border (drawn first)
+            if (ez == sel) {
+                g2.setColor(COLOR_BORDER_SEL);
+                g2.setStroke(new BasicStroke(2.5f));
+                g2.drawPolygon(poly);
+                g2.setStroke(new BasicStroke(1f));
+            } else {
+                g2.setColor(COLOR_BORDER);
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawPolygon(poly);
+                g2.setStroke(new BasicStroke(1f));
+            }
+
+            // Adjacent highlight – dashed magenta border ON TOP of the regular border
+            if (sel != null && sel.isAdjacentTo(ez.getId())) {
+                g2.setColor(COLOR_ADJACENT_BORDER);
+                g2.setStroke(new BasicStroke(3f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[]{6f}, 0f));
+                g2.drawPolygon(poly);
+                g2.setStroke(new BasicStroke(1f));
+            }
 
             // Label
             drawFeatureLabel(g2, ez.getDisplayName(), ez.getLabelX(), ez.getLabelY(),
@@ -631,12 +665,9 @@ public class MapEditorCanvas extends JPanel {
         g2.setStroke(new BasicStroke(1f));
     }
 
-    public void resetView() {
-        panX = 0; panY = 0; zoom = 1.0f;
-        repaint();
-    }
+    // ── Helpers for cycle selection and undo ─────────────────────────────────
 
-private java.util.List<Object> getFeaturesAt(Point world) {
+    private java.util.List<Object> getFeaturesAt(Point world) {
         java.util.List<Object> list = new java.util.ArrayList<>();
         for (EditableRiver river : state.getRivers()) {
             if (river.hitTestPolyline(world.x, world.y, SNAP_RADIUS)) {
@@ -666,4 +697,8 @@ private java.util.List<Object> getFeaturesAt(Point world) {
         }
     }
 
+    public void resetView() {
+        panX = 0; panY = 0; zoom = 1.0f;
+        repaint();
+    }
 }
