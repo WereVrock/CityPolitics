@@ -209,6 +209,15 @@ private void showDesolateZone(Zone zone) {
     supplyLabel.setText("");
     damageLabel.setText("");
 
+    // Build adjacent zones list
+    StringBuilder sbAdj = new StringBuilder();
+    for (String adjId : zone.getAdjacentIds()) {
+        Zone adj = zoneManager.getZone(adjId);
+        if (adj != null) sbAdj.append(adj.getDisplayName()).append("\n");
+    }
+    String adjacentText = sbAdj.toString().trim();
+    
+    // Flavour text
     String flavour = switch (zone.getId()) {
         case "waste_northeast" -> "Bitter winds scour these cracked plains. Nothing that enters ever returns the same.";
         case "waste_east"      -> "A sundered land of jagged rock and silence. Travellers speak of shapes moving at dusk.";
@@ -218,7 +227,15 @@ private void showDesolateZone(Zone zone) {
         case "waste_farSW"     -> "Whatever once lived here left no trace. Only the wind remains, and it mourns.";
         default                -> "These lands lie beyond the reach of civilisation.";
     };
-    adjacentArea.setText(flavour);
+    
+    // Combine: adjacent zones (if any) then blank line then flavour
+    StringBuilder combined = new StringBuilder();
+    if (!adjacentText.isEmpty()) {
+        combined.append(adjacentText).append("\n\n");
+    }
+    combined.append(flavour);
+    adjacentArea.setText(combined.toString());
+    
     cardLayout.show(cards, CARD_ZONE);
 }
 
