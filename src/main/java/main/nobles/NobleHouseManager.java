@@ -25,6 +25,7 @@ public class NobleHouseManager {
     private final ZoneManager         zoneManager;
     private final NobleArmyManager    armyManager;
     private final CoalitionManager    coalitionManager;
+    private       main.barbarians.RavagedZoneManager ravagedZoneManager;
 
     // Prebuilt zone gold/food maps for capital tiebreaker
     private Map<String, Integer> zoneGoldMap = new HashMap<>();
@@ -37,6 +38,10 @@ public class NobleHouseManager {
         this.armyManager.setCoalitionManager(coalitionManager);
         buildZoneMaps();
         buildHouses();
+    }
+
+    public void setRavagedZoneManager(main.barbarians.RavagedZoneManager rzm) {
+        this.ravagedZoneManager = rzm;
     }
 
     private void buildZoneMaps() {
@@ -334,19 +339,21 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
         // NOTE: garrison tick intentionally moved to AFTER AI recruits in processTurn
     }
 
-private int computeHouseGold(NobleHouse house) {
+    private int computeHouseGold(NobleHouse house) {
         int total = 0;
         for (String zoneId : house.getZoneIds()) {
-            ZoneState state = zoneManager.getState(zoneId);
-            double mult = state != null ? state.getProductionMultiplier() : 1.0;
+            ZoneState state  = zoneManager.getState(zoneId);
+            double ravagedMult = ravagedZoneManager != null
+                    ? ravagedZoneManager.getProductionMultiplier(zoneId) : 1.0;
+            double mult = state != null
+                    ? state.getProductionMultiplier(ravagedMult) : ravagedMult;
             total += (int)(GameParameters.NOBLE_ZONE_GOLD_PER_TURN * mult);
         }
         return total;
     }
-
     // ─── Accessors ───────────────────────────────────────────────────────────
 
-    public List<NobleHouse>    getHouses()        { return Collections.unmodifiableList(houses); }
+    public java.util.List<NobleHouse> getHouses() { return Collections.unmodifiableList(houses); }
     public RelationshipManager getRelationships() { return relationships; }
     public ClaimManager        getClaimManager()  { return claimManager; }
     public NobleArmyManager    getArmyManager()   { return armyManager; }
@@ -366,6 +373,22 @@ private int computeHouseGold(NobleHouse house) {
             if (house.getZoneIds().contains(zoneId)) return house;
         }
         return null;
+    }
+
+    /**
+     * Called by BarbInvasionProcessor after a noble wins against a barbarian garrison.
+     * Awards the zone to the noble and clears the barbarian garrison entry.
+     */
+    public void awardRecapturedZone(NobleHouse noble, String zoneId) {
+        // Ensure no other noble owns it (shouldn't happen but guard anyway)
+        for (NobleHouse h : houses) {
+            if (h != noble && h.getZoneIds().contains(zoneId)) h.removeZone(zoneId);
+        }
+        if (!noble.getZoneIds().contains(zoneId)) {
+            noble.addZone(zoneId);
+        }
+        noble.resetGarrison(zoneId);
+        noble.recalculateCapital(zoneGoldMap, zoneFoodMap);
     }
 
     public void reset() {

@@ -57,6 +57,8 @@ public class MapRenderer {
     private final TerrainSymbolRenderer    terrainSymbolRenderer;
     private       ArmyRenderer             armyRenderer;
     private       NobleArmyRenderer        nobleArmyRenderer;
+    private       BarbArmyRenderer         barbArmyRenderer;
+    private       main.barbarians.BarbArmyManager barbArmyManagerRef;
     private       NobleArmy                selectedNobleArmy = null;
     private MapViewMode viewMode = MapViewMode.SETTLEMENT;
 
@@ -81,6 +83,18 @@ public class MapRenderer {
     public void setNobleArmyRenderer(NobleArmyRenderer nobleArmyRenderer) {
         this.nobleArmyRenderer = nobleArmyRenderer;
     }
+
+    public void setBarbArmyRenderer(BarbArmyRenderer barbArmyRenderer) {
+        this.barbArmyRenderer = barbArmyRenderer;
+    }
+
+    public BarbArmyRenderer getBarbArmyRenderer() { return barbArmyRenderer; }
+
+    public void setBarbArmyManager(main.barbarians.BarbArmyManager bam) {
+        this.barbArmyManagerRef = bam;
+    }
+
+    private main.barbarians.BarbArmyManager barbArmyManager() { return barbArmyManagerRef; }
 
     public void setSelectedNobleArmy(NobleArmy army) {
         this.selectedNobleArmy = army;
@@ -137,6 +151,11 @@ public class MapRenderer {
         if (nobleArmyRenderer != null) {
             nobleArmyRenderer.render(g2, selectedNobleArmy);
         }
+
+        // Layer 10 — barbarian armies
+        if (barbArmyRenderer != null) {
+            barbArmyRenderer.render(g2);
+        }
     }
 
 private void drawInnerGlow(Graphics2D g2, Polygon poly, Color color) {
@@ -168,27 +187,49 @@ public Zone hitTest(Point world) {
         g2.fillRect(-200, -200, 2000, 1200);
     }
 
-private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered) {
-    Polygon   poly  = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
-    ZoneState state = zoneManager.getState(zone.getId());
+    // Injected by MapPanel so renderer can show ravaged overlay
+    private main.barbarians.RavagedZoneManager ravagedZoneManager;
 
-    if (zone.isDesolate()) {
-        Color base = zone == selected ? COLOR_DESOLATE.brighter() : COLOR_DESOLATE;
-        g2.setColor(base);
-        g2.fillPolygon(poly);
-        if (zone == hovered && zone != selected) {
-            g2.setColor(new Color(255, 255, 255, 18));
-            g2.fillPolygon(poly);
-        }
-        return;
+    public void setRavagedZoneManager(main.barbarians.RavagedZoneManager rzm) {
+        this.ravagedZoneManager = rzm;
     }
 
+    private static final Color COLOR_RAVAGED_OVERLAY         = new Color(160,  60,  10,  80);
+    private static final Color COLOR_HEAVILY_RAVAGED_OVERLAY = new Color(120,  10,  10, 120);
+
+    private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered) {
+        Polygon   poly  = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
+        ZoneState state = zoneManager.getState(zone.getId());
+
+        if (zone.isDesolate()) {
+            Color base = zone == selected ? COLOR_DESOLATE.brighter() : COLOR_DESOLATE;
+            g2.setColor(base);
+            g2.fillPolygon(poly);
+            if (zone == hovered && zone != selected) {
+                g2.setColor(new Color(255, 255, 255, 18));
+                g2.fillPolygon(poly);
+            }
+            return;
+        }
     switch (viewMode) {
         case POLITICAL -> {
             NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
-            Color primary   = owner != null ? NobleHouseColors.getPrimary(owner.getId())   : new Color(60, 55, 70);
-            Color secondary = owner != null ? NobleHouseColors.getSecondary(owner.getId()) : new Color(80, 75, 90);
-            if (zone == selected) { primary = primary.brighter(); secondary = secondary.brighter(); }
+            boolean isBarbarian = owner == null
+                    && barbArmyManagerRef != null
+                    && !barbArmyManagerRef.getGarrisonsInZone(zone.getId()).isEmpty();
+            Color primary;
+            Color secondary;
+            if (isBarbarian) {
+                primary   = zone == selected ? new Color(40, 30, 30).brighter() : new Color(30, 20, 20);
+                secondary = new Color(80, 20, 20);
+            } else if (owner != null) {
+                primary   = owner != null ? NobleHouseColors.getPrimary(owner.getId())   : new Color(60, 55, 70);
+                secondary = owner != null ? NobleHouseColors.getSecondary(owner.getId()) : new Color(80, 75, 90);
+                if (zone == selected) { primary = primary.brighter(); secondary = secondary.brighter(); }
+            } else {
+                primary   = zone == selected ? new Color(60, 55, 70).brighter() : new Color(60, 55, 70);
+                secondary = new Color(80, 75, 90);
+            }
             g2.setColor(primary);
             g2.fillPolygon(poly);
             drawInnerGlow(g2, poly, secondary);
@@ -227,9 +268,22 @@ private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered)
         g2.fillPolygon(poly);
     }
 
-    if (state.getDamage() > 0) {
+    if (state != null && state.getDamage() > 0) {
         g2.setColor(new Color(180, 30, 30, 100));
         g2.fillPolygon(poly);
+    }
+
+    // Ravaged overlay
+    if (ravagedZoneManager != null) {
+        main.barbarians.RavagedZoneManager.RavagedLevel lvl =
+                ravagedZoneManager.getLevel(zone.getId());
+        if (lvl == main.barbarians.RavagedZoneManager.RavagedLevel.HEAVILY_RAVAGED) {
+            g2.setColor(COLOR_HEAVILY_RAVAGED_OVERLAY);
+            g2.fillPolygon(poly);
+        } else if (lvl == main.barbarians.RavagedZoneManager.RavagedLevel.RAVAGED) {
+            g2.setColor(COLOR_RAVAGED_OVERLAY);
+            g2.fillPolygon(poly);
+        }
     }
 }
 

@@ -53,12 +53,16 @@ public class ZoneState {
     public void addRebellionPower(int delta) { rebellionPower = Math.max(0, rebellionPower + delta); }
 
     /**
-     * Effective production multiplier accounting for both raid and conquest malus.
-     * Raid = 30% malus, conquest = conquestMalusPercent% malus.
-     * They stack multiplicatively.
+     * Effective production multiplier accounting for raid, conquest malus,
+     * and ravaged status. All stack multiplicatively.
+     * Ravaged multiplier is injected by caller via overload.
      */
     public double getProductionMultiplier() {
-        double multiplier = 1.0;
+        return getProductionMultiplier(1.0);
+    }
+
+    public double getProductionMultiplier(double ravagedMultiplier) {
+        double multiplier = ravagedMultiplier;
         if (isRecentlyRaided()) {
             multiplier *= (1.0 - GameParameters.RAID_PRODUCTION_MALUS);
         }

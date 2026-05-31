@@ -23,6 +23,11 @@ private final ZoneManager   zoneManager;
 private final CardLayout    cardLayout;
 private final JPanel        cards;
 private final main.nobles.NobleHouseManager nobleHouseManager;
+private main.barbarians.RavagedZoneManager  ravagedZoneManager;
+
+public void setRavagedZoneManager(main.barbarians.RavagedZoneManager rzm) {
+    this.ravagedZoneManager = rzm;
+}
 
 // Zone
 private final JLabel   zoneTitleLabel;
@@ -41,6 +46,9 @@ private final JLabel armyZoneLabel;
 private final JLabel armyStatusLabel;
 private final JLabel armySizeLabel;
 private final JLabel armyUpkeepLabel;
+// Barbarian pay-off button
+private final JButton barbPayOffBtn;
+private final JButton barbDismissBtn;
 
 public MapInfoPanel(ZoneManager zoneManager, main.nobles.NobleHouseManager nobleHouseManager) {
 this.zoneManager       = zoneManager;
@@ -117,11 +125,29 @@ zoneCard.add(adjacentArea, zc);
 cards.add(zoneCard, CARD_ZONE);
 
 // ── Army card ──
-armyTitleLabel  = makeLabel("", UITheme.ACCENT_FROST,   UITheme.FONT_HEADER);
+armyTitleLabel  = makeLabel("", UITheme.TEXT_RED,       UITheme.FONT_HEADER);
 armyZoneLabel   = makeLabel("", UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
 armyStatusLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
 armySizeLabel   = makeLabel("", UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
 armyUpkeepLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
+
+barbPayOffBtn = new JButton("PAY OFF");
+barbPayOffBtn.setFont(UITheme.FONT_BUTTON);
+barbPayOffBtn.setForeground(new Color(210, 170, 80));
+barbPayOffBtn.setBackground(UITheme.BUTTON_BG);
+barbPayOffBtn.setBorderPainted(false);
+barbPayOffBtn.setFocusPainted(false);
+barbPayOffBtn.setVisible(false);
+barbPayOffBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+barbDismissBtn = new JButton("DISMISS (6x)");
+barbDismissBtn.setFont(UITheme.FONT_BUTTON);
+barbDismissBtn.setForeground(new Color(120, 200, 100));
+barbDismissBtn.setBackground(UITheme.BUTTON_BG);
+barbDismissBtn.setBorderPainted(false);
+barbDismissBtn.setFocusPainted(false);
+barbDismissBtn.setVisible(false);
+barbDismissBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
 JPanel armyCard = new JPanel(new GridBagLayout());
 armyCard.setBackground(UITheme.BG_PANEL);
@@ -133,7 +159,9 @@ ac.gridy = 1; armyCard.add(armyZoneLabel,   ac);
 ac.gridy = 2; armyCard.add(armySizeLabel,   ac);
 ac.gridy = 3; armyCard.add(armyUpkeepLabel, ac);
 ac.gridy = 4; armyCard.add(armyStatusLabel, ac);
-ac.gridy = 5; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
+ac.gridy = 5; armyCard.add(barbPayOffBtn,   ac);
+ac.gridy = 6; armyCard.add(barbDismissBtn,  ac);
+ac.gridy = 7; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
 armyCard.add(Box.createVerticalGlue(), ac);
 
 cards.add(armyCard, CARD_ARMY);
@@ -183,6 +211,21 @@ public void showZone(Zone zone) {
             + "   Fort: " + fort);
         damageLabel.setText("Damage:     " + state.getDamage() + "%"
             + "   Garrison: " + garrison + "/" + maxGarr);
+    }
+
+    // Ravaged status
+    if (ravagedZoneManager != null) {
+        main.barbarians.RavagedZoneManager.RavagedLevel lvl =
+                ravagedZoneManager.getLevel(zone.getId());
+        if (lvl == main.barbarians.RavagedZoneManager.RavagedLevel.HEAVILY_RAVAGED) {
+            damageLabel.setText(damageLabel.getText() + "   ☠ HEAVILY RAVAGED");
+            damageLabel.setForeground(new java.awt.Color(220, 40, 40));
+        } else if (lvl == main.barbarians.RavagedZoneManager.RavagedLevel.RAVAGED) {
+            damageLabel.setText(damageLabel.getText() + "   ☠ Ravaged");
+            damageLabel.setForeground(new java.awt.Color(200, 110, 40));
+        } else {
+            damageLabel.setForeground(UITheme.TEXT_RED);
+        }
     }
 
     StringBuilder sb = new StringBuilder();
@@ -241,6 +284,7 @@ private void showDesolateZone(Zone zone) {
 
 public void showArmy(Army army, ZoneManager zm) {
 if (army == null) { clearArmy(); return; }
+armyTitleLabel.setForeground(UITheme.ACCENT_FROST);
 armyTitleLabel.setText("⚔ " + army.getDisplayName());
 if (army.isInCity()) {
 armyZoneLabel.setText("📍 Heartland (City)");
@@ -259,6 +303,7 @@ public void showNobleArmy(main.nobles.NobleArmy army, ZoneManager zm, main.noble
 if (army == null) { clearArmy(); return; }
 main.nobles.NobleHouse owner = houseManager.getHouseById(army.getHouseId());
 String houseName = owner != null ? owner.getName() : army.getHouseId();
+armyTitleLabel.setForeground(UITheme.ACCENT_FROST);
 armyTitleLabel.setText("🏰 " + houseName + " Army");
 Zone zone = zm.getZone(army.getZoneId());
 armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
@@ -278,13 +323,74 @@ cardLayout.show(cards, CARD_ARMY);
 
 
 public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
+public void showBarbArmy(main.barbarians.BarbArmy army,
+                          main.core.GameState gameState) {
+    if (army == null) { clearArmy(); return; }
+
+    String typeLabel = switch (army.getType()) {
+        case WARBOSS -> "☠ THE WARBOSS";
+        case RAIDER  -> "☠ Raiders";
+        case RAVAGER -> "☠ Ravagers";
+    };
+    armyTitleLabel.setForeground(new java.awt.Color(220, 60, 40));
+    armyTitleLabel.setText(typeLabel);
+
+    main.map.Zone zone = gameState.getZoneManager().getZone(army.getZoneId());
+    armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+    armySizeLabel.setText("Warriors: " + army.getSize());
+
+    String flavour = switch (army.getType()) {
+        case WARBOSS -> "The Warboss leads the horde. Destroy him to end the invasion.";
+        case RAIDER  -> "Fast-moving raiders. They prefer undefended lands.";
+        case RAVAGER -> "Heavy ravagers. They leave ruin in their wake.";
+    };
+    armyStatusLabel.setText("<html><body style='width:160px'>" + flavour + "</body></html>");
+    armyUpkeepLabel.setText("");
+
+    // Pay-off button
+    main.resources.ResourcePool res = gameState.getResources();
+    int goldCost = army.getSize() * main.parameters.GameParameters.BARB_PAYOFF_GOLD_PER_MAN;
+    int foodCost = army.getSize() * main.parameters.GameParameters.BARB_PAYOFF_FOOD_PER_MAN;
+    int fullCost = army.getSize() * main.parameters.GameParameters.BARB_DISMISS_GOLD_PER_MAN;
+
+    // Remove old listeners
+    for (java.awt.event.ActionListener al : barbPayOffBtn.getActionListeners())
+        barbPayOffBtn.removeActionListener(al);
+    for (java.awt.event.ActionListener al : barbDismissBtn.getActionListeners())
+        barbDismissBtn.removeActionListener(al);
+
+    barbPayOffBtn.setText("Pay off  (" + goldCost + "g + " + foodCost + "f)");
+    barbPayOffBtn.setEnabled(res.getMoney() >= goldCost && res.getFood() >= foodCost);
+    barbPayOffBtn.setVisible(true);
+    barbPayOffBtn.addActionListener(e -> {
+        res.addMoney(-goldCost);
+        res.addFood(-foodCost);
+        army.setPaidOff(true);
+        barbPayOffBtn.setEnabled(false);
+        barbDismissBtn.setEnabled(false);
+    });
+
+    barbDismissBtn.setText("Dismiss  (" + fullCost + "g)");
+    barbDismissBtn.setEnabled(res.getMoney() >= fullCost);
+    barbDismissBtn.setVisible(true);
+    barbDismissBtn.addActionListener(e -> {
+        res.addMoney(-fullCost);
+        army.dismiss();
+        clearArmy();
+    });
+
+    cardLayout.show(cards, CARD_ARMY);
+}
+
 public void clearArmy() {
-armyTitleLabel.setText("");
-armyZoneLabel.setText("");
-armySizeLabel.setText("");
-armyUpkeepLabel.setText("");
-armyStatusLabel.setText("");
-cardLayout.show(cards, CARD_EMPTY);
+    armyTitleLabel.setText("");
+    armyZoneLabel.setText("");
+    armySizeLabel.setText("");
+    armyUpkeepLabel.setText("");
+    armyStatusLabel.setText("");
+    barbPayOffBtn.setVisible(false);
+    barbDismissBtn.setVisible(false);
+    cardLayout.show(cards, CARD_EMPTY);
 }
 
 private JLabel makeLabel(String text, Color color, Font font) {

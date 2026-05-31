@@ -1,84 +1,128 @@
 package main.core;
 
 import main.actions.ActionRegistry;
+import main.army.ArmyManager;
+import main.barbarians.*;
 import main.calendar.GameCalendar;
-import main.effects.EffectManager;
 import main.map.ZoneManager;
+import main.map.ZoneDecorationRegistry;
+import main.map.WorldGeography;
 import main.nobles.NobleHouseManager;
 import main.pops.PopManager;
 import main.politics.PartyManager;
 import main.politics.VoteSessionManager;
 import main.politics.VotingSession;
-import java.util.List;
 import main.resources.ResourcePool;
 import main.resources.StatBlock;
+import main.effects.EffectManager;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Central hub — owns all subsystems.
+ * No game logic lives here; logic lives in processors and managers.
+ */
 public class GameState {
 
-    private final GameCalendar   calendar;
-    private final ResourcePool   resources;
-    private final StatBlock      stats;
-    private final PopManager     popManager;
-    private final ActionRegistry actionRegistry;
-    private final TurnProcessor  turnProcessor;
-    private final EffectManager  effectManager;
-    private final PartyManager       partyManager;
-    private final VoteSessionManager    voteSessionManager;
-    private final List<VotingSession>        pendingSessions = new java.util.ArrayList<>();
-    private final ZoneManager                zoneManager;
-    private final main.army.ArmyManager      armyManager;
-    private final main.map.WorldGeography    worldGeography;
-    private final main.map.ZoneDecorationRegistry decorationRegistry;
-    private final NobleHouseManager               nobleHouseManager;
+    private GameCalendar          calendar;
+    private ResourcePool          resources;
+    private StatBlock             stats;
+    private PopManager            popManager;
+    private PartyManager          partyManager;
+    private ActionRegistry        actionRegistry;
+    private EffectManager         effectManager;
+    private VoteSessionManager    voteSessionManager;
+    private ZoneManager           zoneManager;
+    private ZoneDecorationRegistry decorationRegistry;
+    private WorldGeography        worldGeography;
+    private NobleHouseManager     nobleHouseManager;
+    private ArmyManager           armyManager;
+    private TurnProcessor         turnProcessor;
+
+    // ── Barbarian invasion subsystem ─────────────────────────────────────────
+    private BarbInvasionState     barbInvasionState;
+    private BarbArmyManager       barbArmyManager;
+    private RavagedZoneManager    ravagedZoneManager;
+    private BarbInvasionProcessor barbInvasionProcessor;
+
+    private final List<VotingSession> activeSessions = new ArrayList<>();
 
     public GameState() {
-        this.calendar       = new GameCalendar();
-        this.resources      = new ResourcePool();
-        this.stats          = new StatBlock();
-        this.popManager     = new PopManager();
-        this.effectManager  = new EffectManager();
-        this.partyManager   = new PartyManager(popManager);
-        this.actionRegistry    = new ActionRegistry(this);
-        this.turnProcessor     = new TurnProcessor();
-        this.voteSessionManager = new VoteSessionManager();
-        this.zoneManager        = new ZoneManager();
-        this.armyManager        = new main.army.ArmyManager();
-        this.worldGeography     = new main.map.WorldGeography();
-        this.decorationRegistry = new main.map.ZoneDecorationRegistry();
-        this.nobleHouseManager  = new NobleHouseManager(zoneManager);
+        initState();
     }
 
+    private void initState() {
+        calendar           = new GameCalendar();
+        resources          = new ResourcePool();
+        stats              = new StatBlock();
+        popManager         = new PopManager();
+        partyManager       = new PartyManager(popManager);
+        actionRegistry     = new ActionRegistry(this);
+        effectManager      = new EffectManager();
+        voteSessionManager = new VoteSessionManager();
+        zoneManager        = new ZoneManager();
+        decorationRegistry = new ZoneDecorationRegistry();
+        worldGeography     = new WorldGeography();
+        nobleHouseManager  = new NobleHouseManager(zoneManager);
+        armyManager        = new ArmyManager();
+        turnProcessor      = new TurnProcessor();
+
+        barbInvasionState     = new BarbInvasionState();
+        barbArmyManager       = new BarbArmyManager(zoneManager);
+        ravagedZoneManager    = new RavagedZoneManager();
+        barbInvasionProcessor = new BarbInvasionProcessor(
+                barbInvasionState,
+                barbArmyManager,
+                ravagedZoneManager,
+                zoneManager,
+                nobleHouseManager,
+                armyManager);
+        nobleHouseManager.setRavagedZoneManager(ravagedZoneManager);
+    }
+
+    /**
+     * Recreates all subsystems for a new game, keeping the same GameState instance.
+     */
     public void reset() {
-        calendar.reset();
-        resources.reset();
-        stats.reset();
-        popManager.reset();
-        effectManager.reset();
-        partyManager.reset();
-        actionRegistry.resetAllActions();
-        pendingSessions.clear();
-        zoneManager.reset();
-        armyManager.reset();
-        nobleHouseManager.reset();
+        activeSessions.clear();
+        initState();
     }
 
-    public GameCalendar   getCalendar()       { return calendar; }
-    public ResourcePool   getResources()      { return resources; }
-    public StatBlock      getStats()          { return stats; }
-    public PopManager     getPopManager()     { return popManager; }
-    public ActionRegistry getActionRegistry() { return actionRegistry; }
-    public TurnProcessor  getTurnProcessor()  { return turnProcessor; }
-    public EffectManager  getEffectManager()  { return effectManager; }
-    public PartyManager        getPartyManager()         { return partyManager; }
-    public VoteSessionManager  getVoteSessionManager()   { return voteSessionManager; }
-    public ZoneManager                   getZoneManager()        { return zoneManager; }
-    public main.army.ArmyManager         getArmyManager()        { return armyManager; }
-    public main.map.WorldGeography       getWorldGeography()     { return worldGeography; }
-    public main.map.ZoneDecorationRegistry getDecorationRegistry(){ return decorationRegistry; }
-    public NobleHouseManager               getNobleHouseManager()  { return nobleHouseManager; }
-    public main.nobles.NobleArmyManager    getNobleArmyManager()   { return nobleHouseManager.getArmyManager(); }
-    public VotingSession       getActiveSession()         { return pendingSessions.isEmpty() ? null : pendingSessions.get(0); }
-    public void                addSession(VotingSession s){ pendingSessions.add(s); }
-    public void                clearActiveSession()       { if (!pendingSessions.isEmpty()) pendingSessions.remove(0); }
-    public boolean             hasActiveSession()         { return !pendingSessions.isEmpty(); }
+    // ─── Vote session ─────────────────────────────────────────────────────────
+
+    public boolean          hasActiveSession()  { return !activeSessions.isEmpty(); }
+    public VotingSession    getActiveSession()  { return activeSessions.isEmpty() ? null : activeSessions.get(0); }
+    public void             addSession(VotingSession s) { activeSessions.add(s); }
+    public void             clearActiveSession(){ activeSessions.clear(); }
+
+    // ─── Accessors ───────────────────────────────────────────────────────────
+
+    public GameCalendar          getCalendar()              { return calendar; }
+    public ResourcePool          getResources()             { return resources; }
+    public StatBlock             getStats()                 { return stats; }
+    public PopManager            getPopManager()            { return popManager; }
+    public PartyManager          getPartyManager()          { return partyManager; }
+    public ActionRegistry        getActionRegistry()        { return actionRegistry; }
+    public EffectManager         getEffectManager()         { return effectManager; }
+    public VoteSessionManager    getVoteSessionManager()    { return voteSessionManager; }
+    public ZoneManager           getZoneManager()           { return zoneManager; }
+    public ZoneDecorationRegistry getDecorationRegistry()  { return decorationRegistry; }
+    public WorldGeography        getWorldGeography()        { return worldGeography; }
+    public NobleHouseManager     getNobleHouseManager()     { return nobleHouseManager; }
+    public main.nobles.NobleArmyManager getNobleArmyManager() { return nobleHouseManager.getArmyManager(); }
+    public ArmyManager           getArmyManager()           { return armyManager; }
+    public TurnProcessor         getTurnProcessor()         { return turnProcessor; }
+
+    public BarbInvasionState     getBarbInvasionState()     { return barbInvasionState; }
+    public BarbArmyManager       getBarbArmyManager()       { return barbArmyManager; }
+    public RavagedZoneManager    getRavagedZoneManager()    { return ravagedZoneManager; }
+    public BarbInvasionProcessor getBarbInvasionProcessor() { return barbInvasionProcessor; }
+
+    /** Resets barbarian subsystem for new game. */
+    public void resetBarbarians() {
+        barbArmyManager.reset();
+        ravagedZoneManager.reset();
+        barbInvasionState.resetCountdown();
+    }
 }

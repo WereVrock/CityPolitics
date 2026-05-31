@@ -27,6 +27,7 @@ public MapView(GameState gameState, Runnable onBack) {
         setBackground(UITheme.BG_DARK);
 
         infoPanel     = new MapInfoPanel(zoneManager, gameState.getNobleHouseManager());
+        infoPanel.setRavagedZoneManager(gameState.getRavagedZoneManager());
         armyListPanel = new ArmyListPanel(gameState.getArmyManager());
 
         mapPanel = new MapPanel(
@@ -36,6 +37,13 @@ public MapView(GameState gameState, Runnable onBack) {
             nobleArmy -> {
                 if (nobleArmy != null) {
                     infoPanel.showNobleArmy(nobleArmy, zoneManager, gameState.getNobleHouseManager());
+                } else {
+                    infoPanel.clearArmy();
+                }
+            },
+            barbArmy -> {
+                if (barbArmy != null) {
+                    infoPanel.showBarbArmy(barbArmy, gameState);
                 } else {
                     infoPanel.clearArmy();
                 }

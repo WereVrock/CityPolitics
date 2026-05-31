@@ -524,4 +524,73 @@ public final class GameParameters {
     // =========================================================
     public static final int MAP_CANVAS_WIDTH  = 1200;
     public static final int MAP_CANVAS_HEIGHT = 700;
+
+    // =========================================================
+    // BARBARIAN INVASION — COUNTDOWN
+    // =========================================================
+    /** Minimum years before first/next invasion. */
+    public static final int    BARB_COUNTDOWN_MIN_YEARS          = 7;
+    /** Maximum years before first/next invasion. */
+    public static final int    BARB_COUNTDOWN_MAX_YEARS          = 15;
+
+    // =========================================================
+    // BARBARIAN INVASION — WARBOSS
+    // =========================================================
+    public static final int    BARB_WARBOSS_BASE_SIZE            = 800;
+    public static final int    BARB_WARBOSS_SIZE_PER_TURN        = 10;
+    /** Fraction of warboss size that splits into a raider each turn. */
+    public static final double BARB_WARBOSS_RAIDER_FRACTION      = 0.05;
+    /** Minimum raider split size. */
+    public static final int    BARB_WARBOSS_RAIDER_MIN           = 30;
+    /** Chance warboss moves to unvisited zone instead of pathfinding. */
+    public static final double BARB_WARBOSS_DETOUR_CHANCE        = 0.50;
+
+    // =========================================================
+    // BARBARIAN INVASION — WAVES
+    // =========================================================
+    /** Minimum turns between reinforcement waves. */
+    public static final int    BARB_WAVE_MIN_TURNS               = 8;
+    /** Maximum turns between reinforcement waves. */
+    public static final int    BARB_WAVE_MAX_TURNS               = 16;
+    /** Raiders per wave. */
+    public static final int    BARB_WAVE_RAIDER_COUNT            = 2;
+    /** Ravagers per wave. */
+    public static final int    BARB_WAVE_RAVAGER_COUNT           = 1;
+    /** Size of each raider in a wave. */
+    public static final int    BARB_WAVE_RAIDER_SIZE             = 60;
+    /** Size of each ravager in a wave. */
+    public static final int    BARB_WAVE_RAVAGER_SIZE            = 120;
+
+    // =========================================================
+    // BARBARIAN INVASION — COMBAT
+    // =========================================================
+    /** Defender bonus when barbarians are the attacker. */
+    public static final double BARB_DEFENDER_BONUS               = 0.30;
+    /** Garrison size left by warboss after conquest. */
+    public static final int    BARB_WARBOSS_GARRISON_SIZE        = 15;
+    /** Garrison size left by ravager after conquest. */
+    public static final int    BARB_RAVAGER_GARRISON_SIZE        = 5;
+
+    // =========================================================
+    // BARBARIAN INVASION — PAY-OFF
+    // =========================================================
+    /** Gold per man for cheap pay-off (stand down). */
+    public static final int    BARB_PAYOFF_GOLD_PER_MAN          = 2;
+    /** Food per man for cheap pay-off. */
+    public static final int    BARB_PAYOFF_FOOD_PER_MAN          = 1;
+    /** Gold per man for full player dismissal. */
+    public static final int    BARB_DISMISS_GOLD_PER_MAN         = 6;
+
+    // =========================================================
+    // BARBARIAN INVASION — RAVAGED STATUS
+    // =========================================================
+    /** Production penalty for ravaged zones (0.0–1.0). */
+    public static final double BARB_RAVAGED_PENALTY              = 0.50;
+    /** Production penalty for heavily ravaged zones (0.0–1.0). */
+    public static final double BARB_HEAVILY_RAVAGED_PENALTY      = 0.80;
+
+    // =========================================================
+    // PLAYER ARMY
+    // =========================================================
+    public static final int    PLAYER_ARMY_STARTING_SIZE         = 100;
 }

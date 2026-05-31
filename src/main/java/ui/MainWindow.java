@@ -43,6 +43,19 @@ public class MainWindow extends JFrame {
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
         loadBuildInfo();
+        gameState.getTurnProcessor().setPayOffDialogSupplier((army, resources) -> {
+            java.awt.Window win = this;
+            final boolean[] result = {false};
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win);
+            } else {
+                try {
+                    javax.swing.SwingUtilities.invokeAndWait(() ->
+                        result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win));
+                } catch (Exception ignored) {}
+            }
+            return result[0];
+        });
 
         setTitle("FrostVeil");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -109,7 +122,11 @@ public class MainWindow extends JFrame {
         JButton saveBtn = buildBarButton("SAVE");
         JButton loadBtn = buildBarButton("LOAD");
 
-        newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> { showMainView(); resetLogs(); }));
+        newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> {
+            gameState.resetBarbarians();
+            showMainView();
+            resetLogs();
+        }));
         saveBtn.addActionListener(e -> saveLoadDialog.save());
         loadBtn.addActionListener(e -> saveLoadDialog.load(() -> {
             showMainView();
