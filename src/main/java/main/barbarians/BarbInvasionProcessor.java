@@ -254,7 +254,8 @@ public class BarbInvasionProcessor {
         return best != null ? best : candidates.get(rng.nextInt(candidates.size()));
     }
 
-    private int bfsDepthToHeartland(String start, int maxDepth) {
+private int bfsDepthToHeartland(String start, int maxDepth) {
+        if (Army.HEARTLAND_ID.equals(start)) return 0;
         Queue<String> queue   = new LinkedList<>();
         Set<String>   visited = new HashSet<>();
         queue.add(start);
@@ -279,7 +280,7 @@ public class BarbInvasionProcessor {
         return maxDepth;
     }
 
-    // ─── Combat ──────────────────────────────────────────────────────────────
+// ─── Combat ──────────────────────────────────────────────────────────────
 
     private List<String> resolveCombat(ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
