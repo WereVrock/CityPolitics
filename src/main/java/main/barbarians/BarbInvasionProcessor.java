@@ -5,14 +5,16 @@ import main.army.ArmyManager;
 import main.calendar.GameCalendar;
 import main.map.Zone;
 import main.map.ZoneManager;
+import main.map.ZoneState;
 import main.nobles.NobleArmy;
+import main.nobles.NobleArmyManager;
 import main.nobles.NobleHouse;
 import main.nobles.NobleHouseManager;
 import main.parameters.GameParameters;
 import main.resources.ResourcePool;
+import debug.Debug;
 
 import java.util.*;
-import main.map.ZoneState;
 
 /**
  * Drives all barbarian invasion logic each turn.
@@ -141,6 +143,7 @@ public class BarbInvasionProcessor {
             return log;
         }
         BarbArmy warboss = armyManager.spawnWarboss(spawnZone, calendar.getTotalTurnsElapsed());
+        log("invasion-start", "Warboss spawned at " + spawnZone + ", size=" + warboss.getSize());
         state.startInvasion(absoluteTurn);
         log.add("☠ THE BARBARIAN HORDE DESCENDS! The Warboss (" + warboss.getSize()
                 + " warriors) emerges from " + spawnZone + "!");
@@ -148,8 +151,13 @@ public class BarbInvasionProcessor {
         // First wave: raiders + warboss (warboss IS the first wave's ravager slot)
         log.addAll(spawnWaveHalf(true));
         state.markFirstHalfSpawned();
+        log("invasion-start", "First wave spawned");
 
         return log;
+    }
+
+    private void log(String key, String msg) {
+        Debug.log("barbarians", key, msg);
     }
 
     // ─── Wave spawning ───────────────────────────────────────────────────────
@@ -192,6 +200,7 @@ public class BarbInvasionProcessor {
 
         wb.setSize(wb.getSize() - splitSize);
         BarbArmy raider = armyManager.spawnRaider(wb.getZoneId(), splitSize);
+        log("raider-split", "Split " + splitSize + " raiders from warboss at " + wb.getZoneId() + ", warboss remaining " + wb.getSize());
         log.add("☠ " + splitSize + " barbarian raiders break off from the Warboss.");
         return log;
     }
@@ -205,12 +214,19 @@ public class BarbInvasionProcessor {
         if (wb != null && wb.canMoveThisTurn()) {
             String next = wb.getNextZoneId();
             if (next != null) {
+                String oldZone = wb.getZoneId();
                 armyManager.moveArmy(wb, next);
-                log.add("☠ The Warboss advances to " + next + ".");
+                if (!next.equals(oldZone)) {
+                    log.add("☠ The Warboss advances to " + next + ".");
+                    log("warboss-move", "Warboss moved from " + oldZone + " to " + next);
+                }
+            } else {
+                log("warboss-move", "Warboss has no next zone, staying in " + wb.getZoneId());
             }
             // Pre-calculate next move for display
             String upcoming = pickWarbossNextZone(wb);
             wb.setNextZoneId(upcoming);
+            log("warboss-next", "Next destination set to " + upcoming);
         }
 
         // Raiders and ravagers move randomly, prefer unvisited
@@ -220,7 +236,11 @@ public class BarbInvasionProcessor {
             if (candidates.isEmpty()) continue;
             String dest = armyManager.pickPreferredZone(army, candidates);
             if (dest != null) {
+                String oldZone = army.getZoneId();
                 armyManager.moveArmy(army, dest);
+                if (!dest.equals(oldZone)) {
+                    log("barb-move", army.getType() + " " + army.getId() + " moved from " + oldZone + " to " + dest);
+                }
             }
         }
 
@@ -229,6 +249,7 @@ public class BarbInvasionProcessor {
 
     private String pickWarbossNextZone(BarbArmy wb) {
         List<String> candidates = armyManager.getAdjacentMoveable(wb.getZoneId());
+        log("warboss-next-choices", "Candidates from " + wb.getZoneId() + ": " + candidates);
         if (candidates.isEmpty()) return null;
 
         // 50% chance to pick unvisited detour
@@ -237,11 +258,17 @@ public class BarbInvasionProcessor {
             for (String z : candidates) {
                 if (!armyManager.getInvasionVisited().contains(z)) unvisited.add(z);
             }
-            if (!unvisited.isEmpty()) return unvisited.get(rng.nextInt(unvisited.size()));
+            if (!unvisited.isEmpty()) {
+                String pick = unvisited.get(rng.nextInt(unvisited.size()));
+                log("warboss-next-choice", "Detour to unvisited " + pick);
+                return pick;
+            }
         }
 
         // Pathfind toward heartland: pick adjacent zone closest to heartland
-        return pickClosestToHeartland(candidates, wb.getZoneId());
+        String chosen = pickClosestToHeartland(candidates, wb.getZoneId());
+        log("warboss-next-choice", "Pathfinding chose " + chosen);
+        return chosen;
     }
 
     private String pickClosestToHeartland(List<String> candidates, String currentZone) {
@@ -258,7 +285,7 @@ public class BarbInvasionProcessor {
         return best != null ? best : candidates.get(rng.nextInt(candidates.size()));
     }
 
-private int bfsDepthToHeartland(String start, int maxDepth) {
+    private int bfsDepthToHeartland(String start, int maxDepth) {
         if (Army.HEARTLAND_ID.equals(start)) return 0;
         Queue<String> queue   = new LinkedList<>();
         Set<String>   visited = new HashSet<>();
@@ -284,7 +311,7 @@ private int bfsDepthToHeartland(String start, int maxDepth) {
         return maxDepth;
     }
 
-// ─── Combat ──────────────────────────────────────────────────────────────
+    // ─── Combat ──────────────────────────────────────────────────────────────
 
     private List<String> resolveCombat(ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
@@ -315,6 +342,7 @@ private int bfsDepthToHeartland(String start, int maxDepth) {
                 // Each barb army in the zone fights independently
                 for (BarbArmy barb : armiesInZone) {
                     log.addAll(resolveCombatInZone(barb, zoneId, playerResources));
+                    log("combat-done", "Resolved combat for " + barb.getType() + " in " + zoneId + " (alive=" + barb.isAlive() + ")");
                 }
             }
         }
@@ -352,7 +380,7 @@ private int bfsDepthToHeartland(String start, int maxDepth) {
         return log;
     }
 
-private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
+    private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
                                               ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
 
@@ -391,7 +419,7 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
 
         // Player pay-off dialog: only for ravagers
         if (barb.isRavager() && payOffCallback != null) {
-            // Collect noble armies for display
+            log("payoff-check", "Asking player about ravagers at " + zoneId + " size=" + barb.getSize());
             List<NobleArmy> nobleArmiesDisplay = new ArrayList<>();
             int nobleGarrisonDisplay = 0;
             if (hasNobleDefender) {
@@ -404,7 +432,10 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
             if (playerPays) {
                 barb.setPaidOff(true);
                 log.add("Player pays off ravagers at " + zoneId + ". They stand down.");
+                log("payoff-accepted", "Player paid off ravagers at " + zoneId);
                 return log;
+            } else {
+                log("payoff-declined", "Player declined to pay off ravagers at " + zoneId);
             }
         }
 
@@ -478,27 +509,31 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
         if (barbWon) {
             if (barb.isRaider()) {
                 log.add("☠ Raiders defeat the defenders at " + zoneId + "!");
+                log("raider-win", "Raiders won at " + zoneId + ", proceeding to raid");
                 log.addAll(raidZone(barb, zoneId, owner, log));
                 return log;
             }
             log.add("☠ Barbarians overrun " + zoneId + "!");
             log.addAll(conquerZone(barb, zoneId, owner));
+            log("conquest", "Zone " + zoneId + " conquered by " + barb.getType());
         } else {
             log.add("Defenders repel the barbarian assault on " + zoneId + ".");
+            log("combat-defended", "Barbarians defeated at " + zoneId);
         }
 
         return log;
     }
 
-private List<String> raidZone(BarbArmy barb, String zoneId, NobleHouse owner,
+    private List<String> raidZone(BarbArmy barb, String zoneId, NobleHouse owner,
                                    List<String> log) {
+        log("raid-start", barb.getType() + " raiding " + zoneId);
         // Already raided? Abort.
         ZoneState state = zoneManager.getState(zoneId);
         if (state != null && state.isRecentlyRaided()) {
             log.add("☠ Raiders find " + zoneId + " already raided. They move on.");
+            log("raid-skip", zoneId + " already recently raided");
             return log;
         }
-
         // Steal gold
         int zoneGold = 0;
         Zone zone = zoneManager.getZone(zoneId);
@@ -522,13 +557,14 @@ private List<String> raidZone(BarbArmy barb, String zoneId, NobleHouse owner,
 
         // Mark raided (cooldown & production malus)
         if (state != null) state.markRaided();
+        log("raid-finish", "Raided " + zoneId);
 
         return log;
     }
 
-// ─── Conquest ────────────────────────────────────────────────────────────
+    // ─── Conquest ────────────────────────────────────────────────────────────
 
-private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
+    private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
         List<String> log = new ArrayList<>();
 
         if (previousOwner != null) {
@@ -561,12 +597,15 @@ private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previo
             garrison.makeGarrison();
             armyManager.addGarrison(garrison);
             log.add(garrisonSize + " barbarians remain as garrison in " + zoneId + ".");
+            log("garrison-placed", "Placed " + garrisonSize + " garrison in " + zoneId + " from " + barb.getType());
+        } else {
+            log("garrison-skip", "No garrison placed in " + zoneId + " (size would be 0 or none)");
         }
 
         return log;
     }
 
-// ─── Noble AI pay-off decision ────────────────────────────────────────────
+    // ─── Noble AI pay-off decision ────────────────────────────────────────────
 
     private boolean shouldNoblePay(NobleHouse noble, BarbArmy barb) {
         int garrisonSize = noble.getGarrisonFor(barb.getZoneId());
@@ -608,6 +647,7 @@ private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previo
 
     private List<String> resolveNobleRecaptures() {
         List<String> log = new ArrayList<>();
+        log("recapture-start", "Starting noble recapture attempts");
         List<BarbArmy> garrisons = new ArrayList<>();
         for (BarbArmy a : armyManager.getAllArmies()) {
             if (a.isAlive() && a.isGarrison()) garrisons.add(a);
@@ -628,6 +668,9 @@ private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previo
                     nobleHouseManager.awardRecapturedZone(noble, zoneId);
                     armyManager.remove(garrison);
                     ravagedZones.markRavaged(zoneId);
+                    log("recapture-win", noble.getName() + " recaptured " + zoneId);
+                } else {
+                    log("recapture-fail", noble.getName() + " failed to recapture " + zoneId);
                 }
                 break;
             }
