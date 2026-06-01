@@ -40,7 +40,11 @@ public class BarbInvasionProcessor {
     /** Callback fired when the player must be asked to pay off a barbarian army. */
     public interface PayOffCallback {
         /** @return true if player chose to pay */
-        boolean askPlayerPayOff(BarbArmy army, ResourcePool resources);
+        boolean askPlayerPayOff(BarbArmy army, ResourcePool resources,
+                                String zoneId, NobleHouse owner,
+                                java.util.List<Army> playerArmies,
+                                java.util.List<NobleArmy> nobleArmies,
+                                int nobleGarrison);
     }
 
     /** Callback fired when the game should end. */
@@ -387,7 +391,16 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
 
         // Player pay-off dialog: only for ravagers
         if (barb.isRavager() && payOffCallback != null) {
-            boolean playerPays = payOffCallback.askPlayerPayOff(barb, playerResources);
+            // Collect noble armies for display
+            List<NobleArmy> nobleArmiesDisplay = new ArrayList<>();
+            int nobleGarrisonDisplay = 0;
+            if (hasNobleDefender) {
+                nobleGarrisonDisplay = owner.getGarrisonFor(zoneId);
+                nobleArmiesDisplay = nobleHouseManager.getArmyManager()
+                        .getArmiesInZone(zoneId, owner.getId());
+            }
+            boolean playerPays = payOffCallback.askPlayerPayOff(barb, playerResources,
+                    zoneId, owner, playerArmies, nobleArmiesDisplay, nobleGarrisonDisplay);
             if (playerPays) {
                 barb.setPaidOff(true);
                 log.add("Player pays off ravagers at " + zoneId + ". They stand down.");
@@ -515,7 +528,7 @@ private List<String> raidZone(BarbArmy barb, String zoneId, NobleHouse owner,
 
 // ─── Conquest ────────────────────────────────────────────────────────────
 
-    private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
+private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
         List<String> log = new ArrayList<>();
 
         if (previousOwner != null) {
@@ -529,6 +542,12 @@ private List<String> raidZone(BarbArmy barb, String zoneId, NobleHouse owner,
         } else {
             ravagedZones.markRavaged(zoneId);
             log.add("☠ " + zoneId + " is ravaged by the barbarians!");
+        }
+
+        // Do not leave a garrison if the zone is already occupied by barbarians
+        if (!armyManager.getGarrisonsInZone(zoneId).isEmpty()) {
+            log.add("☠ " + zoneId + " is already under barbarian control – no new garrison left.");
+            return log;
         }
 
         int garrisonSize = barb.isWarboss()
@@ -547,7 +566,7 @@ private List<String> raidZone(BarbArmy barb, String zoneId, NobleHouse owner,
         return log;
     }
 
-    // ─── Noble AI pay-off decision ────────────────────────────────────────────
+// ─── Noble AI pay-off decision ────────────────────────────────────────────
 
     private boolean shouldNoblePay(NobleHouse noble, BarbArmy barb) {
         int garrisonSize = noble.getGarrisonFor(barb.getZoneId());

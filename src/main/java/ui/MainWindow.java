@@ -43,15 +43,17 @@ public class MainWindow extends JFrame {
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
         loadBuildInfo();
-        gameState.getTurnProcessor().setPayOffDialogSupplier((army, resources) -> {
+        gameState.getTurnProcessor().setPayOffDialogSupplier((army, resources, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
             java.awt.Window win = this;
             final boolean[] result = {false};
             if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-                result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win);
+                result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                        zoneId, owner, playerArmies, nobleArmies, nobleGarrison);
             } else {
                 try {
                     javax.swing.SwingUtilities.invokeAndWait(() ->
-                        result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win));
+                        result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                                zoneId, owner, playerArmies, nobleArmies, nobleGarrison));
                 } catch (Exception ignored) {}
             }
             return result[0];

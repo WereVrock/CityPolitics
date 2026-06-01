@@ -21,7 +21,11 @@ public class TurnProcessor {
      * Set by MainWindow so TurnProcessor stays free of UI imports.
      */
     public interface PayOffDialogSupplier {
-        boolean ask(BarbArmy army, ResourcePool resources);
+        boolean ask(BarbArmy army, ResourcePool resources,
+                    String zoneId, main.nobles.NobleHouse owner,
+                    java.util.List<main.army.Army> playerArmies,
+                    java.util.List<main.nobles.NobleArmy> nobleArmies,
+                    int nobleGarrison);
     }
 
     private PayOffDialogSupplier payOffDialogSupplier;
@@ -51,9 +55,9 @@ public class TurnProcessor {
 
         // Barbarian invasion — wire pay-off callback then process
         BarbInvasionProcessor barbProcessor = gameState.getBarbInvasionProcessor();
-        barbProcessor.setPayOffCallback((army, res) -> {
+        barbProcessor.setPayOffCallback((army, res, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
             if (payOffDialogSupplier == null) return false;
-            return payOffDialogSupplier.ask(army, res);
+            return payOffDialogSupplier.ask(army, res, zoneId, owner, playerArmies, nobleArmies, nobleGarrison);
         });
         barbProcessor.setGameOverCallback(reason -> triggerGameOver(gameState, reason));
         log.addAll(barbProcessor.processTurn(calendar, resources));

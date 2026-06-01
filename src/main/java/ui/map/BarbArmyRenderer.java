@@ -45,7 +45,7 @@ public class BarbArmyRenderer {
 
     // ─── Render ──────────────────────────────────────────────────────────────
 
-    public void render(Graphics2D g2) {
+public void render(Graphics2D g2) {
         // Draw warboss next-zone indicator first (below armies)
         BarbArmy warboss = barbArmyManager.getWarboss();
         if (warboss != null && warboss.getNextZoneId() != null) {
@@ -71,9 +71,65 @@ public class BarbArmyRenderer {
                 drawBarbArmy(g2, armies.get(i), startX + i * SLOT_WIDTH, anchorY);
             }
         }
+
+        // Draw garrison forces after mobile armies
+        drawGarrisons(g2);
     }
 
-    // ─── Hit test ────────────────────────────────────────────────────────────
+private void drawGarrisons(Graphics2D g2) {
+        Map<String, List<BarbArmy>> garrisonsByZone = new LinkedHashMap<>();
+        for (BarbArmy army : barbArmyManager.getAllArmies()) {
+            if (army.isGarrison() && army.isAlive()) {
+                garrisonsByZone.computeIfAbsent(army.getZoneId(), k -> new ArrayList<>()).add(army);
+            }
+        }
+
+        for (Map.Entry<String, List<BarbArmy>> entry : garrisonsByZone.entrySet()) {
+            Zone zone = zoneManager.getZone(entry.getKey());
+            if (zone == null) continue;
+            List<BarbArmy> garrisonArmies = entry.getValue();
+            int count = garrisonArmies.size();
+            // place garrison shields to the right of the zone label, a bit lower than mobile armies
+            int cx = zone.getLabelX() + 28; // similar to noble garrison placement
+            int cy = zone.getLabelY() + 14;  // offset Y
+            int spacing = 16;
+            int startX = cx - ((count - 1) * spacing) / 2;
+            for (int i = 0; i < count; i++) {
+                drawBarbGarrison(g2, garrisonArmies.get(i), startX + i * spacing, cy);
+            }
+        }
+    }
+
+    private void drawBarbGarrison(Graphics2D g2, BarbArmy garrison, int cx, int cy) {
+        // small skull shield
+        Color body    = new Color(100, 20, 20);
+        Color outline = new Color(200, 60, 40);
+        int scale = 5;
+
+        int[] sx = { cx - scale, cx + scale, cx + scale, cx,         cx - scale };
+        int[] sy = { cy - scale, cy - scale, cy - scale/3, cy + scale, cy - scale/3 };
+        g2.setColor(body);
+        g2.fillPolygon(sx, sy, 5);
+        g2.setColor(outline);
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawPolygon(sx, sy, 5);
+
+        // tiny skull
+        drawSkull(g2, cx, cy - scale/2, 2, outline);
+
+        // size label
+        String lbl = String.valueOf(garrison.getSize());
+        g2.setFont(FONT_LABEL);
+        FontMetrics fm = g2.getFontMetrics();
+        int lx = cx - fm.stringWidth(lbl) / 2;
+        int ly = cy + scale + 10;
+        g2.setColor(new Color(10, 0, 0, 200));
+        g2.drawString(lbl, lx + 1, ly + 1);
+        g2.setColor(Color.LIGHT_GRAY);
+        g2.drawString(lbl, lx, ly);
+    }
+
+// ─── Hit test ────────────────────────────────────────────────────────────
 
     public BarbArmy hitTest(Point world) {
         Map<String, List<BarbArmy>> byZone = new LinkedHashMap<>();
