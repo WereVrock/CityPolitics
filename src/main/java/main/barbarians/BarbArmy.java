@@ -12,7 +12,7 @@ public class BarbArmy {
 
     public static void resetIdCounter() { nextId = 1; }
 
-    
+  
 
     private final String id;
     private final Type   type;
@@ -97,9 +97,12 @@ public class BarbArmy {
         return size * main.parameters.GameParameters.BARB_PAYOFF_FOOD_PER_MAN;
     }
 
-    /** Gold cost for player full dismissal. */
+    /** Gold cost for player full dismissal. Warboss has a multiplier. */
     public int fullDismissCost() {
-        return size * main.parameters.GameParameters.BARB_DISMISS_GOLD_PER_MAN;
+        double mult = isWarboss()
+                ? main.parameters.GameParameters.BARB_WARBOSS_DISMISS_MULTIPLIER
+                : 1.0;
+        return (int)(size * main.parameters.GameParameters.BARB_DISMISS_GOLD_PER_MAN * mult);
     }
 
     @Override

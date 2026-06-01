@@ -28,6 +28,7 @@ public MapView(GameState gameState, Runnable onBack) {
 
         infoPanel     = new MapInfoPanel(zoneManager, gameState.getNobleHouseManager());
         infoPanel.setRavagedZoneManager(gameState.getRavagedZoneManager());
+        infoPanel.setBarbArmyManager(gameState.getBarbArmyManager());
         armyListPanel = new ArmyListPanel(gameState.getArmyManager());
 
         mapPanel = new MapPanel(

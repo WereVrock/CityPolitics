@@ -220,11 +220,11 @@ public Zone hitTest(Point world) {
             Color primary;
             Color secondary;
             if (isBarbarian) {
-                primary   = zone == selected ? new Color(40, 30, 30).brighter() : new Color(30, 20, 20);
+                primary   = zone == selected ? new Color(40, 30, 30).brighter() : new Color(20, 10, 10);
                 secondary = new Color(80, 20, 20);
             } else if (owner != null) {
-                primary   = owner != null ? NobleHouseColors.getPrimary(owner.getId())   : new Color(60, 55, 70);
-                secondary = owner != null ? NobleHouseColors.getSecondary(owner.getId()) : new Color(80, 75, 90);
+                primary   = NobleHouseColors.getPrimary(owner.getId());
+                secondary = NobleHouseColors.getSecondary(owner.getId());
                 if (zone == selected) { primary = primary.brighter(); secondary = secondary.brighter(); }
             } else {
                 primary   = zone == selected ? new Color(60, 55, 70).brighter() : new Color(60, 55, 70);

@@ -24,9 +24,14 @@ private final CardLayout    cardLayout;
 private final JPanel        cards;
 private final main.nobles.NobleHouseManager nobleHouseManager;
 private main.barbarians.RavagedZoneManager  ravagedZoneManager;
+private main.barbarians.BarbArmyManager     barbArmyManager;
 
 public void setRavagedZoneManager(main.barbarians.RavagedZoneManager rzm) {
     this.ravagedZoneManager = rzm;
+}
+
+public void setBarbArmyManager(main.barbarians.BarbArmyManager bam) {
+    this.barbArmyManager = bam;
 }
 
 // Zone
@@ -192,8 +197,15 @@ public void showZone(Zone zone) {
         ownerButton.setForeground(new Color(220, 190, 130));
         ownerButton.addActionListener(e -> showHouseDialog(owner));
     } else {
-        ownerButton.setText("<html><body>Unowned</body></html>");
-        ownerButton.setForeground(UITheme.TEXT_SECONDARY);
+        boolean isBarbarian = barbArmyManager != null
+                && !barbArmyManager.getGarrisonsInZone(zone.getId()).isEmpty();
+        if (isBarbarian) {
+            ownerButton.setText("<html><body>☠ Barbaric</body></html>");
+            ownerButton.setForeground(new Color(200, 60, 40));
+        } else {
+            ownerButton.setText("<html><body>Unowned</body></html>");
+            ownerButton.setForeground(UITheme.TEXT_SECONDARY);
+        }
     }
 
     goldLabel.setText("Gold/turn:  " + zone.getGoldProduction());
@@ -282,47 +294,56 @@ private void showDesolateZone(Zone zone) {
     cardLayout.show(cards, CARD_ZONE);
 }
 
-public void showArmy(Army army, ZoneManager zm) {
-if (army == null) { clearArmy(); return; }
-armyTitleLabel.setForeground(UITheme.ACCENT_FROST);
-armyTitleLabel.setText("⚔ " + army.getDisplayName());
-if (army.isInCity()) {
-armyZoneLabel.setText("📍 Heartland (City)");
-armyStatusLabel.setText("Status: In city");
-} else {
-Zone zone = zm.getZone(army.getZoneId());
-armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
-armyStatusLabel.setText("Status: Deployed");
-}
-armySizeLabel.setText("");
-armyUpkeepLabel.setText("");
-cardLayout.show(cards, CARD_ARMY);
-}
-
-public void showNobleArmy(main.nobles.NobleArmy army, ZoneManager zm, main.nobles.NobleHouseManager houseManager) {
-if (army == null) { clearArmy(); return; }
-main.nobles.NobleHouse owner = houseManager.getHouseById(army.getHouseId());
-String houseName = owner != null ? owner.getName() : army.getHouseId();
-armyTitleLabel.setForeground(UITheme.ACCENT_FROST);
-armyTitleLabel.setText("🏰 " + houseName + " Army");
-Zone zone = zm.getZone(army.getZoneId());
-armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
-armySizeLabel.setText("Size: " + army.getSize() + " soldiers");
-int baseUpkeep = army.getSize() * main.parameters.GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-if (owner != null && owner.getZoneIds().contains(army.getZoneId()) && !army.hasPendingOrder()) {
-int discounted = (int)(baseUpkeep * (1.0 - main.parameters.GameParameters.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
-if (discounted < 1) discounted = 1;
-armyUpkeepLabel.setText("Upkeep: " + discounted + " gold/turn (defending discount)");
-} else {
-armyUpkeepLabel.setText("Upkeep: " + baseUpkeep + " gold/turn");
-}
-String order = army.hasPendingOrder() ? army.getPendingOrder().name() + " → " + army.getPendingTargetZoneId() : "Idle";
-armyStatusLabel.setText("Order: " + order);
-cardLayout.show(cards, CARD_ARMY);
+public void showArmy(main.army.Army army, ZoneManager zm) {
+    if (army == null) { clearArmy(); return; }
+    armyTitleLabel.setForeground(UITheme.ACCENT_FROST);
+    armyTitleLabel.setText("⚔ " + army.getDisplayName());
+    if (army.isInCity()) {
+        armyZoneLabel.setText("📍 Heartland (City)");
+        armyStatusLabel.setText("Status: In city");
+    } else {
+        Zone zone = zm.getZone(army.getZoneId());
+        armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+        armyStatusLabel.setText("Status: Deployed");
+    }
+    armySizeLabel.setText("Size: " + army.getSize());
+    armyUpkeepLabel.setText("");
+    barbPayOffBtn.setVisible(false);
+    barbDismissBtn.setVisible(false);
+    cardLayout.show(cards, CARD_ARMY);
 }
 
+public void showNobleArmy(main.nobles.NobleArmy army, ZoneManager zm,
+                           main.nobles.NobleHouseManager houseManager) {
+    if (army == null) { clearArmy(); return; }
+    main.nobles.NobleHouse owner = houseManager.getHouseById(army.getHouseId());
+    String houseName = owner != null ? owner.getName() : army.getHouseId();
+    armyTitleLabel.setForeground(UITheme.ACCENT_FROST);
+    armyTitleLabel.setText("🏰 " + houseName + " Army");
+    Zone zone = zm.getZone(army.getZoneId());
+    armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+    armySizeLabel.setText("Size: " + army.getSize() + " soldiers");
+    int baseUpkeep = army.getSize() * main.parameters.GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+    if (owner != null && owner.getZoneIds().contains(army.getZoneId())
+            && !army.hasPendingOrder()) {
+        int discounted = (int)(baseUpkeep
+                * (1.0 - main.parameters.GameParameters.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
+        if (discounted < 1) discounted = 1;
+        armyUpkeepLabel.setText("Upkeep: " + discounted + " gold/turn (defending discount)");
+    } else {
+        armyUpkeepLabel.setText("Upkeep: " + baseUpkeep + " gold/turn");
+    }
+    String order = army.hasPendingOrder()
+            ? army.getPendingOrder().name() + " → " + army.getPendingTargetZoneId()
+            : "Idle";
+    armyStatusLabel.setText("Order: " + order);
+    barbPayOffBtn.setVisible(false);
+    barbDismissBtn.setVisible(false);
+    cardLayout.show(cards, CARD_ARMY);
+}
 
 public void clearZone() { cardLayout.show(cards, CARD_EMPTY); }
+
 public void showBarbArmy(main.barbarians.BarbArmy army,
                           main.core.GameState gameState) {
     if (army == null) { clearArmy(); return; }
@@ -347,37 +368,46 @@ public void showBarbArmy(main.barbarians.BarbArmy army,
     armyStatusLabel.setText("<html><body style='width:160px'>" + flavour + "</body></html>");
     armyUpkeepLabel.setText("");
 
-    // Pay-off button
-    main.resources.ResourcePool res = gameState.getResources();
-    int goldCost = army.getSize() * main.parameters.GameParameters.BARB_PAYOFF_GOLD_PER_MAN;
-    int foodCost = army.getSize() * main.parameters.GameParameters.BARB_PAYOFF_FOOD_PER_MAN;
-    int fullCost = army.getSize() * main.parameters.GameParameters.BARB_DISMISS_GOLD_PER_MAN;
-
     // Remove old listeners
     for (java.awt.event.ActionListener al : barbPayOffBtn.getActionListeners())
         barbPayOffBtn.removeActionListener(al);
     for (java.awt.event.ActionListener al : barbDismissBtn.getActionListeners())
         barbDismissBtn.removeActionListener(al);
 
-    barbPayOffBtn.setText("Pay off  (" + goldCost + "g + " + foodCost + "f)");
-    barbPayOffBtn.setEnabled(res.getMoney() >= goldCost && res.getFood() >= foodCost);
-    barbPayOffBtn.setVisible(true);
-    barbPayOffBtn.addActionListener(e -> {
-        res.addMoney(-goldCost);
-        res.addFood(-foodCost);
-        army.setPaidOff(true);
-        barbPayOffBtn.setEnabled(false);
-        barbDismissBtn.setEnabled(false);
-    });
+    // Pay-off only for ravagers, dismiss for ravagers and warboss
+    barbPayOffBtn.setVisible(false);
+    barbDismissBtn.setVisible(false);
 
-    barbDismissBtn.setText("Dismiss  (" + fullCost + "g)");
-    barbDismissBtn.setEnabled(res.getMoney() >= fullCost);
-    barbDismissBtn.setVisible(true);
-    barbDismissBtn.addActionListener(e -> {
-        res.addMoney(-fullCost);
-        army.dismiss();
-        clearArmy();
-    });
+    main.resources.ResourcePool res = gameState.getResources();
+
+    boolean canPayOff = army.isRavager();
+    boolean canDismiss = army.isRavager() || army.isWarboss();
+
+    if (canPayOff) {
+        int goldCost = army.cheapPayOffGoldCost();
+        int foodCost = army.cheapPayOffFoodCost();
+        barbPayOffBtn.setText("Pay off  (" + goldCost + "g + " + foodCost + "f)");
+        barbPayOffBtn.setEnabled(res.getMoney() >= goldCost && res.getFood() >= foodCost);
+        barbPayOffBtn.setVisible(true);
+        barbPayOffBtn.addActionListener(e -> {
+            res.addMoney(-goldCost);
+            res.addFood(-foodCost);
+            army.setPaidOff(true);
+            barbPayOffBtn.setEnabled(false);
+        });
+    }
+
+    if (canDismiss) {
+        int fullCost = army.fullDismissCost();
+        barbDismissBtn.setText("Dismiss  (" + fullCost + "g)");
+        barbDismissBtn.setEnabled(res.getMoney() >= fullCost);
+        barbDismissBtn.setVisible(true);
+        barbDismissBtn.addActionListener(e -> {
+            res.addMoney(-fullCost);
+            army.dismiss();
+            clearArmy();
+        });
+    }
 
     cardLayout.show(cards, CARD_ARMY);
 }

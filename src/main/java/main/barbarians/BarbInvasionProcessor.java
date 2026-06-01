@@ -13,7 +13,6 @@ import main.parameters.GameParameters;
 import main.resources.ResourcePool;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Drives all barbarian invasion logic each turn.
@@ -238,17 +237,10 @@ public class BarbInvasionProcessor {
         }
 
         // Pathfind toward heartland: pick adjacent zone closest to heartland
-        // Heartland has no real coordinates — use zone adjacency BFS depth as proxy
         return pickClosestToHeartland(candidates, wb.getZoneId());
     }
 
-    /**
-     * Picks the candidate zone that is fewest hops from heartland-adjacent zones.
-     * Heartland-adjacent = zones that have "heartland" in adjacency list
-     * or, as fallback, any non-desolate zone we haven't conquered yet.
-     */
     private String pickClosestToHeartland(List<String> candidates, String currentZone) {
-        // BFS from each candidate toward heartland
         String best      = null;
         int    bestDepth = Integer.MAX_VALUE;
 
@@ -284,7 +276,7 @@ public class BarbInvasionProcessor {
                 }
             }
         }
-        return maxDepth; // not found within limit
+        return maxDepth;
     }
 
     // ─── Combat ──────────────────────────────────────────────────────────────
@@ -292,7 +284,6 @@ public class BarbInvasionProcessor {
     private List<String> resolveCombat(ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
 
-        // Group mobile armies by zone
         Map<String, List<BarbArmy>> byZone = new LinkedHashMap<>();
         for (BarbArmy army : armyManager.getMobileArmies()) {
             if (army.isPaidOff()) continue;
@@ -301,20 +292,25 @@ public class BarbInvasionProcessor {
 
         for (Map.Entry<String, List<BarbArmy>> entry : byZone.entrySet()) {
             String zoneId = entry.getKey();
+            List<BarbArmy> armiesInZone = entry.getValue();
 
-            // Check heartland
             if (Army.HEARTLAND_ID.equals(zoneId)) {
-                log.add("☠ THE WARBOSS REACHES THE HEARTLAND! ALL IS LOST!");
-                if (gameOverCallback != null) gameOverCallback.triggerGameOver("Barbarians reached the heartland.");
-                return log;
-            }
-
-            Zone zone = zoneManager.getZone(zoneId);
-            if (zone == null || zone.isDesolate()) continue;
-
-            for (BarbArmy barb : new ArrayList<>(entry.getValue())) {
-                if (!barb.isAlive()) continue;
-                log.addAll(resolveCombatInZone(barb, zoneId, playerResources));
+                // Only the Warboss can threaten the heartland
+                BarbArmy wb = null;
+                for (BarbArmy a : armiesInZone) {
+                    if (a.isWarboss()) {
+                        wb = a;
+                        break;
+                    }
+                }
+                if (wb != null) {
+                    log.addAll(resolveHeartlandAssault(wb, playerResources));
+                }
+            } else {
+                // Each barb army in the zone fights independently
+                for (BarbArmy barb : armiesInZone) {
+                    log.addAll(resolveCombatInZone(barb, zoneId, playerResources));
+                }
             }
         }
 
@@ -322,80 +318,165 @@ public class BarbInvasionProcessor {
         return log;
     }
 
-private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
-                                          ResourcePool playerResources) {
-    List<String> log = new ArrayList<>();
+    private List<String> resolveHeartlandAssault(BarbArmy warboss, ResourcePool playerResources) {
+        List<String> log = new ArrayList<>();
+        log.add("☠ THE WARBOSS MARCHES ON THE HEARTLAND!");
 
-    NobleHouse owner = nobleHouseManager.getOwnerOfZone(zoneId);
+        List<Army> defenders = new ArrayList<>();
+        for (Army a : playerArmyManager.getArmies()) {
+            if (Army.HEARTLAND_ID.equals(a.getZoneId()) && a.isAlive()) defenders.add(a);
+        }
 
-    // Noble AI pay-off check
-    if (owner != null) {
-        if (shouldNoblePay(owner, barb)) {
-            int goldCost = barb.getSize() * GameParameters.BARB_PAYOFF_GOLD_PER_MAN;
-            owner.addGold(-Math.min(goldCost, owner.getGold()));
-            barb.setPaidOff(true);
-            log.add(owner.getName() + " pays off barbarians at " + zoneId
-                    + " (" + goldCost + " gold). They stand down for one turn.");
+        if (defenders.isEmpty()) {
+            log.add("☠ No defenders stand against the Warboss. The realm falls!");
+            if (gameOverCallback != null)
+                gameOverCallback.triggerGameOver("The Warboss sacked the undefended heartland.");
             return log;
         }
-    }
 
-    // Collect player armies in this zone
-    List<Army> playerArmies = new ArrayList<>();
-    for (Army a : playerArmyManager.getDeployedArmies()) {
-        if (zoneId.equals(a.getZoneId()) && a.isAlive()) playerArmies.add(a);
-    }
-
-    boolean hasNobleDefender  = owner != null;
-    boolean hasPlayerDefender = !playerArmies.isEmpty();
-    boolean hasDefenders      = hasNobleDefender || hasPlayerDefender;
-
-    if (!hasDefenders) {
-        log.addAll(conquerZone(barb, zoneId, null));
+        BarbCombatHandler.BarbCombatResult result =
+                BarbCombatHandler.barbAttacksPlayerZone(warboss, defenders,
+                        Army.HEARTLAND_ID, log);
+        if (result.attackerWon) {
+            log.add("☠ THE HEARTLAND HAS FALLEN. ALL IS LOST.");
+            if (gameOverCallback != null)
+                gameOverCallback.triggerGameOver("The Warboss defeated the heartland defenders.");
+        } else {
+            log.add("The Warboss is repelled from the heartland!");
+        }
         return log;
     }
 
-    // Ask player to pay off
-    if (payOffCallback != null) {
-        boolean playerPays = payOffCallback.askPlayerPayOff(barb, playerResources);
-        if (playerPays) {
-            barb.setPaidOff(true);
-            log.add("Player pays off barbarians at " + zoneId + ". They stand down.");
+    private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
+                                              ResourcePool playerResources) {
+        List<String> log = new ArrayList<>();
+
+        NobleHouse owner = nobleHouseManager.getOwnerOfZone(zoneId);
+
+        // Noble AI pay-off: only ravagers can be paid off
+        if (owner != null && barb.isRavager()) {
+            if (shouldNoblePay(owner, barb)) {
+                int goldCost = barb.getSize() * GameParameters.BARB_PAYOFF_GOLD_PER_MAN;
+                owner.addGold(-Math.min(goldCost, owner.getGold()));
+                barb.setPaidOff(true);
+                log.add(owner.getName() + " pays off ravagers at " + zoneId
+                        + " (" + goldCost + " gold). They stand down for one turn.");
+                return log;
+            }
+        }
+
+        // Collect player armies in this zone
+        List<Army> playerArmies = new ArrayList<>();
+        for (Army a : playerArmyManager.getDeployedArmies()) {
+            if (zoneId.equals(a.getZoneId()) && a.isAlive()) playerArmies.add(a);
+        }
+
+        boolean hasNobleDefender  = owner != null;
+        boolean hasPlayerDefender = !playerArmies.isEmpty();
+        boolean hasDefenders      = hasNobleDefender || hasPlayerDefender;
+
+        if (!hasDefenders) {
+            log.addAll(conquerZone(barb, zoneId, null));
             return log;
         }
-    }
 
-    // Combat
-    if (hasNobleDefender) {
-        BarbCombatHandler.BarbCombatResult result =
-                BarbCombatHandler.barbAttacksZone(barb, owner, zoneId,
-                        nobleHouseManager.getArmyManager(), log);
-        if (result.attackerWon) {
+        // Player pay-off dialog: only for ravagers
+        if (barb.isRavager() && payOffCallback != null) {
+            boolean playerPays = payOffCallback.askPlayerPayOff(barb, playerResources);
+            if (playerPays) {
+                barb.setPaidOff(true);
+                log.add("Player pays off ravagers at " + zoneId + ". They stand down.");
+                return log;
+            }
+        }
+
+        // Build combined defender pool
+        int totalDefenderSize = 0;
+        int nobleGarrison = 0;
+        List<NobleArmy> nobleArmies = new ArrayList<>();
+        int nobleFort = 0;
+        int nobleMilitary = 0;
+
+        if (hasNobleDefender) {
+            nobleGarrison  = owner.getGarrisonFor(zoneId);
+            nobleFort      = owner.getFortificationFor(zoneId);
+            nobleMilitary  = owner.getActiveCharacter() != null
+                    ? owner.getActiveCharacter().getMilitary() : 0;
+            nobleArmies    = nobleHouseManager.getArmyManager()
+                    .getArmiesInZone(zoneId, owner.getId());
+            for (NobleArmy a : nobleArmies) totalDefenderSize += a.getSize();
+            totalDefenderSize += nobleGarrison;
+        }
+
+        int playerContribution = 0;
+        for (Army a : playerArmies) playerContribution += a.getSize();
+        totalDefenderSize += playerContribution;
+
+        // Apply defender bonus (barbarians are always attacker here)
+        double defBonus        = 1.0 + GameParameters.BARB_DEFENDER_BONUS;
+        int    boostedDefSize  = (int)(totalDefenderSize * defBonus);
+
+        log.add("☠ " + barb.getType().name() + " attacks " + zoneId
+                + " (" + barb.getSize() + " vs " + totalDefenderSize + " defenders)");
+
+        main.nobles.combat.ArmyForce atkForce = new main.nobles.combat.ArmyForce(
+                "barbarians", barb.getSize(), 0, 0);
+        main.nobles.combat.ArmyForce defForce = new main.nobles.combat.ArmyForce(
+                hasNobleDefender ? owner.getId() : "player",
+                boostedDefSize, nobleFort, nobleMilitary);
+
+        main.nobles.combat.CombatResult result =
+                main.nobles.combat.CombatResolver.resolve(atkForce, defForce);
+        log.addAll(result.getLog());
+
+        barb.applyLosses(result.getAttackerLosses());
+
+        // Scale losses back from boosted pool and distribute
+        int rawDefLoss = (int)(result.getDefenderLosses() / defBonus);
+        int remaining  = rawDefLoss;
+
+        // Noble garrison absorbs first
+        if (hasNobleDefender && remaining > 0) {
+            int garrisonLost = Math.min(remaining, nobleGarrison);
+            owner.damageGarrison(zoneId, garrisonLost);
+            remaining -= garrisonLost;
+        }
+        // Noble armies next
+        for (NobleArmy a : new ArrayList<>(nobleArmies)) {
+            if (remaining <= 0) break;
+            int lost = Math.min(remaining, a.getSize());
+            a.setSize(a.getSize() - lost);
+            remaining -= lost;
+        }
+        // Player armies last
+        for (Army a : playerArmies) {
+            if (remaining <= 0) break;
+            int lost = Math.min(remaining, a.getSize());
+            a.applyLosses(lost);
+            remaining -= lost;
+        }
+
+        boolean barbWon = "barbarians".equals(result.getWinnerId());
+        if (barbWon) {
+            log.add("☠ Barbarians overrun " + zoneId + "!");
             log.addAll(conquerZone(barb, zoneId, owner));
+        } else {
+            log.add("Defenders repel the barbarian assault on " + zoneId + ".");
         }
-    } else {
-        BarbCombatHandler.BarbCombatResult result =
-                BarbCombatHandler.barbAttacksPlayerZone(barb, playerArmies, zoneId, log);
-        if (result.attackerWon) {
-            log.addAll(conquerZone(barb, zoneId, null));
-        }
+
+        return log;
     }
 
-    return log;
-}
-
-// ─── Conquest ────────────────────────────────────────────────────────────
+    // ─── Conquest ────────────────────────────────────────────────────────────
 
     private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
         List<String> log = new ArrayList<>();
 
-        // Strip ownership
         if (previousOwner != null) {
             previousOwner.removeZone(zoneId);
             log.add(previousOwner.getName() + " loses " + zoneId + " to the barbarians!");
         }
 
-        // Mark ravaged
         if (barb.isWarboss()) {
             ravagedZones.markHeavilyRavaged(zoneId);
             log.add("☠ " + zoneId + " is heavily ravaged by the Warboss's horde!");
@@ -404,7 +485,6 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
             log.add("☠ " + zoneId + " is ravaged by the barbarians!");
         }
 
-        // Leave garrison
         int garrisonSize = barb.isWarboss()
                 ? GameParameters.BARB_WARBOSS_GARRISON_SIZE
                 : GameParameters.BARB_RAVAGER_GARRISON_SIZE;
@@ -414,7 +494,6 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
             barb.setSize(barb.getSize() - garrisonSize);
             BarbArmy garrison = new BarbArmy(barb.getType(), garrisonSize, zoneId);
             garrison.makeGarrison();
-            // Add garrison directly via reflection-free approach — expose package method
             armyManager.addGarrison(garrison);
             log.add(garrisonSize + " barbarians remain as garrison in " + zoneId + ".");
         }
@@ -425,7 +504,6 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
     // ─── Noble AI pay-off decision ────────────────────────────────────────────
 
     private boolean shouldNoblePay(NobleHouse noble, BarbArmy barb) {
-        // Estimate noble total strength in zone
         int garrisonSize = noble.getGarrisonFor(barb.getZoneId());
         int armySize     = 0;
         for (NobleArmy a : nobleHouseManager.getArmyManager()
@@ -436,7 +514,6 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
                        * (1.0 + GameParameters.BARB_DEFENDER_BONUS));
         int goldCost   = barb.getSize() * GameParameters.BARB_PAYOFF_GOLD_PER_MAN;
 
-        // Pay off if: can't win AND can afford
         boolean canAfford = noble.getGold() >= goldCost;
         boolean canWin    = defTotal > barb.getSize();
         return canAfford && !canWin;
@@ -464,36 +541,36 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
         }
     }
 
-private List<String> resolveNobleRecaptures() {
-    List<String> log = new ArrayList<>();
-    List<BarbArmy> garrisons = new ArrayList<>();
-    for (BarbArmy a : armyManager.getAllArmies()) {
-        if (a.isAlive() && a.isGarrison()) garrisons.add(a);
-    }
-    for (BarbArmy garrison : new ArrayList<>(garrisons)) {
-        String zoneId = garrison.getZoneId();
-        for (NobleHouse noble : new ArrayList<>(nobleHouseManager.getHouses())) {
-            if (noble.isEliminated()) continue;
-            if (noble.getZoneIds().contains(zoneId)) continue;
-            List<NobleArmy> atkArmies = nobleHouseManager.getArmyManager()
-                    .getArmiesInZone(zoneId, noble.getId());
-            if (atkArmies.isEmpty()) continue;
-            BarbCombatHandler.BarbCombatResult result =
-                    BarbCombatHandler.nobleAttacksBarbGarrison(
-                            noble, garrison, zoneId,
-                            nobleHouseManager.getArmyManager(), log);
-            if (result.attackerWon) {
-                nobleHouseManager.awardRecapturedZone(noble, zoneId);
-                armyManager.remove(garrison);
-                ravagedZones.markRavaged(zoneId);
-            }
-            break;
+    private List<String> resolveNobleRecaptures() {
+        List<String> log = new ArrayList<>();
+        List<BarbArmy> garrisons = new ArrayList<>();
+        for (BarbArmy a : armyManager.getAllArmies()) {
+            if (a.isAlive() && a.isGarrison()) garrisons.add(a);
         }
+        for (BarbArmy garrison : new ArrayList<>(garrisons)) {
+            String zoneId = garrison.getZoneId();
+            for (NobleHouse noble : new ArrayList<>(nobleHouseManager.getHouses())) {
+                if (noble.isEliminated()) continue;
+                if (noble.getZoneIds().contains(zoneId)) continue;
+                List<NobleArmy> atkArmies = nobleHouseManager.getArmyManager()
+                        .getArmiesInZone(zoneId, noble.getId());
+                if (atkArmies.isEmpty()) continue;
+                BarbCombatHandler.BarbCombatResult result =
+                        BarbCombatHandler.nobleAttacksBarbGarrison(
+                                noble, garrison, zoneId,
+                                nobleHouseManager.getArmyManager(), log);
+                if (result.attackerWon) {
+                    nobleHouseManager.awardRecapturedZone(noble, zoneId);
+                    armyManager.remove(garrison);
+                    ravagedZones.markRavaged(zoneId);
+                }
+                break;
+            }
+        }
+        return log;
     }
-    return log;
-}
 
-public BarbInvasionState  getState()        { return state; }
+    public BarbInvasionState  getState()        { return state; }
     public BarbArmyManager    getArmyManager()  { return armyManager; }
     public RavagedZoneManager getRavagedZones() { return ravagedZones; }
 }

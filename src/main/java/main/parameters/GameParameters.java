@@ -580,6 +580,11 @@ public final class GameParameters {
     public static final int    BARB_PAYOFF_FOOD_PER_MAN          = 1;
     /** Gold per man for full player dismissal. */
     public static final int    BARB_DISMISS_GOLD_PER_MAN         = 6;
+    /** Price multiplier for dismissing the warboss specifically. */
+    public static final double BARB_WARBOSS_DISMISS_MULTIPLIER   = 1.3;
+    /** Multiplier applied to dismissal cost for Warboss. */
+    public static final double BARB_WARBOSS_DISMISS_COST_MULTIPLIER = 1.3;
+
 
     // =========================================================
     // BARBARIAN INVASION — RAVAGED STATUS
