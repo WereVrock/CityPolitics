@@ -6,13 +6,13 @@ import main.calendar.GameCalendar;
 import main.map.Zone;
 import main.map.ZoneManager;
 import main.nobles.NobleArmy;
-import main.nobles.NobleArmyManager;
 import main.nobles.NobleHouse;
 import main.nobles.NobleHouseManager;
 import main.parameters.GameParameters;
 import main.resources.ResourcePool;
 
 import java.util.*;
+import main.map.ZoneState;
 
 /**
  * Drives all barbarian invasion logic each turn.
@@ -348,7 +348,7 @@ private int bfsDepthToHeartland(String start, int maxDepth) {
         return log;
     }
 
-    private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
+private List<String> resolveCombatInZone(BarbArmy barb, String zoneId,
                                               ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
 
@@ -377,6 +377,10 @@ private int bfsDepthToHeartland(String start, int maxDepth) {
         boolean hasDefenders      = hasNobleDefender || hasPlayerDefender;
 
         if (!hasDefenders) {
+            if (barb.isRaider()) {
+                log.addAll(raidZone(barb, zoneId, owner, log));
+                return log;
+            }
             log.addAll(conquerZone(barb, zoneId, null));
             return log;
         }
@@ -459,6 +463,11 @@ private int bfsDepthToHeartland(String start, int maxDepth) {
 
         boolean barbWon = "barbarians".equals(result.getWinnerId());
         if (barbWon) {
+            if (barb.isRaider()) {
+                log.add("☠ Raiders defeat the defenders at " + zoneId + "!");
+                log.addAll(raidZone(barb, zoneId, owner, log));
+                return log;
+            }
             log.add("☠ Barbarians overrun " + zoneId + "!");
             log.addAll(conquerZone(barb, zoneId, owner));
         } else {
@@ -468,7 +477,43 @@ private int bfsDepthToHeartland(String start, int maxDepth) {
         return log;
     }
 
-    // ─── Conquest ────────────────────────────────────────────────────────────
+private List<String> raidZone(BarbArmy barb, String zoneId, NobleHouse owner,
+                                   List<String> log) {
+        // Already raided? Abort.
+        ZoneState state = zoneManager.getState(zoneId);
+        if (state != null && state.isRecentlyRaided()) {
+            log.add("☠ Raiders find " + zoneId + " already raided. They move on.");
+            return log;
+        }
+
+        // Steal gold
+        int zoneGold = 0;
+        Zone zone = zoneManager.getZone(zoneId);
+        if (zone != null) zoneGold = zone.getGoldProduction();
+
+        int maxByZone = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
+        int maxByArmy = (int)(barb.getSize() * GameParameters.RAID_GOLD_PER_SOLDIER);
+        int maxSteal  = Math.min(maxByZone, maxByArmy);
+
+        if (owner != null) {
+            int steal = Math.min(maxSteal,
+                    (int)(owner.getGold() * GameParameters.AI_RAID_GOLD_FRACTION));
+            steal = Math.max(0, steal);
+            owner.addGold(-steal);
+            log.add("☠ Barbarian raiders steal " + steal + " gold from "
+                    + owner.getName() + " at " + zoneId + ".");
+        } else {
+            // No owner — nothing to steal, just mark raided
+            log.add("☠ Barbarian raiders plunder " + zoneId + " but find no gold.");
+        }
+
+        // Mark raided (cooldown & production malus)
+        if (state != null) state.markRaided();
+
+        return log;
+    }
+
+// ─── Conquest ────────────────────────────────────────────────────────────
 
     private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
         List<String> log = new ArrayList<>();
