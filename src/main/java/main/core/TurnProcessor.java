@@ -56,10 +56,12 @@ public List<String> processTurn(
 
         debug.Debug.log("turn", "cycle", calendar.getDisplayString());
 
-        applyPopEconomics(resources, popManager, log, ledger);
+        applyPopEconomics(popManager, log, ledger);
         log.addAll(nobleHouseManager.processTurn(resources, ledger));
         applyStatDecay(stats, log, ledger);
         log.addAll(effectManager.processTurn(stats));
+
+        applyLedgerToResources(ledger, resources);
 
         BarbInvasionProcessor barbProcessor = gameState.getBarbInvasionProcessor();
         barbProcessor.setPayOffCallback((army, res, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
@@ -71,9 +73,12 @@ public List<String> processTurn(
 
         calendar.advance();
         actionRegistry.resetAllActions();
-        Debug.log("economy", "delta", "Food: " + foodBefore + " → " + resources.getFood() + " (Δ " + (resources.getFood() - foodBefore) + ")");
-        Debug.log("economy", "delta", "Gold: " + goldBefore + " → " + resources.getMoney() + " (Δ " + (resources.getMoney() - goldBefore) + ")");
-        Debug.log("economy", "delta", "Manpower: " + manBefore + " → " + resources.getManpower() + " (Δ " + (resources.getManpower() - manBefore) + ")");
+        Debug.log("economy", "delta", "Food: " + foodBefore + " → " + resources.getFood()
+                + " (Δ " + (resources.getFood() - foodBefore) + ")");
+        Debug.log("economy", "delta", "Gold: " + goldBefore + " → " + resources.getMoney()
+                + " (Δ " + (resources.getMoney() - goldBefore) + ")");
+        Debug.log("economy", "delta", "Manpower: " + manBefore + " → " + resources.getManpower()
+                + " (Δ " + (resources.getManpower() - manBefore) + ")");
 
         log.add("--- " + calendar.getDisplayString() + " begins ---");
 
@@ -99,7 +104,7 @@ public List<String> processTurn(
 
     // ─── Private helpers ─────────────────────────────────────────────────────
 
-private void applyPopEconomics(ResourcePool resources, PopManager popManager,
+private void applyPopEconomics(PopManager popManager,
                                     List<String> log, main.ledger.Ledger ledger) {
         int moneyGained     = popManager.getTotalMoneyGeneration();
         int influenceGained = popManager.getTotalInfluenceGeneration() + GameParameters.BASE_INFLUENCE_PER_TURN;
@@ -109,24 +114,36 @@ private void applyPopEconomics(ResourcePool resources, PopManager popManager,
         ledger.setRecurring(main.resources.ResourceType.INFLUENCE,  "pops", "Pop Influence",   influenceGained);
         ledger.setRecurring(main.resources.ResourceType.FOOD,       "pops", "Pop Consumption", -foodConsumed);
 
-        resources.addMoney(moneyGained);
-        resources.addInfluence(influenceGained);
-        resources.addFood(-foodConsumed);
-
         log.add("Pops generated " + moneyGained + " money, " + influenceGained + " influence.");
         log.add("Pops consumed " + foodConsumed + " food.");
     }
 
 private void applyStatDecay(StatBlock stats, List<String> log,
                                  main.ledger.Ledger ledger) {
-        ledger.setRecurring(main.resources.ResourceType.GOLD,      "decay", "Happiness Decay", 0);
-        ledger.setRecurring(main.resources.ResourceType.INFLUENCE,  "decay", "Base Influence",  GameParameters.BASE_INFLUENCE_PER_TURN);
+        ledger.setRecurring(main.resources.ResourceType.INFLUENCE, "decay", "Base Influence",
+                GameParameters.BASE_INFLUENCE_PER_TURN);
 
         stats.reduceHappiness(GameParameters.HAPPINESS_DECAY_PER_TURN);
         stats.reduceCorruption(GameParameters.CORRUPTION_DECAY_PER_TURN);
         log.add("Happiness -" + GameParameters.HAPPINESS_DECAY_PER_TURN
                 + ", Corruption -" + GameParameters.CORRUPTION_DECAY_PER_TURN
                 + " (natural decay).");
+    }
+
+private void applyLedgerToResources(main.ledger.Ledger ledger, ResourcePool resources) {
+        int deltaGold      = ledger.getDelta(main.resources.ResourceType.GOLD);
+        int deltaFood      = ledger.getDelta(main.resources.ResourceType.FOOD);
+        int deltaManpower  = ledger.getDelta(main.resources.ResourceType.MANPOWER);
+        int deltaInfluence = ledger.getDelta(main.resources.ResourceType.INFLUENCE);
+
+        resources.addMoney(deltaGold);
+        resources.addFood(deltaFood);
+        resources.addManpower(deltaManpower);
+        resources.addInfluence(deltaInfluence);
+
+        Debug.log("ledger", "apply",
+                "Applied ledger — gold:" + deltaGold + " food:" + deltaFood
+                + " manpower:" + deltaManpower + " influence:" + deltaInfluence);
     }
 
 }

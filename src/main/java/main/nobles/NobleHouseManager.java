@@ -321,9 +321,8 @@ public List<String> processTurn(ResourcePool playerResources, main.ledger.Ledger
 
 private void processEconomy(NobleHouse house, ResourcePool playerResources,
                                 List<String> log, main.ledger.Ledger ledger) {
-        int sentManpower  = house.computeManpowerSentToPlayer();
-        int keptManpower  = house.computeManpowerRetained();
-        if (sentManpower > 0) playerResources.addManpower(sentManpower);
+        int sentManpower = house.computeManpowerSentToPlayer();
+        int keptManpower = house.computeManpowerRetained();
         house.addNobleManpower(keptManpower);
 
         double share     = getPlayerShareFraction(house.getPlayerOpinion());
@@ -334,34 +333,28 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
         int houseGold    = totalGold - playerGold;
         int houseFood    = totalFood - playerFood;
 
-        playerResources.addMoney(playerGold);
-        playerResources.addFood(playerFood);
+        // House keeps its share internally
         house.addGold(houseGold);
         house.addFood(houseFood);
         lastPlayerGoldSent += playerGold;
         lastPlayerFoodSent += playerFood;
 
-        // Ledger — recurring projection per noble house
-        String category = "nobles";
-        String label    = house.getName();
-        ledger.setRecurring(main.resources.ResourceType.GOLD,     category, label, playerGold);
-        ledger.setRecurring(main.resources.ResourceType.FOOD,     category, label, playerFood);
-        ledger.setRecurring(main.resources.ResourceType.MANPOWER, category, label, sentManpower);
+        // Player share registered to ledger — TurnProcessor applies in one shot
+        ledger.setRecurring(main.resources.ResourceType.GOLD,     "nobles", house.getName(), playerGold);
+        ledger.setRecurring(main.resources.ResourceType.FOOD,     "nobles", house.getName(), playerFood);
+        ledger.setRecurring(main.resources.ResourceType.MANPOWER, "nobles", house.getName(), sentManpower);
+
+        house.addInfluence(house.getInfluencePerTurn());
 
         debug.Debug.log("economy", "income",
-                "Player total this turn: gold +" + playerGold + ", food +" + playerFood
-                        + " from " + house.getName());
+                house.getName() + " — playerGold=" + playerGold
+                + " playerFood=" + playerFood + " sentManpower=" + sentManpower);
 
         if (share > 0.0) {
             log.add(house.getName() + " sent " + playerGold + " gold, " + playerFood + " food.");
-            debug.Debug.log("economy", "income",
-                    house.getName() + " sent " + playerGold + " gold, " + playerFood + " food.");
         } else {
             log.add(house.getName() + " is hostile — sent nothing to player.");
-            debug.Debug.log("economy", "income", house.getName() + " hostile – sent nothing.");
         }
-
-        house.addInfluence(house.getInfluencePerTurn());
 
         if (sentManpower > 0) {
             log.add(house.getName() + " sent " + sentManpower + " manpower to player.");
