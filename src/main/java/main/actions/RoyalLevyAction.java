@@ -55,10 +55,14 @@ public class RoyalLevyAction extends AbstractFormalAction {
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
     @Override
+
+
     public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
-        resources.addMoney(GameParameters.LEVY_MONEY_GAINED);
+        getLedger().applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                GameParameters.LEVY_MONEY_GAINED, resources);
         stats.reduceHappiness(GameParameters.LEVY_HAPPINESS_COST);
         return ActionResult.ok("Royal Levy collected. +" + GameParameters.LEVY_MONEY_GAINED
-            + " money. Happiness -" + GameParameters.LEVY_HAPPINESS_COST + ".");
+                + " money. Happiness -" + GameParameters.LEVY_HAPPINESS_COST + ".");
     }
+
 }

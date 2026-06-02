@@ -26,17 +26,24 @@ public class BribeAction extends AbstractAction {
     }
 
     @Override
+
+
     public ActionResult execute(ResourcePool resources, StatBlock stats) {
         if (!isAvailable()) {
             return ActionResult.fail("Bribe Officials already used " + getMaxUsesPerTurn() + " time(s) this turn.");
         }
-        if (!resources.spendMoney(GameParameters.BRIBE_MONEY_COST)) {
+        if (resources.getMoney() < GameParameters.BRIBE_MONEY_COST) {
             return ActionResult.fail("Not enough money. Need " + GameParameters.BRIBE_MONEY_COST + ".");
         }
-        resources.addInfluence(GameParameters.BRIBE_INFLUENCE_GAINED);
+        main.ledger.Ledger ledger = getLedger();
+        ledger.applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                -GameParameters.BRIBE_MONEY_COST, resources);
+        ledger.applyOneTime(main.resources.ResourceType.INFLUENCE, "action", getName(),
+                GameParameters.BRIBE_INFLUENCE_GAINED, resources);
         stats.addCorruption(GameParameters.BRIBE_CORRUPTION_GAIN);
         recordUse();
         return ActionResult.ok("Bribed officials. Gained " + GameParameters.BRIBE_INFLUENCE_GAINED
-            + " influence. Corruption +" + GameParameters.BRIBE_CORRUPTION_GAIN + ".");
+                + " influence. Corruption +" + GameParameters.BRIBE_CORRUPTION_GAIN + ".");
     }
+
 }

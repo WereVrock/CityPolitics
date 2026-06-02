@@ -383,6 +383,8 @@ public void showBarbArmy(main.barbarians.BarbArmy army,
     boolean canPayOff = army.isRavager();
     boolean canDismiss = army.isRavager() || army.isWarboss();
 
+    main.ledger.Ledger ledger = gameState.getLedger();
+
     if (canPayOff) {
         int goldCost = army.cheapPayOffGoldCost();
         int foodCost = army.cheapPayOffFoodCost();
@@ -390,8 +392,8 @@ public void showBarbArmy(main.barbarians.BarbArmy army,
         barbPayOffBtn.setEnabled(res.getMoney() >= goldCost && res.getFood() >= foodCost);
         barbPayOffBtn.setVisible(true);
         barbPayOffBtn.addActionListener(e -> {
-            res.addMoney(-goldCost);
-            res.addFood(-foodCost);
+            ledger.applyOneTime(main.resources.ResourceType.GOLD, "barbarians", "Pay Off", -goldCost, res);
+            ledger.applyOneTime(main.resources.ResourceType.FOOD, "barbarians", "Pay Off", -foodCost, res);
             army.setPaidOff(true);
             barbPayOffBtn.setEnabled(false);
         });
@@ -403,7 +405,7 @@ public void showBarbArmy(main.barbarians.BarbArmy army,
         barbDismissBtn.setEnabled(res.getMoney() >= fullCost);
         barbDismissBtn.setVisible(true);
         barbDismissBtn.addActionListener(e -> {
-            res.addMoney(-fullCost);
+            ledger.applyOneTime(main.resources.ResourceType.GOLD, "barbarians", "Dismiss", -fullCost, res);
             army.dismiss();
             clearArmy();
         });

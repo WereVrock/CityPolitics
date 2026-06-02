@@ -25,16 +25,23 @@ public class ImportFoodAction extends AbstractAction {
     }
 
     @Override
+
+
     public ActionResult execute(ResourcePool resources, StatBlock stats) {
         if (!isAvailable()) {
             return ActionResult.fail("Import Food already used " + getMaxUsesPerTurn() + " time(s) this turn.");
         }
-        if (!resources.spendMoney(GameParameters.IMPORT_FOOD_MONEY_COST)) {
+        if (resources.getMoney() < GameParameters.IMPORT_FOOD_MONEY_COST) {
             return ActionResult.fail("Not enough money. Need " + GameParameters.IMPORT_FOOD_MONEY_COST + ".");
         }
-        resources.addFood(GameParameters.IMPORT_FOOD_GAINED);
+        main.ledger.Ledger ledger = getLedger();
+        ledger.applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                -GameParameters.IMPORT_FOOD_MONEY_COST, resources);
+        ledger.applyOneTime(main.resources.ResourceType.FOOD, "action", getName(),
+                GameParameters.IMPORT_FOOD_GAINED, resources);
         recordUse();
         return ActionResult.ok("Imported " + GameParameters.IMPORT_FOOD_GAINED + " food for "
-            + GameParameters.IMPORT_FOOD_MONEY_COST + " money.");
+                + GameParameters.IMPORT_FOOD_MONEY_COST + " money.");
     }
+
 }

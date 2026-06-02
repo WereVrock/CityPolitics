@@ -25,15 +25,20 @@ public class DistributeResourcesAction extends AbstractAction {
     }
 
     @Override
+
+
     public ActionResult execute(ResourcePool resources, StatBlock stats) {
         if (!isAvailable()) {
             return ActionResult.fail("Distribute Resources already used this turn.");
         }
-        if (!resources.spendMoney(GameParameters.DISTRIBUTE_MONEY_COST)) {
+        if (resources.getMoney() < GameParameters.DISTRIBUTE_MONEY_COST) {
             return ActionResult.fail("Not enough money. Need " + GameParameters.DISTRIBUTE_MONEY_COST + ".");
         }
+        getLedger().applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                -GameParameters.DISTRIBUTE_MONEY_COST, resources);
         stats.addHappiness(GameParameters.DISTRIBUTE_HAPPINESS_GAIN);
         recordUse();
         return ActionResult.ok("Distributed resources. Happiness +" + GameParameters.DISTRIBUTE_HAPPINESS_GAIN + ".");
     }
+
 }

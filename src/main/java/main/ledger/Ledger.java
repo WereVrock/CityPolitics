@@ -93,7 +93,25 @@ public class Ledger {
         Debug.log("ledger", "one-time-clear", "One-time entries cleared for new turn.");
     }
 
-    // ─── Delta query ─────────────────────────────────────────────────────────
+/**
+     * Log a one-time change AND immediately apply it to the resource pool.
+     * Use this for all player-initiated resource changes (actions, pay-offs, etc).
+     */
+    public void applyOneTime(main.resources.ResourceType resource,
+                              String category, String name,
+                              int amount, main.resources.ResourcePool resources) {
+        logOneTime(resource, category, name, amount);
+        switch (resource) {
+            case GOLD      -> resources.addMoney(amount);
+            case FOOD      -> resources.addFood(amount);
+            case MANPOWER  -> resources.addManpower(amount);
+            case INFLUENCE -> resources.addInfluence(amount);
+        }
+        Debug.log("ledger", "one-time-apply",
+                String.format("%s / %s / %s : %+d (applied immediately)", resource, category, name, amount));
+    }
+
+// ─── Delta query ─────────────────────────────────────────────────────────
 
     /**
      * Net projected change for this resource (sum of all recurring entries).

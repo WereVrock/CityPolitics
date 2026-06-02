@@ -7,11 +7,16 @@ public abstract class AbstractAction implements PlayerAction {
 
     private final int maxUsesPerTurn;
     private int usesThisTurn;
+    private main.ledger.Ledger ledger;
 
     protected AbstractAction(int maxUsesPerTurn) {
         this.maxUsesPerTurn = maxUsesPerTurn;
         this.usesThisTurn   = 0;
     }
+
+    public void setLedger(main.ledger.Ledger ledger) { this.ledger = ledger; }
+
+    protected main.ledger.Ledger getLedger() { return ledger; }
 
     @Override
     public int getMaxUsesPerTurn() { return maxUsesPerTurn; }

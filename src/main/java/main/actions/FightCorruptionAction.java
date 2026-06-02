@@ -26,6 +26,8 @@ public class FightCorruptionAction extends AbstractAction {
     }
 
     @Override
+
+
     public ActionResult execute(ResourcePool resources, StatBlock stats) {
         if (!isAvailable()) {
             return ActionResult.fail("Fight Corruption already used this turn.");
@@ -36,10 +38,14 @@ public class FightCorruptionAction extends AbstractAction {
         if (resources.getInfluence() < GameParameters.FIGHT_CORRUPTION_INFLUENCE_COST) {
             return ActionResult.fail("Not enough influence. Need " + GameParameters.FIGHT_CORRUPTION_INFLUENCE_COST + ".");
         }
-        resources.spendMoney(GameParameters.FIGHT_CORRUPTION_MONEY_COST);
-        resources.spendInfluence(GameParameters.FIGHT_CORRUPTION_INFLUENCE_COST);
+        main.ledger.Ledger ledger = getLedger();
+        ledger.applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                -GameParameters.FIGHT_CORRUPTION_MONEY_COST, resources);
+        ledger.applyOneTime(main.resources.ResourceType.INFLUENCE, "action", getName(),
+                -GameParameters.FIGHT_CORRUPTION_INFLUENCE_COST, resources);
         stats.reduceCorruption(GameParameters.FIGHT_CORRUPTION_REDUCTION);
         recordUse();
         return ActionResult.ok("Corruption reduced by " + GameParameters.FIGHT_CORRUPTION_REDUCTION + ".");
     }
+
 }

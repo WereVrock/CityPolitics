@@ -10,7 +10,7 @@ public class ActionRegistry {
 
     private final List<PlayerAction> actions = new ArrayList<>();
 
-    public ActionRegistry(GameState gameState) {
+public ActionRegistry(GameState gameState) {
         actions.add(new ImportFoodAction());
         actions.add(new AcceptBribesAction());
         actions.add(new BribeAction());
@@ -19,9 +19,16 @@ public class ActionRegistry {
         actions.add(new OrganizeFestivalAction(gameState));
         actions.add(new CrackdownCorruptionAction(gameState));
         actions.add(new RoyalLevyAction(gameState));
+
+        main.ledger.Ledger ledger = gameState.getLedger();
+        for (PlayerAction action : actions) {
+            if (action instanceof AbstractAction aa) {
+                aa.setLedger(ledger);
+            }
+        }
     }
 
-    public List<PlayerAction> getActions() {
+public List<PlayerAction> getActions() {
         return Collections.unmodifiableList(actions);
     }
 

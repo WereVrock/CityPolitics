@@ -26,17 +26,24 @@ public class AcceptBribesAction extends AbstractAction {
     }
 
     @Override
+
+
     public ActionResult execute(ResourcePool resources, StatBlock stats) {
         if (!isAvailable()) {
             return ActionResult.fail("Accept Bribes already used " + getMaxUsesPerTurn() + " time(s) this turn.");
         }
-        if (!resources.spendInfluence(GameParameters.ACCEPT_BRIBE_INFLUENCE_COST)) {
+        if (resources.getInfluence() < GameParameters.ACCEPT_BRIBE_INFLUENCE_COST) {
             return ActionResult.fail("Not enough influence. Need " + GameParameters.ACCEPT_BRIBE_INFLUENCE_COST + ".");
         }
-        resources.addMoney(GameParameters.ACCEPT_BRIBE_MONEY_GAINED);
+        main.ledger.Ledger ledger = getLedger();
+        ledger.applyOneTime(main.resources.ResourceType.INFLUENCE, "action", getName(),
+                -GameParameters.ACCEPT_BRIBE_INFLUENCE_COST, resources);
+        ledger.applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                GameParameters.ACCEPT_BRIBE_MONEY_GAINED, resources);
         stats.addCorruption(GameParameters.ACCEPT_BRIBE_CORRUPTION_GAIN);
         recordUse();
         return ActionResult.ok("Accepted bribes. Gained " + GameParameters.ACCEPT_BRIBE_MONEY_GAINED
-            + " money. Corruption +" + GameParameters.ACCEPT_BRIBE_CORRUPTION_GAIN + ".");
+                + " money. Corruption +" + GameParameters.ACCEPT_BRIBE_CORRUPTION_GAIN + ".");
     }
+
 }

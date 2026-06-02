@@ -54,17 +54,22 @@ public class OrganizeFestivalAction extends AbstractFormalAction {
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
     @Override
+
+
     public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
         int moneyCost = CostCalculator.apply(GameParameters.FESTIVAL_MONEY_COST, stats.getCorruption());
-        if (!resources.spendMoney(moneyCost)) {
+        if (resources.getMoney() < moneyCost) {
             return ActionResult.fail("Not enough money after vote. Need " + moneyCost + ".");
         }
+        getLedger().applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                -moneyCost, resources);
         getGameState().getEffectManager().addEffect(new ActiveEffect(
-            ActiveEffect.Type.HAPPINESS_BOOST,
-            GameParameters.FESTIVAL_HAPPINESS_BOOST,
-            GameParameters.FESTIVAL_DURATION_TURNS
+                ActiveEffect.Type.HAPPINESS_BOOST,
+                GameParameters.FESTIVAL_HAPPINESS_BOOST,
+                GameParameters.FESTIVAL_DURATION_TURNS
         ));
         return ActionResult.ok("Festival declared! +" + GameParameters.FESTIVAL_HAPPINESS_BOOST
-            + " happiness over " + GameParameters.FESTIVAL_DURATION_TURNS + " turns.");
+                + " happiness over " + GameParameters.FESTIVAL_DURATION_TURNS + " turns.");
     }
+
 }
