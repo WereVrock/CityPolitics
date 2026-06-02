@@ -134,8 +134,17 @@ public void refresh() {
         manpowerLabel.setText("Manpower:  " + res.getManpower());
         influenceLabel.setText("Influence: " + res.getInfluence());
 
-        foodDeltaLabel.setText("-" + pops.getTotalFoodConsumption() + "/turn");
-        moneyDeltaLabel.setText("+" + pops.getTotalMoneyGeneration() + "/turn");
+        int nobleFood = gameState.getNobleHouseManager().getLastPlayerFoodSent();
+        int netFood = nobleFood - pops.getTotalFoodConsumption();
+        debug.Debug.log("ui", "resource-refresh", "ResourcePanel: nobleFood=" + nobleFood + ", popConsumption=" + pops.getTotalFoodConsumption() + ", net=" + netFood);
+        foodDeltaLabel.setText((netFood >= 0 ? "+" : "") + netFood + "/turn");
+        foodDeltaLabel.setToolTipText("Noble tribute: +" + nobleFood + ", pop consumption: -" + pops.getTotalFoodConsumption());
+
+        int nobleGold = gameState.getNobleHouseManager().getLastPlayerGoldSent();
+        int netGold = nobleGold + pops.getTotalMoneyGeneration();
+        moneyDeltaLabel.setText("+" + netGold + "/turn");
+        moneyDeltaLabel.setToolTipText("Pops: +" + pops.getTotalMoneyGeneration() + ", noble tribute: +" + nobleGold);
+
         influenceDeltaLabel.setText("+" + pops.getTotalInfluenceGeneration() + "/turn");
 
         corruptionLabel.setText("Corruption: " + corruption + " / 100");

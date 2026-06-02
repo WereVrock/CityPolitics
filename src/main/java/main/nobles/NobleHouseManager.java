@@ -26,6 +26,8 @@ public class NobleHouseManager {
     private final NobleArmyManager    armyManager;
     private final CoalitionManager    coalitionManager;
     private       main.barbarians.RavagedZoneManager ravagedZoneManager;
+    private       int lastPlayerGoldSent = 0;
+    private       int lastPlayerFoodSent = 0;
 
     // Prebuilt zone gold/food maps for capital tiebreaker
     private Map<String, Integer> zoneGoldMap = new HashMap<>();
@@ -59,6 +61,9 @@ public List<String> processTurn(ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
 
         tickZoneStates();
+
+        lastPlayerGoldSent = 0;
+        lastPlayerFoodSent = 0;
 
         for (NobleHouse house : houses) {
             if (house.isEliminated()) continue;
@@ -321,14 +326,28 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
         house.addNobleManpower(keptManpower);
 
         // Gold
-        if (house.sendsResourcesToPlayer()) {
-            int zoneGold = computeHouseGold(house);
-            playerResources.addMoney(zoneGold);
-            house.addGold(zoneGold);
-            log.add(house.getName() + " sent " + zoneGold + " gold.");
+        double share = getPlayerShareFraction(house.getPlayerOpinion());
+        int totalGold = computeHouseGold(house);
+        int totalFood = computeHouseFood(house);
+        int playerGold = (int)(totalGold * share);
+        int playerFood = (int)(totalFood * share);
+        int houseGold  = totalGold - playerGold;
+        int houseFood  = totalFood - playerFood;
+
+        playerResources.addMoney(playerGold);
+        playerResources.addFood(playerFood);
+        house.addGold(houseGold);
+        house.addFood(houseFood);
+        lastPlayerGoldSent += playerGold;
+        lastPlayerFoodSent += playerFood;
+        debug.Debug.log("economy", "income", "Player total this turn: gold +" + playerGold + ", food +" + playerFood + " from " + house.getName());
+
+        if (share > 0.0) {
+            log.add(house.getName() + " sent " + playerGold + " gold, " + playerFood + " food.");
+            debug.Debug.log("economy", "income", house.getName() + " sent " + playerGold + " gold, " + playerFood + " food.");
         } else {
-            house.addGold(computeHouseGold(house) * 2);
             log.add(house.getName() + " is hostile — sent nothing to player.");
+            debug.Debug.log("economy", "income", house.getName() + " hostile – sent nothing.");
         }
 
         house.addInfluence(house.getInfluencePerTurn());
@@ -347,11 +366,29 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
                     ? ravagedZoneManager.getProductionMultiplier(zoneId) : 1.0;
             double mult = state != null
                     ? state.getProductionMultiplier(ravagedMult) : ravagedMult;
-            total += (int)(GameParameters.NOBLE_ZONE_GOLD_PER_TURN * mult);
+            Zone zone = zoneManager.getZone(zoneId);
+            int base = zone != null ? zone.getGoldProduction() : 0;
+            total += (int)((base + GameParameters.NOBLE_ZONE_GOLD_PER_TURN) * mult);
         }
         return total;
     }
-    // ─── Accessors ───────────────────────────────────────────────────────────
+
+private int computeHouseFood(NobleHouse house) {
+        int total = 0;
+        for (String zoneId : house.getZoneIds()) {
+            ZoneState state  = zoneManager.getState(zoneId);
+            double ravagedMult = ravagedZoneManager != null
+                    ? ravagedZoneManager.getProductionMultiplier(zoneId) : 1.0;
+            double mult = state != null
+                    ? state.getProductionMultiplier(ravagedMult) : ravagedMult;
+            Zone zone = zoneManager.getZone(zoneId);
+            int base = zone != null ? zone.getFoodProduction() : 0;
+            total += (int)(base * mult);
+        }
+        return total;
+    }
+
+// ─── Accessors ───────────────────────────────────────────────────────────
 
     public java.util.List<NobleHouse> getHouses() { return Collections.unmodifiableList(houses); }
     public RelationshipManager getRelationships() { return relationships; }
@@ -400,6 +437,9 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
     }
 
     public CoalitionManager getCoalitionManager() { return coalitionManager; }
+
+    public int getLastPlayerGoldSent() { return lastPlayerGoldSent; }
+    public int getLastPlayerFoodSent() { return lastPlayerFoodSent; }
 
     // ─── House definitions ───────────────────────────────────────────────────
 
@@ -541,5 +581,12 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
         emberveil.addFortification("ashenveil", 1);
         houses.add(emberveil);
     }
+
+private double getPlayerShareFraction(int opinion) {
+        if (opinion <= GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD) return 0.0;
+        if (opinion > 50) return 0.50;
+        return 0.35;
+    }
+
 }
 

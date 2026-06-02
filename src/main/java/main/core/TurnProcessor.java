@@ -9,6 +9,7 @@ import main.nobles.NobleHouseManager;
 import main.parameters.GameParameters;
 import main.pops.PopManager;
 import main.resources.ResourcePool;
+import debug.Debug;
 import main.resources.StatBlock;
 
 import java.util.ArrayList;
@@ -46,6 +47,10 @@ public class TurnProcessor {
 
         List<String> log = new ArrayList<>();
 
+        int foodBefore = resources.getFood();
+        int goldBefore = resources.getMoney();
+        int manBefore  = resources.getManpower();
+
         debug.Debug.log("turn", "cycle", calendar.getDisplayString());
 
         applyPopEconomics(resources, popManager, log);
@@ -64,6 +69,10 @@ public class TurnProcessor {
 
         calendar.advance();
         actionRegistry.resetAllActions();
+        Debug.log("economy", "delta", "Food: " + foodBefore + " → " + resources.getFood() + " (Δ " + (resources.getFood() - foodBefore) + ")");
+        Debug.log("economy", "delta", "Gold: " + goldBefore + " → " + resources.getMoney() + " (Δ " + (resources.getMoney() - goldBefore) + ")");
+        Debug.log("economy", "delta", "Manpower: " + manBefore + " → " + resources.getManpower() + " (Δ " + (resources.getManpower() - manBefore) + ")");
+
         log.add("--- " + calendar.getDisplayString() + " begins ---");
 
         return log;

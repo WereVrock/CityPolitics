@@ -24,6 +24,7 @@ public class NobleHouse {
     private final int                  activeCharacterIndex;
 
     private int     gold;
+    private int     food;
     private int     nobleManpower;   // house-side pool, NOT player manpower
     private int     influence;
     private int     playerOpinion;
@@ -49,6 +50,7 @@ public class NobleHouse {
         this.characters           = new ArrayList<>(characters);
         this.activeCharacterIndex = 0;
         this.gold                 = startingGold;
+        this.food                 = 0;
         this.nobleManpower        = 0;
         this.influence            = GameParameters.NOBLE_HOUSE_STARTING_INFLUENCE;
         this.playerOpinion        = GameParameters.NOBLE_HOUSE_STARTING_OPINION;
@@ -339,6 +341,8 @@ public void removeZone(String zoneId) {
     public int          getPlayerOpinion() { return playerOpinion; }
 
     public void addGold(int v)      { gold      = Math.max(0, gold + v); }
+    public int  getFood()           { return food; }
+    public void addFood(int v)      { food      = Math.max(0, food + v); }
     public void addInfluence(int v) { influence = Math.max(0, influence + v); }
 
     public void setPlayerOpinion(int v) {

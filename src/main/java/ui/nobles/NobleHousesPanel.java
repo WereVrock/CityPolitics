@@ -217,6 +217,9 @@ private JPanel buildPortrait(NobleHouse house) {
         panel.add(makeStatLabel("Gold",      String.valueOf(house.getGold()),
             new Color(210, 170, 80)));
         panel.add(Box.createVerticalStrut(6));
+        panel.add(makeStatLabel("Food",      String.valueOf(house.getFood()),
+            new Color(120, 200, 100)));
+        panel.add(Box.createVerticalStrut(6));
         panel.add(makeStatLabel("Manpower",  String.valueOf(house.getManpower()),
             UITheme.TEXT_PRIMARY));
         panel.add(Box.createVerticalStrut(6));

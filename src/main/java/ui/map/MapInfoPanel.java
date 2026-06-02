@@ -471,9 +471,9 @@ personality.setWrapStyleWord(true);
 dc.gridy = row++; content.add(personality, dc);
 
 dc.gridy = row++; content.add(makeDialogLabel("Opinion: " + house.getPlayerOpinion() + " / 100", opinionColor(house.getPlayerOpinion()), UITheme.FONT_BODY), dc);
-dc.gridy = row++; content.add(makeDialogLabel("Gold: "      + house.getGold(),      new Color(210,170,80),  UITheme.FONT_BODY), dc);
-dc.gridy = row++; content.add(makeDialogLabel("Manpower: "  + house.getManpower(),  UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY), dc);
-dc.gridy = row++; content.add(makeDialogLabel("Influence: " + house.getInfluence(), UITheme.ACCENT_FROST,   UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Gold: "      + house.getGold(),      new Color(210,170,80),  UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Food: "      + house.getFood(),      new Color(120,200,100),  UITheme.FONT_BODY), dc);
+        dc.gridy = row++; content.add(makeDialogLabel("Manpower: "  + house.getManpower(),  UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY), dc);dc.gridy = row++; content.add(makeDialogLabel("Influence: " + house.getInfluence(), UITheme.ACCENT_FROST,   UITheme.FONT_BODY), dc);
 String capitalName = house.getCapitalZoneId() != null
 ? house.getCapitalZoneId().replace("_", " ") : "None";
 dc.gridy = row++; content.add(makeDialogLabel("Capital: " + capitalName,
