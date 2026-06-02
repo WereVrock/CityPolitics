@@ -35,7 +35,7 @@ public class TurnProcessor {
         this.payOffDialogSupplier = supplier;
     }
 
-    public List<String> processTurn(
+public List<String> processTurn(
             GameState         gameState,
             ResourcePool      resources,
             StatBlock         stats,
@@ -47,18 +47,20 @@ public class TurnProcessor {
 
         List<String> log = new ArrayList<>();
 
+        main.ledger.Ledger ledger = gameState.getLedger();
+        ledger.clearOneTime();
+
         int foodBefore = resources.getFood();
         int goldBefore = resources.getMoney();
         int manBefore  = resources.getManpower();
 
         debug.Debug.log("turn", "cycle", calendar.getDisplayString());
 
-        applyPopEconomics(resources, popManager, log);
-        log.addAll(nobleHouseManager.processTurn(resources));
-        applyStatDecay(stats, log);
+        applyPopEconomics(resources, popManager, log, ledger);
+        log.addAll(nobleHouseManager.processTurn(resources, ledger));
+        applyStatDecay(stats, log, ledger);
         log.addAll(effectManager.processTurn(stats));
 
-        // Barbarian invasion — wire pay-off callback then process
         BarbInvasionProcessor barbProcessor = gameState.getBarbInvasionProcessor();
         barbProcessor.setPayOffCallback((army, res, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
             if (payOffDialogSupplier == null) return false;
@@ -78,7 +80,7 @@ public class TurnProcessor {
         return log;
     }
 
-    // ─── Game over ───────────────────────────────────────────────────────────
+// ─── Game over ───────────────────────────────────────────────────────────
 
     /**
      * Central game-over handler. Swap implementation later without refactor.
@@ -97,26 +99,34 @@ public class TurnProcessor {
 
     // ─── Private helpers ─────────────────────────────────────────────────────
 
-    private void applyPopEconomics(ResourcePool resources, PopManager popManager,
-                                    List<String> log) {
+private void applyPopEconomics(ResourcePool resources, PopManager popManager,
+                                    List<String> log, main.ledger.Ledger ledger) {
         int moneyGained     = popManager.getTotalMoneyGeneration();
-        int influenceGained = popManager.getTotalInfluenceGeneration();
+        int influenceGained = popManager.getTotalInfluenceGeneration() + GameParameters.BASE_INFLUENCE_PER_TURN;
         int foodConsumed    = popManager.getTotalFoodConsumption();
 
+        ledger.setRecurring(main.resources.ResourceType.GOLD,      "pops", "Pop Income",      moneyGained);
+        ledger.setRecurring(main.resources.ResourceType.INFLUENCE,  "pops", "Pop Influence",   influenceGained);
+        ledger.setRecurring(main.resources.ResourceType.FOOD,       "pops", "Pop Consumption", -foodConsumed);
+
         resources.addMoney(moneyGained);
-        resources.addInfluence(influenceGained + GameParameters.BASE_INFLUENCE_PER_TURN);
+        resources.addInfluence(influenceGained);
         resources.addFood(-foodConsumed);
 
-        log.add("Pops generated " + moneyGained + " money, "
-                + (influenceGained + GameParameters.BASE_INFLUENCE_PER_TURN) + " influence.");
+        log.add("Pops generated " + moneyGained + " money, " + influenceGained + " influence.");
         log.add("Pops consumed " + foodConsumed + " food.");
     }
 
-    private void applyStatDecay(StatBlock stats, List<String> log) {
+private void applyStatDecay(StatBlock stats, List<String> log,
+                                 main.ledger.Ledger ledger) {
+        ledger.setRecurring(main.resources.ResourceType.GOLD,      "decay", "Happiness Decay", 0);
+        ledger.setRecurring(main.resources.ResourceType.INFLUENCE,  "decay", "Base Influence",  GameParameters.BASE_INFLUENCE_PER_TURN);
+
         stats.reduceHappiness(GameParameters.HAPPINESS_DECAY_PER_TURN);
         stats.reduceCorruption(GameParameters.CORRUPTION_DECAY_PER_TURN);
         log.add("Happiness -" + GameParameters.HAPPINESS_DECAY_PER_TURN
                 + ", Corruption -" + GameParameters.CORRUPTION_DECAY_PER_TURN
                 + " (natural decay).");
     }
+
 }

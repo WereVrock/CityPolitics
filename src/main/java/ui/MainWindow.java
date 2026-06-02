@@ -39,6 +39,7 @@ public class MainWindow extends JFrame {
     private final JPanel  centerPanel;
     private  JButton partiesBtn;
     private  JButton openVoteBtn;
+    private  LedgerDialog ledgerDialog;
 
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
@@ -201,6 +202,17 @@ public class MainWindow extends JFrame {
         openVoteBtn.setVisible(false);
         openVoteBtn.addActionListener(e -> showVoteSession());
 
+        JButton ledgerBtn = new JButton("LEDGER");
+        ledgerBtn.setFont(UITheme.FONT_BUTTON);
+        ledgerBtn.setForeground(UITheme.TEXT_SECONDARY);
+        ledgerBtn.setBackground(UITheme.BUTTON_BG);
+        ledgerBtn.setBorderPainted(false);
+        ledgerBtn.setFocusPainted(false);
+        ledgerBtn.setPreferredSize(new Dimension(70, 48));
+        ledgerBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        ledgerBtn.addActionListener(e -> showLedger());
+        
+
         JPanel wrapper = new JPanel(new BorderLayout(6, 0));
         wrapper.setBackground(UITheme.BG_DARK);
         wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
@@ -211,9 +223,18 @@ public class MainWindow extends JFrame {
         leftBtns.add(noblesBtn);
         leftBtns.add(mapBtn);
         leftBtns.add(openVoteBtn);
+        leftBtns.add(ledgerBtn);
 
         wrapper.add(leftBtns, BorderLayout.WEST);
         return wrapper;
+    }
+
+    private void showLedger() {
+        if (ledgerDialog == null) {
+            ledgerDialog = new LedgerDialog(this, gameState);
+        }
+        ledgerDialog.refresh();
+        ledgerDialog.setVisible(true);
     }
 
     private void swapCenter(JPanel panel) {
@@ -291,6 +312,9 @@ public class MainWindow extends JFrame {
         resourcePanel.refresh();
         popPanel.refresh();
         actionsPanel.refresh();
+        if (ledgerDialog != null && ledgerDialog.isVisible()) {
+            ledgerDialog.refresh();
+        }
 
         if (centerPanel.getComponentCount() > 0 && centerPanel.getComponent(0) == mapView) {
             mapView.refreshSelectedZone();

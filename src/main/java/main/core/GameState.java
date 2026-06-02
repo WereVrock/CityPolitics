@@ -39,6 +39,7 @@ public class GameState {
     private NobleHouseManager     nobleHouseManager;
     private ArmyManager           armyManager;
     private TurnProcessor         turnProcessor;
+    private main.ledger.Ledger    ledger;
 
     // ── Barbarian invasion subsystem ─────────────────────────────────────────
     private BarbInvasionState     barbInvasionState;
@@ -67,6 +68,7 @@ public class GameState {
         nobleHouseManager  = new NobleHouseManager(zoneManager);
         armyManager        = new ArmyManager();
         turnProcessor      = new TurnProcessor();
+        ledger             = new main.ledger.Ledger();
 
         barbInvasionState     = new BarbInvasionState();
         barbArmyManager       = new BarbArmyManager(zoneManager);
@@ -118,6 +120,7 @@ public class GameState {
     public BarbArmyManager       getBarbArmyManager()       { return barbArmyManager; }
     public RavagedZoneManager    getRavagedZoneManager()    { return ravagedZoneManager; }
     public BarbInvasionProcessor getBarbInvasionProcessor() { return barbInvasionProcessor; }
+    public main.ledger.Ledger    getLedger()                { return ledger; }
 
     /** Resets barbarian subsystem for new game. */
     public void resetBarbarians() {

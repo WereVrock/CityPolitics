@@ -57,7 +57,7 @@ public class NobleHouseManager {
 
     // ─── Turn processing ──────────────────────────────────────────────────────
 
-public List<String> processTurn(ResourcePool playerResources) {
+public List<String> processTurn(ResourcePool playerResources, main.ledger.Ledger ledger) {
         List<String> log = new ArrayList<>();
 
         tickZoneStates();
@@ -73,7 +73,7 @@ public List<String> processTurn(ResourcePool playerResources) {
                 new ArrayList<>(houses), claimManager));
 
             // 2. Economy
-            processEconomy(house, playerResources, log);
+            processEconomy(house, playerResources, log, ledger);
         }
 
         processConquestCosts();
@@ -109,9 +109,11 @@ public List<String> processTurn(ResourcePool playerResources) {
             if (!house.isEliminated()) {
                 house.tickGarrisons();
             } else {
-                // Clean up armies of eliminated houses
                 for (NobleArmy a : new ArrayList<>(armyManager.getArmiesForHouse(house.getId()))) {
                     armyManager.remove(a);
+                }
+                if (ledger != null) {
+                    ledger.removeRecurring("nobles", house.getName());
                 }
             }
         }
@@ -318,21 +320,19 @@ public List<String> processTurn(ResourcePool playerResources) {
     // ─── Economy ─────────────────────────────────────────────────────────────
 
 private void processEconomy(NobleHouse house, ResourcePool playerResources,
-                                 List<String> log) {
-        // Manpower: split between player and house noble pool
+                                List<String> log, main.ledger.Ledger ledger) {
         int sentManpower  = house.computeManpowerSentToPlayer();
         int keptManpower  = house.computeManpowerRetained();
         if (sentManpower > 0) playerResources.addManpower(sentManpower);
         house.addNobleManpower(keptManpower);
 
-        // Gold
-        double share = getPlayerShareFraction(house.getPlayerOpinion());
-        int totalGold = computeHouseGold(house);
-        int totalFood = computeHouseFood(house);
-        int playerGold = (int)(totalGold * share);
-        int playerFood = (int)(totalFood * share);
-        int houseGold  = totalGold - playerGold;
-        int houseFood  = totalFood - playerFood;
+        double share     = getPlayerShareFraction(house.getPlayerOpinion());
+        int totalGold    = computeHouseGold(house);
+        int totalFood    = computeHouseFood(house);
+        int playerGold   = (int)(totalGold * share);
+        int playerFood   = (int)(totalFood * share);
+        int houseGold    = totalGold - playerGold;
+        int houseFood    = totalFood - playerFood;
 
         playerResources.addMoney(playerGold);
         playerResources.addFood(playerFood);
@@ -340,11 +340,22 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
         house.addFood(houseFood);
         lastPlayerGoldSent += playerGold;
         lastPlayerFoodSent += playerFood;
-        debug.Debug.log("economy", "income", "Player total this turn: gold +" + playerGold + ", food +" + playerFood + " from " + house.getName());
+
+        // Ledger — recurring projection per noble house
+        String category = "nobles";
+        String label    = house.getName();
+        ledger.setRecurring(main.resources.ResourceType.GOLD,     category, label, playerGold);
+        ledger.setRecurring(main.resources.ResourceType.FOOD,     category, label, playerFood);
+        ledger.setRecurring(main.resources.ResourceType.MANPOWER, category, label, sentManpower);
+
+        debug.Debug.log("economy", "income",
+                "Player total this turn: gold +" + playerGold + ", food +" + playerFood
+                        + " from " + house.getName());
 
         if (share > 0.0) {
             log.add(house.getName() + " sent " + playerGold + " gold, " + playerFood + " food.");
-            debug.Debug.log("economy", "income", house.getName() + " sent " + playerGold + " gold, " + playerFood + " food.");
+            debug.Debug.log("economy", "income",
+                    house.getName() + " sent " + playerGold + " gold, " + playerFood + " food.");
         } else {
             log.add(house.getName() + " is hostile — sent nothing to player.");
             debug.Debug.log("economy", "income", house.getName() + " hostile – sent nothing.");
@@ -355,10 +366,9 @@ private void processEconomy(NobleHouse house, ResourcePool playerResources,
         if (sentManpower > 0) {
             log.add(house.getName() + " sent " + sentManpower + " manpower to player.");
         }
-        // NOTE: garrison tick intentionally moved to AFTER AI recruits in processTurn
     }
 
-    private int computeHouseGold(NobleHouse house) {
+private int computeHouseGold(NobleHouse house) {
         int total = 0;
         for (String zoneId : house.getZoneIds()) {
             ZoneState state  = zoneManager.getState(zoneId);

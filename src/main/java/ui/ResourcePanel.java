@@ -122,7 +122,6 @@ public class ResourcePanel extends JPanel {
 public void refresh() {
         ResourcePool res   = gameState.getResources();
         StatBlock    stats = gameState.getStats();
-        PopManager   pops  = gameState.getPopManager();
 
         int corruption     = stats.getCorruption();
         int baseHappiness  = stats.getHappiness();
@@ -134,22 +133,40 @@ public void refresh() {
         manpowerLabel.setText("Manpower:  " + res.getManpower());
         influenceLabel.setText("Influence: " + res.getInfluence());
 
-        int nobleFood = gameState.getNobleHouseManager().getLastPlayerFoodSent();
-        int netFood = nobleFood - pops.getTotalFoodConsumption();
-        debug.Debug.log("ui", "resource-refresh", "ResourcePanel: nobleFood=" + nobleFood + ", popConsumption=" + pops.getTotalFoodConsumption() + ", net=" + netFood);
-        foodDeltaLabel.setText((netFood >= 0 ? "+" : "") + netFood + "/turn");
-        foodDeltaLabel.setToolTipText("Noble tribute: +" + nobleFood + ", pop consumption: -" + pops.getTotalFoodConsumption());
+        main.ledger.Ledger ledger = gameState.getLedger();
+        int deltaFood      = ledger.getDelta(main.resources.ResourceType.FOOD);
+        int deltaGold      = ledger.getDelta(main.resources.ResourceType.GOLD);
+        int deltaManpower  = ledger.getDelta(main.resources.ResourceType.MANPOWER);
+        int deltaInfluence = ledger.getDelta(main.resources.ResourceType.INFLUENCE);
 
-        int nobleGold = gameState.getNobleHouseManager().getLastPlayerGoldSent();
-        int netGold = nobleGold + pops.getTotalMoneyGeneration();
-        moneyDeltaLabel.setText("+" + netGold + "/turn");
-        moneyDeltaLabel.setToolTipText("Pops: +" + pops.getTotalMoneyGeneration() + ", noble tribute: +" + nobleGold);
+        setDeltaLabel(foodDeltaLabel,      deltaFood);
+        setDeltaLabel(moneyDeltaLabel,     deltaGold);
+        setDeltaLabel(influenceDeltaLabel, deltaInfluence);
 
-        influenceDeltaLabel.setText("+" + pops.getTotalInfluenceGeneration() + "/turn");
+        foodDeltaLabel.setToolTipText(buildTooltip(ledger, main.resources.ResourceType.FOOD));
+        moneyDeltaLabel.setToolTipText(buildTooltip(ledger, main.resources.ResourceType.GOLD));
+        influenceDeltaLabel.setToolTipText(buildTooltip(ledger, main.resources.ResourceType.INFLUENCE));
 
         corruptionLabel.setText("Corruption: " + corruption + " / 100");
         happinessLabel.setText("Happiness:  " + effectiveHappy
             + " / 100  (base " + baseHappiness + ")");
+    }
+
+private void setDeltaLabel(JLabel label, int delta) {
+        label.setText((delta >= 0 ? "+" : "") + delta + "/turn");
+        label.setForeground(delta >= 0 ? UITheme.TEXT_GREEN : UITheme.TEXT_RED);
+    }
+
+    private String buildTooltip(main.ledger.Ledger ledger, main.resources.ResourceType resource) {
+        java.util.List<main.ledger.Ledger.Entry> entries = ledger.getRecurringEntries(resource);
+        if (entries.isEmpty()) return "No contributions.";
+        StringBuilder sb = new StringBuilder("<html>");
+        for (main.ledger.Ledger.Entry e : entries) {
+            sb.append(e.category).append(" / ").append(e.name)
+              .append(": ").append(e.amount >= 0 ? "+" : "").append(e.amount).append("<br>");
+        }
+        sb.append("</html>");
+        return sb.toString();
     }
 
 }
