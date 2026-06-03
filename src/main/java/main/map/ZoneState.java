@@ -45,7 +45,11 @@ public class ZoneState {
     // ─── Conquest ────────────────────────────────────────────────────────────
 
     public void markConquered()        { conquestMalusPercent = 100; }
-    public int  getConquestMalus()     { return conquestMalusPercent; }
+
+public void setRecentlyRaidedTurns(int v)  { recentlyRaidedTurns  = Math.max(0, v); }
+    public void setConquestMalusPercent(int v)  { conquestMalusPercent = Math.max(0, Math.min(100, v)); }
+
+public int  getConquestMalus()     { return conquestMalusPercent; }
     public boolean hasConquestMalus()  { return conquestMalusPercent > 0; }
 
     public int  getRebellionPower()          { return rebellionPower; }

@@ -169,7 +169,17 @@ public class NobleArmyManager {
         return split;
     }
 
-    public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claimManager) {
+/**
+     * Directly inserts a pre-built army (used by SaveManager on load).
+     * Bypasses recruitment cost and merge logic.
+     */
+    public void addRestoredArmy(NobleArmy army) {
+        armies.add(army);
+        byHouse.computeIfAbsent(army.getHouseId(), k -> new ArrayList<>()).add(army);
+        byZone.computeIfAbsent(army.getZoneId(),   k -> new ArrayList<>()).add(army);
+    }
+
+public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claimManager) {
         List<String> log = new ArrayList<>();
         for (NobleArmy army : new ArrayList<>(armies)) {
             if (!army.isOrderReadyToResolve()) continue;

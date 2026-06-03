@@ -50,7 +50,17 @@ public class BarbArmyManager {
         return r;
     }
 
-    // ─── Army access ─────────────────────────────────────────────────────────
+/**
+     * Directly inserts a pre-built mobile army (used by SaveManager on load).
+     * Does not trigger merge logic.
+     */
+    public void addRestoredArmy(BarbArmy army) {
+        armies.add(army);
+        byZone.computeIfAbsent(army.getZoneId(), k -> new ArrayList<>()).add(army);
+        invasionVisited.addAll(army.getVisitedZones());
+    }
+
+// ─── Army access ─────────────────────────────────────────────────────────
 
     public List<BarbArmy> getAllArmies() {
         return Collections.unmodifiableList(armies);
