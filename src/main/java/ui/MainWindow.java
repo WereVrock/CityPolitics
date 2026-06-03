@@ -126,7 +126,23 @@ public class MainWindow extends JFrame {
         JButton loadBtn = buildBarButton("LOAD");
 
         newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> {
-            gameState.resetBarbarians();
+            mapView.reinitialize(gameState);
+            gameState.getTurnProcessor().setPayOffDialogSupplier(
+                    (army, resources, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
+                java.awt.Window win = this;
+                final boolean[] result = {false};
+                if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                    result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                            zoneId, owner, playerArmies, nobleArmies, nobleGarrison);
+                } else {
+                    try {
+                        javax.swing.SwingUtilities.invokeAndWait(() ->
+                            result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                                    zoneId, owner, playerArmies, nobleArmies, nobleGarrison));
+                    } catch (Exception ignored) {}
+                }
+                return result[0];
+            });
             showMainView();
             resetLogs();
         }));
@@ -211,7 +227,7 @@ public class MainWindow extends JFrame {
         ledgerBtn.setPreferredSize(new Dimension(90, 48));
         ledgerBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         ledgerBtn.addActionListener(e -> showLedger());
-       
+      
 
         JPanel wrapper = new JPanel(new BorderLayout(6, 0));
         wrapper.setBackground(UITheme.BG_DARK);
@@ -223,8 +239,8 @@ public class MainWindow extends JFrame {
         leftBtns.add(noblesBtn);
         leftBtns.add(mapBtn);
         leftBtns.add(openVoteBtn);
-         leftBtns.add(ledgerBtn);
-
+  leftBtns.add(ledgerBtn);
+  
         wrapper.add(leftBtns, BorderLayout.WEST);
         return wrapper;
     }

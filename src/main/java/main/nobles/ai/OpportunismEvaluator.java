@@ -17,6 +17,10 @@ public class OpportunismEvaluator {
     private static final Random RNG = new Random();
     private static final Set<String> cooldownHouses = new HashSet<>();
 
+    public static void reset() {
+        cooldownHouses.clear();
+    }
+
     /**
      * Evaluate whether the actor should take an opportunistic action this turn.
      * Returns an action if one is taken, null otherwise.

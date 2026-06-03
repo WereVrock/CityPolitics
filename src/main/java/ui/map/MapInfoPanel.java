@@ -537,6 +537,23 @@ if (v >= 70) return UITheme.TEXT_GREEN;
 if (v <= 30) return UITheme.TEXT_RED;
 return UITheme.TEXT_PRIMARY;
 }
+
+/**
+     * Re-wires manager references after gameState.reset() (new game).
+     */
+    public void reinitialize(main.core.GameState gs) {
+        setRavagedZoneManager(gs.getRavagedZoneManager());
+        setBarbArmyManager(gs.getBarbArmyManager());
+        // nobleHouseManager is final — update via field
+        try {
+            java.lang.reflect.Field f = MapInfoPanel.class.getDeclaredField("nobleHouseManager");
+            f.setAccessible(true);
+            f.set(this, gs.getNobleHouseManager());
+        } catch (Exception ignored) {}
+        clearZone();
+        clearArmy();
+    }
+
 }
 
 

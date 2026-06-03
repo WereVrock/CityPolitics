@@ -3,7 +3,6 @@ package ui.map;
 import main.army.Army;
 import main.army.ArmyManager;
 import main.barbarians.BarbArmy;
-import main.barbarians.BarbArmyManager;
 import main.map.Zone;
 import main.map.ZoneManager;
 import main.nobles.NobleArmy;
@@ -13,6 +12,7 @@ import java.awt.*;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.*;
 import java.awt.event.*;
+import java.lang.reflect.Field;
 import java.util.function.Consumer;
 
 /**
@@ -341,4 +341,40 @@ public class MapPanel extends JPanel
         renderer.render(g2, selectedZone, hoveredZone, selectedArmy);
         g2.dispose();
     }
+
+/**
+     * Re-wires all internal references to the new GameState after a reset.
+     * Called on new game from MapView.reinitialize().
+     */
+    public void reinitialize(main.core.GameState gs) {
+        // Rebuild renderer with fresh subsystem references
+        main.nobles.NobleHouseManager nhm = gs.getNobleHouseManager();
+
+        renderer.setNobleHouseManager(nhm);
+        renderer.setBarbArmyManager(gs.getBarbArmyManager());
+        renderer.setRavagedZoneManager(gs.getRavagedZoneManager());
+
+        ArmyRenderer newArmyRenderer = new ArmyRenderer(gs.getArmyManager(), gs.getZoneManager());
+        renderer.setArmyRenderer(newArmyRenderer);
+
+        NobleArmyRenderer newNobleRenderer = new NobleArmyRenderer(
+                gs.getNobleArmyManager(), gs.getZoneManager(), nhm);
+        renderer.setNobleArmyRenderer(newNobleRenderer);
+
+        BarbArmyRenderer newBarbRenderer = new BarbArmyRenderer(
+                gs.getBarbArmyManager(), gs.getZoneManager());
+        renderer.setBarbArmyRenderer(newBarbRenderer);
+
+        // Update the armyRenderer reference used for hit-testing in this class
+        Field armyRendererField;
+        try {
+            armyRendererField = MapPanel.class.getDeclaredField("armyRenderer");
+            armyRendererField.setAccessible(true);
+            armyRendererField.set(this, newArmyRenderer);
+        } catch (Exception ignored) {}
+
+        clearSelection();
+        repaint();
+    }
+
 }

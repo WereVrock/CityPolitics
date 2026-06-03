@@ -135,4 +135,12 @@ public MapView(GameState gameState, Runnable onBack) {
         Zone zone = mapPanel.getSelectedZone();
         if (zone != null) infoPanel.showZone(zone);
     }
+
+public void reinitialize(GameState gameState) {
+    mapPanel.reinitialize(gameState);
+    infoPanel.reinitialize(gameState);
+    armyListPanel.reinitialize(gameState.getArmyManager());
+    refresh();
+}
+
 }

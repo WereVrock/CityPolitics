@@ -54,6 +54,7 @@ public class GameState {
     }
 
     private void initState() {
+        main.nobles.ai.OpportunismEvaluator.reset();
         calendar           = new GameCalendar();
         resources          = new ResourcePool();
         stats              = new StatBlock();

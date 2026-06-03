@@ -123,4 +123,17 @@ public class ArmyListPanel extends JPanel {
 
         return card;
     }
+
+/**
+     * Re-wires the ArmyManager reference after gameState.reset() (new game).
+     */
+    public void reinitialize(main.army.ArmyManager newArmyManager) {
+        try {
+            java.lang.reflect.Field f = ArmyListPanel.class.getDeclaredField("armyManager");
+            f.setAccessible(true);
+            f.set(this, newArmyManager);
+        } catch (Exception ignored) {}
+        refresh();
+    }
+
 }

@@ -194,7 +194,16 @@ public Zone hitTest(Point world) {
         this.ravagedZoneManager = rzm;
     }
 
-    private static final Color COLOR_RAVAGED_OVERLAY         = new Color(160,  60,  10,  80);
+public void setNobleHouseManager(main.nobles.NobleHouseManager nhm) {
+        // NobleHouseManager is final in renderer — update the reference via field
+        try {
+            java.lang.reflect.Field f = MapRenderer.class.getDeclaredField("nobleHouseManager");
+            f.setAccessible(true);
+            f.set(this, nhm);
+        } catch (Exception ignored) {}
+    }
+
+private static final Color COLOR_RAVAGED_OVERLAY         = new Color(160,  60,  10,  80);
     private static final Color COLOR_HEAVILY_RAVAGED_OVERLAY = new Color(120,  10,  10, 120);
 
     private void drawZoneFill(Graphics2D g2, Zone zone, Zone selected, Zone hovered) {
