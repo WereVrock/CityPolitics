@@ -208,10 +208,10 @@ public class MainWindow extends JFrame {
         ledgerBtn.setBackground(UITheme.BUTTON_BG);
         ledgerBtn.setBorderPainted(false);
         ledgerBtn.setFocusPainted(false);
-        ledgerBtn.setPreferredSize(new Dimension(70, 48));
+        ledgerBtn.setPreferredSize(new Dimension(90, 48));
         ledgerBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         ledgerBtn.addActionListener(e -> showLedger());
-        
+       
 
         JPanel wrapper = new JPanel(new BorderLayout(6, 0));
         wrapper.setBackground(UITheme.BG_DARK);
@@ -223,7 +223,7 @@ public class MainWindow extends JFrame {
         leftBtns.add(noblesBtn);
         leftBtns.add(mapBtn);
         leftBtns.add(openVoteBtn);
-        leftBtns.add(ledgerBtn);
+         leftBtns.add(ledgerBtn);
 
         wrapper.add(leftBtns, BorderLayout.WEST);
         return wrapper;

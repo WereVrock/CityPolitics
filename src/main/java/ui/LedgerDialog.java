@@ -8,11 +8,13 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
+import java.util.*;
 import java.util.List;
 
 /**
  * Non-modal dialog showing projected recurring income/costs
  * and one-time changes from the last turn.
+ * Recurring entries are grouped by category with collapsible rows.
  */
 public class LedgerDialog extends JDialog {
 
@@ -20,11 +22,14 @@ public class LedgerDialog extends JDialog {
     private final JPanel    projectionPanel;
     private final JPanel    oneTimePanel;
 
+    // track expanded state per category+resource key
+    private final Map<String, Boolean> expandedState = new HashMap<>();
+
     public LedgerDialog(Window owner, GameState gameState) {
         super(owner, "Ledger", ModalityType.MODELESS);
         this.gameState = gameState;
 
-        setSize(420, 540);
+        setSize(440, 580);
         setMinimumSize(new Dimension(340, 400));
         setLocationRelativeTo(owner);
         setDefaultCloseOperation(HIDE_ON_CLOSE);
@@ -74,31 +79,53 @@ public class LedgerDialog extends JDialog {
     public void refresh() {
         Ledger ledger = gameState.getLedger();
 
+        // ── Projection (recurring, grouped by resource then category) ──────────
         projectionPanel.removeAll();
+
         for (ResourceType resource : ResourceType.values()) {
-            int delta = ledger.getDelta(resource);
             List<Ledger.Entry> entries = ledger.getRecurringEntries(resource);
             if (entries.isEmpty()) continue;
 
-            projectionPanel.add(makeResourceHeader(resource, delta));
+            // Group entries by category
+            Map<String, List<Ledger.Entry>> byCategory = new LinkedHashMap<>();
             for (Ledger.Entry e : entries) {
-                projectionPanel.add(makeEntryRow(e.category + " / " + e.name, e.amount));
+                byCategory.computeIfAbsent(e.category, k -> new ArrayList<>()).add(e);
             }
+
+            // Resource header (net total)
+            int resourceNet = ledger.getDelta(resource);
+            projectionPanel.add(makeResourceHeader(resource, resourceNet));
+
+            for (Map.Entry<String, List<Ledger.Entry>> catEntry : byCategory.entrySet()) {
+                String category    = catEntry.getKey();
+                List<Ledger.Entry> catEntries = catEntry.getValue();
+                int catTotal = catEntries.stream().mapToInt(e -> e.amount).sum();
+                String expandKey = resource.name() + "|" + category;
+
+                // Category row (clickable, shows total)
+                JPanel categoryRow = makeCategoryRow(category, catTotal, expandKey, catEntries);
+                projectionPanel.add(categoryRow);
+            }
+
             projectionPanel.add(Box.createVerticalStrut(8));
         }
 
+        // ── One-time (last turn, flat list grouped by resource) ────────────────
         oneTimePanel.removeAll();
         boolean anyOneTime = false;
+
         for (ResourceType resource : ResourceType.values()) {
             List<Ledger.Entry> entries = ledger.getOneTimeEntries(resource);
             if (entries.isEmpty()) continue;
             anyOneTime = true;
-            oneTimePanel.add(makeResourceHeader(resource, entries.stream().mapToInt(e -> e.amount).sum()));
+            int total = entries.stream().mapToInt(e -> e.amount).sum();
+            oneTimePanel.add(makeResourceHeader(resource, total));
             for (Ledger.Entry e : entries) {
-                oneTimePanel.add(makeEntryRow(e.category + " / " + e.name, e.amount));
+                oneTimePanel.add(makeEntryRow(e.category + " / " + e.name, e.amount, 16));
             }
             oneTimePanel.add(Box.createVerticalStrut(8));
         }
+
         if (!anyOneTime) {
             JLabel none = new JLabel("  No changes logged yet.");
             none.setFont(UITheme.FONT_SMALL);
@@ -126,8 +153,8 @@ public class LedgerDialog extends JDialog {
     private JPanel makeResourceHeader(ResourceType resource, int netDelta) {
         JPanel row = new JPanel(new BorderLayout());
         row.setBackground(UITheme.BG_PANEL);
-        row.setBorder(new EmptyBorder(3, 6, 3, 6));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        row.setBorder(new EmptyBorder(4, 6, 4, 6));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
         row.setAlignmentX(LEFT_ALIGNMENT);
 
         JLabel name = new JLabel(resource.name());
@@ -143,10 +170,75 @@ public class LedgerDialog extends JDialog {
         return row;
     }
 
-    private JPanel makeEntryRow(String label, int amount) {
+    /**
+     * A category row with a toggle button. Clicking expands/collapses
+     * the individual entries beneath it in the same parent panel.
+     */
+    private JPanel makeCategoryRow(String category, int total,
+                                    String expandKey, List<Ledger.Entry> entries) {
+        boolean expanded = expandedState.getOrDefault(expandKey, false);
+
+        // Container holds the header + collapsible children
+        JPanel container = new JPanel();
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setBackground(UITheme.BG_DARK);
+        container.setAlignmentX(LEFT_ALIGNMENT);
+
+        // Header row
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(new Color(40, 42, 48));
+        header.setBorder(new EmptyBorder(3, 16, 3, 6));
+        header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        header.setAlignmentX(LEFT_ALIGNMENT);
+        header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        String arrow = expanded ? "▾ " : "▸ ";
+        JLabel categoryLabel = new JLabel(arrow + capitalize(category));
+        categoryLabel.setFont(UITheme.FONT_SMALL);
+        categoryLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+        JLabel totalLabel = new JLabel((total >= 0 ? "+" : "") + total);
+        totalLabel.setFont(UITheme.FONT_SMALL);
+        totalLabel.setForeground(total >= 0 ? UITheme.TEXT_GREEN : UITheme.TEXT_RED);
+
+        header.add(categoryLabel, BorderLayout.WEST);
+        header.add(totalLabel,    BorderLayout.EAST);
+
+        // Children panel
+        JPanel children = new JPanel();
+        children.setLayout(new BoxLayout(children, BoxLayout.Y_AXIS));
+        children.setBackground(UITheme.BG_DARK);
+        children.setAlignmentX(LEFT_ALIGNMENT);
+        children.setVisible(expanded);
+
+        for (Ledger.Entry e : entries) {
+            children.add(makeEntryRow(e.name, e.amount, 28));
+        }
+
+        // Toggle on click
+        header.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent ev) {
+                boolean nowExpanded = !expandedState.getOrDefault(expandKey, false);
+                expandedState.put(expandKey, nowExpanded);
+                children.setVisible(nowExpanded);
+                categoryLabel.setText((nowExpanded ? "▾ " : "▸ ") + capitalize(category));
+                container.revalidate();
+                container.repaint();
+                projectionPanel.revalidate();
+                projectionPanel.repaint();
+            }
+        });
+
+        container.add(header);
+        container.add(children);
+        return container;
+    }
+
+    private JPanel makeEntryRow(String label, int amount, int leftPad) {
         JPanel row = new JPanel(new BorderLayout());
         row.setBackground(UITheme.BG_DARK);
-        row.setBorder(new EmptyBorder(1, 16, 1, 6));
+        row.setBorder(new EmptyBorder(1, leftPad, 1, 6));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
         row.setAlignmentX(LEFT_ALIGNMENT);
 
@@ -161,5 +253,14 @@ public class LedgerDialog extends JDialog {
         row.add(nameLabel,   BorderLayout.WEST);
         row.add(amountLabel, BorderLayout.EAST);
         return row;
+    }
+
+    private JLabel makeSectionHeader2(String text) {
+        return makeSectionHeader(text);
+    }
+
+    private String capitalize(String s) {
+        if (s == null || s.isEmpty()) return s;
+        return Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 }
