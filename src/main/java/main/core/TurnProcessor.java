@@ -63,6 +63,17 @@ public List<String> processTurn(
 
         applyLedgerToResources(ledger, resources);
 
+        // ── Player fight phase ────────────────────────────────────────────────
+        main.army.PlayerCombatProcessor pcp = gameState.getPlayerCombatProcessor();
+        log.addAll(pcp.processTurn(
+                gameState.getArmyManager(),
+                gameState.getBarbArmyManager(),
+                nobleHouseManager,
+                gameState.getZoneManager(),
+                gameState.getRavagedZoneManager(),
+                nobleHouseManager.getClaimManager()));
+
+        // ── Barbarian phase ───────────────────────────────────────────────────
         BarbInvasionProcessor barbProcessor = gameState.getBarbInvasionProcessor();
         barbProcessor.setPayOffCallback((army, res, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
             if (payOffDialogSupplier == null) return false;

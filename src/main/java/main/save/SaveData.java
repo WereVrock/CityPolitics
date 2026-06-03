@@ -158,6 +158,11 @@ public class SaveData {
         public String  zoneId;
         public int     size;
         public boolean dragging;
+        // Commander fields (nullable — armies without commanders use defaults)
+        public String  commanderName;
+        public String  commanderRace;
+        public String  commanderAffiliation;
+        public int     commanderSkill;
         public PlayerArmyEntry() {}
     }
 

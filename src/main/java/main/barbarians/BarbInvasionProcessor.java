@@ -326,7 +326,9 @@ public class BarbInvasionProcessor {
             String zoneId = entry.getKey();
             List<BarbArmy> armiesInZone = entry.getValue();
 
-            if (Army.HEARTLAND_ID.equals(zoneId)) {
+            // Check if player armies defend this non-heartland zone
+        // (heartland handled separately below)
+        if (Army.HEARTLAND_ID.equals(zoneId)) {
                 // Only the Warboss can threaten the heartland
                 BarbArmy wb = null;
                 for (BarbArmy a : armiesInZone) {
@@ -398,7 +400,9 @@ public class BarbInvasionProcessor {
             }
         }
 
-        // Collect player armies in this zone
+        // Player armies already engaged barbarians this turn in the player fight phase.
+        // Here we only care about barbs that moved INTO a player zone AFTER the player
+        // phase, so we still resolve: player defends, gets bonuses, garrison helps.
         List<Army> playerArmies = new ArrayList<>();
         for (Army a : playerArmyManager.getDeployedArmies()) {
             if (zoneId.equals(a.getZoneId()) && a.isAlive()) playerArmies.add(a);

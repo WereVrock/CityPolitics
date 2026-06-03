@@ -16,9 +16,15 @@ public class ArmyManager {
     }
 
 private void spawnStartingArmies() {
-        addArmy(new Army("army_1", "Thunder Legion"));
-        addArmy(new Army("army_2", "Knights of Ruin"));
-        addArmy(new Army("army_3", "Iron Wolves"));
+        addArmy(new Army("army_1", "Thunder Legion",
+                new Commander("General Aldric Vane", "Human",
+                        main.politics.PolitcalView.MILITARIST, 3)));
+        addArmy(new Army("army_2", "Knights of Ruin",
+                new Commander("Commander Syla Dorn", "Human",
+                        main.politics.PolitcalView.HUMAN_SUPREMACIST, 2)));
+        addArmy(new Army("army_3", "Iron Wolves",
+                new Commander("Warchief Brunn Ashfist", "Orc",
+                        main.politics.PolitcalView.WARMONGERING, 4)));
     }
 
 private void addArmy(Army army) {

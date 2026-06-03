@@ -44,6 +44,8 @@ public class MainWindow extends JFrame {
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
         loadBuildInfo();
+        rewireCallbacks();
+
         gameState.getTurnProcessor().setPayOffDialogSupplier((army, resources, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
             java.awt.Window win = this;
             final boolean[] result = {false};
@@ -127,22 +129,7 @@ public class MainWindow extends JFrame {
 
         newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> {
             mapView.reinitialize(gameState);
-            gameState.getTurnProcessor().setPayOffDialogSupplier(
-                    (army, resources, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
-                java.awt.Window win = this;
-                final boolean[] result = {false};
-                if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-                    result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
-                            zoneId, owner, playerArmies, nobleArmies, nobleGarrison);
-                } else {
-                    try {
-                        javax.swing.SwingUtilities.invokeAndWait(() ->
-                            result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
-                                    zoneId, owner, playerArmies, nobleArmies, nobleGarrison));
-                    } catch (Exception ignored) {}
-                }
-                return result[0];
-            });
+            rewireCallbacks();
             showMainView();
             resetLogs();
         }));
@@ -446,6 +433,62 @@ private JPanel createStatusBar() {
         statusBar.add(versionLabel);
 
         return statusBar;
+    }
+
+/**
+     * Shows a modal dialog asking the player to assign a liberated zone to a noble house.
+     * Returns the chosen house, or the first claimant if the player closes without choosing.
+     */
+    private main.nobles.NobleHouse showZoneAwardDialog(
+            String zoneId, java.util.List<main.nobles.NobleHouse> claimants) {
+
+        if (claimants.isEmpty()) return null;
+
+        String zoneName = zoneId.replace("_", " ");
+        String[] options = claimants.stream()
+                .map(h -> h.getName() + " (opinion: " + h.getPlayerOpinion() + ")")
+                .toArray(String[]::new);
+
+        int choice = JOptionPane.showOptionDialog(
+                this,
+                "The zone " + zoneName + " has been liberated from the barbarians!\n"
+                + "Which noble house should receive it?",
+                "Assign Liberated Zone",
+                JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                options,
+                options[0]);
+
+        return (choice >= 0 && choice < claimants.size())
+                ? claimants.get(choice)
+                : claimants.get(0);
+    }
+
+/**
+     * Re-wires all processor callbacks that reference UI components.
+     * Must be called after construction and after gameState.reset() (new game).
+     */
+    private void rewireCallbacks() {
+        gameState.getPlayerCombatProcessor().setZoneAwardCallback(
+                (zoneId, claimants) -> showZoneAwardDialog(zoneId, claimants));
+
+        gameState.getTurnProcessor().setPayOffDialogSupplier(
+                (army, resources, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
+            java.awt.Window win = this;
+            final boolean[] result = {false};
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                        zoneId, owner, playerArmies, nobleArmies, nobleGarrison);
+            } else {
+                try {
+                    javax.swing.SwingUtilities.invokeAndWait(() ->
+                        result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                                zoneId, owner, playerArmies, nobleArmies, nobleGarrison));
+                } catch (Exception ignored) {}
+            }
+            return result[0];
+        });
     }
 
 }

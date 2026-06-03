@@ -257,7 +257,7 @@ public class SaveManager {
         return list;
     }
 
-    private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs) {
+private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs) {
         List<SaveData.PlayerArmyEntry> list = new ArrayList<>();
         for (Army a : gs.getArmyManager().getArmies()) {
             SaveData.PlayerArmyEntry e = new SaveData.PlayerArmyEntry();
@@ -266,12 +266,19 @@ public class SaveManager {
             e.zoneId      = a.getZoneId();
             e.size        = a.getSize();
             e.dragging    = a.isDragging();
+            main.army.Commander cmd = a.getCommander();
+            if (cmd != null) {
+                e.commanderName        = cmd.getName();
+                e.commanderRace        = cmd.getRace();
+                e.commanderAffiliation = cmd.getAffiliation().name();
+                e.commanderSkill       = cmd.getCommandingSkill();
+            }
             list.add(e);
         }
         return list;
     }
 
-    private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) {
+private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) {
         BarbInvasionState s = gs.getBarbInvasionState();
         SaveData.BarbInvasionStateEntry e = new SaveData.BarbInvasionStateEntry();
         e.phase                   = s.getPhase().name();
@@ -549,28 +556,35 @@ public class SaveManager {
         }
     }
 
-    private static void applyPlayerArmies(SaveData data, GameState gs) {
+private static void applyPlayerArmies(SaveData data, GameState gs) {
         if (data.playerArmies == null) return;
         ArmyManager am = gs.getArmyManager();
         am.reset();
-        for (SaveData.PlayerArmyEntry entry : data.playerArmies) {
-            Army army = am.getArmy(entry.id);
-            if (army == null) continue; // spawned by reset(); match by id isn't reliable — match by displayName
-            // Reset gives fixed IDs; match by displayName instead
-        }
-        // Better: reset spawns the 3 fixed armies; restore their state by displayName
         for (SaveData.PlayerArmyEntry entry : data.playerArmies) {
             for (Army army : am.getArmies()) {
                 if (army.getDisplayName().equals(entry.displayName)) {
                     army.setSize(entry.size);
                     army.moveTo(entry.zoneId);
+                    if (entry.commanderName != null) {
+                        main.politics.PolitcalView affil;
+                        try {
+                            affil = main.politics.PolitcalView.valueOf(entry.commanderAffiliation);
+                        } catch (Exception ex) {
+                            affil = main.politics.PolitcalView.NONE;
+                        }
+                        army.setCommander(new main.army.Commander(
+                                entry.commanderName,
+                                entry.commanderRace,
+                                affil,
+                                entry.commanderSkill));
+                    }
                     break;
                 }
             }
         }
     }
 
-    private static void applyBarbState(SaveData data, GameState gs) {
+private static void applyBarbState(SaveData data, GameState gs) {
         if (data.barbInvasionState == null) return;
         BarbInvasionState s = gs.getBarbInvasionState();
         SaveData.BarbInvasionStateEntry e = data.barbInvasionState;
