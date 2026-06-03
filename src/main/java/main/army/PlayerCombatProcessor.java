@@ -154,7 +154,10 @@ private List<String> resolvePlayerVsBarb(
 
         List<String> log = new ArrayList<>();
 
-        List<NobleArmy> nobleAllies = collectNobleAllies(zoneId, nobleHouseManager);
+        // Collect idle noble armies AND noble garrison in this zone as allies
+        List<NobleArmy> nobleAllies    = collectNobleAllies(zoneId, nobleHouseManager);
+        int             nobleGarrison  = collectNobleGarrison(zoneId, nobleHouseManager);
+        NobleHouse      garrisonOwner  = nobleHouseManager.getOwnerOfZone(zoneId);
 
         List<ArmyForce> attackerForces = new ArrayList<>();
         List<ArmyForce> playerForces   = new ArrayList<>();
@@ -168,12 +171,28 @@ private List<String> resolvePlayerVsBarb(
                     playerArmy.getDisplayName() + " size=" + playerArmy.getSize() + " skill=" + skill);
         }
 
+        // Noble garrison as combined force
+        ArmyForce garrisonForce = null;
+        if (nobleGarrison > 0 && garrisonOwner != null) {
+            int mil = garrisonOwner.getActiveCharacter() != null
+                    ? garrisonOwner.getActiveCharacter().getMilitary() : 0;
+            garrisonForce = new ArmyForce("garrison_" + garrisonOwner.getId(),
+                    nobleGarrison, 0, mil);
+            attackerForces.add(garrisonForce);
+            log.add(garrisonOwner.getName() + " garrison (" + nobleGarrison + ") joins the fight at " + zoneId + ".");
+            Debug.log("player-combat", "garrison-ally",
+                    garrisonOwner.getName() + " garrison " + nobleGarrison + " joins at " + zoneId);
+        }
+
+        List<ArmyForce> nobleAllyForces = new ArrayList<>();
         for (NobleArmy na : nobleAllies) {
             NobleHouse h = nobleHouseManager.getHouseById(na.getHouseId());
             int mil = h != null && h.getActiveCharacter() != null
                     ? h.getActiveCharacter().getMilitary() : 0;
-            attackerForces.add(new ArmyForce(na.getHouseId(), na.getSize(), 0, mil));
-            log.add(h != null ? h.getName() + " joins the player's attack." : "Noble army joins.");
+            ArmyForce f = new ArmyForce(na.getHouseId(), na.getSize(), 0, mil);
+            attackerForces.add(f);
+            nobleAllyForces.add(f);
+            log.add((h != null ? h.getName() : "Noble army") + " joins the player's attack at " + zoneId + ".");
         }
 
         boolean isDesolate       = zone != null && zone.isDesolate();
@@ -191,25 +210,30 @@ private List<String> resolvePlayerVsBarb(
 
         log.add("Player attacks " + barb.getType().name()
                 + " (player: " + totalPlayerSize
-                + ", allies: " + totalAllySize
+                + ", noble allies: " + totalAllySize
+                + ", garrison: " + nobleGarrison
                 + " vs barbs: " + barb.getSize() + ")"
                 + (isDesolate ? " [desolate +30% barb def]" : ""));
 
-        // Use first player force as lead attacker for winner determination
         String leadId = "player_" + playerArmies.get(0).getId();
         CombatResult result = CombatResolver.resolveMultiSideBattle(
                 attackerForces, defenderForces, leadId, "barbarians", 0);
         log.addAll(result.getLog());
 
-        // Apply losses back to each player army from their respective force
+        // Apply losses to player armies
         for (int i = 0; i < playerArmies.size(); i++) {
             playerArmies.get(i).setSize(playerForces.get(i).getRawSize());
         }
 
-        // Apply losses to noble allies (forces start after playerForces in attackerForces)
-        int idx = playerForces.size();
-        for (NobleArmy na : nobleAllies) {
-            na.setSize(attackerForces.get(idx++).getRawSize());
+        // Apply losses to garrison
+        if (garrisonForce != null && garrisonOwner != null) {
+            int garrisonLost = nobleGarrison - garrisonForce.getRawSize();
+            if (garrisonLost > 0) garrisonOwner.damageGarrison(zoneId, garrisonLost);
+        }
+
+        // Apply losses to noble ally armies
+        for (int i = 0; i < nobleAllies.size(); i++) {
+            nobleAllies.get(i).setSize(nobleAllyForces.get(i).getRawSize());
         }
 
         int barbRawLoss = isDesolate
@@ -245,7 +269,9 @@ private List<String> resolvePlayerVsGarrison(
 
         List<String> log = new ArrayList<>();
 
-        List<NobleArmy> nobleAllies = collectNobleAllies(zoneId, nobleHouseManager);
+        List<NobleArmy> nobleAllies   = collectNobleAllies(zoneId, nobleHouseManager);
+        int             nobleGarrison = collectNobleGarrison(zoneId, nobleHouseManager);
+        NobleHouse      garrisonOwner = nobleHouseManager.getOwnerOfZone(zoneId);
 
         List<ArmyForce> attackerForces = new ArrayList<>();
         List<ArmyForce> playerForces   = new ArrayList<>();
@@ -257,23 +283,38 @@ private List<String> resolvePlayerVsGarrison(
             playerForces.add(f);
         }
 
+        ArmyForce garrisonForce = null;
+        if (nobleGarrison > 0 && garrisonOwner != null) {
+            int mil = garrisonOwner.getActiveCharacter() != null
+                    ? garrisonOwner.getActiveCharacter().getMilitary() : 0;
+            garrisonForce = new ArmyForce("garrison_" + garrisonOwner.getId(),
+                    nobleGarrison, 0, mil);
+            attackerForces.add(garrisonForce);
+            log.add(garrisonOwner.getName() + " garrison (" + nobleGarrison + ") joins player assault at " + zoneId + ".");
+        }
+
+        List<ArmyForce> nobleAllyForces = new ArrayList<>();
         for (NobleArmy na : nobleAllies) {
             NobleHouse h = nobleHouseManager.getHouseById(na.getHouseId());
             int mil = h != null && h.getActiveCharacter() != null
                     ? h.getActiveCharacter().getMilitary() : 0;
-            attackerForces.add(new ArmyForce(na.getHouseId(), na.getSize(), 0, mil));
-            log.add(h != null ? h.getName() + " joins player's garrison assault." : "Noble ally joins.");
+            ArmyForce f = new ArmyForce(na.getHouseId(), na.getSize(), 0, mil);
+            attackerForces.add(f);
+            nobleAllyForces.add(f);
+            log.add((h != null ? h.getName() : "Noble ally") + " joins player's garrison assault at " + zoneId + ".");
         }
 
-        ArmyForce       garrisonForce  = new ArmyForce("barbarians", garrison.getSize(), 0, 0);
-        List<ArmyForce> defenderForces = new ArrayList<>();
-        defenderForces.add(garrisonForce);
+        ArmyForce       barbGarrisonForce = new ArmyForce("barbarians", garrison.getSize(), 0, 0);
+        List<ArmyForce> defenderForces    = new ArrayList<>();
+        defenderForces.add(barbGarrisonForce);
 
         int totalPlayerSize = 0;
         for (Army a : playerArmies) totalPlayerSize += a.getSize();
 
         log.add("Player assaults barbarian garrison at " + zoneId
-                + " (" + totalPlayerSize + " player vs " + garrison.getSize() + " garrison)");
+                + " (" + totalPlayerSize + " player"
+                + (nobleGarrison > 0 ? ", " + nobleGarrison + " garrison" : "")
+                + " vs " + garrison.getSize() + " barb garrison)");
 
         String leadId = "player_" + playerArmies.get(0).getId();
         CombatResult result = CombatResolver.resolveMultiSideBattle(
@@ -284,9 +325,13 @@ private List<String> resolvePlayerVsGarrison(
             playerArmies.get(i).setSize(playerForces.get(i).getRawSize());
         }
 
-        int idx = playerForces.size();
-        for (NobleArmy na : nobleAllies) {
-            na.setSize(attackerForces.get(idx++).getRawSize());
+        if (garrisonForce != null && garrisonOwner != null) {
+            int garrisonLost = nobleGarrison - garrisonForce.getRawSize();
+            if (garrisonLost > 0) garrisonOwner.damageGarrison(zoneId, garrisonLost);
+        }
+
+        for (int i = 0; i < nobleAllies.size(); i++) {
+            nobleAllies.get(i).setSize(nobleAllyForces.get(i).getRawSize());
         }
 
         garrison.applyLosses(result.getDefenderLosses());
@@ -371,6 +416,22 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
             }
         }
         return allies;
+    }
+
+/**
+     * Returns the total garrison size of the noble house that owns this zone.
+     * Only the owning house's garrison fights — non-owner houses cannot have
+     * garrisoned soldiers in someone else's zone.
+     */
+    private int collectNobleGarrison(String zoneId, NobleHouseManager nhm) {
+        NobleHouse owner = nhm.getOwnerOfZone(zoneId);
+        if (owner == null) return 0;
+        int garrison = owner.getGarrisonFor(zoneId);
+        if (garrison > 0) {
+            Debug.log("player-combat", "garrison-found",
+                    owner.getName() + " garrison=" + garrison + " at " + zoneId);
+        }
+        return garrison;
     }
 
 /**
