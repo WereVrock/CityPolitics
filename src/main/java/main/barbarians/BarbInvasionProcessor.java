@@ -188,7 +188,8 @@ public class BarbInvasionProcessor {
     }
 
     // ─── Raider splitting ────────────────────────────────────────────────────
-    private List<String> splitRaiderFromWarboss(int absoluteTurn) {
+
+private List<String> splitRaiderFromWarboss(int absoluteTurn) {
         List<String> log = new ArrayList<>();
         BarbArmy wb = armyManager.getWarboss();
         if (wb == null) return log;
@@ -198,16 +199,18 @@ public class BarbInvasionProcessor {
         if (splitSize >= wb.getSize()) return log;
 
         wb.setSize(wb.getSize() - splitSize);
-        BarbArmy raider = armyManager.spawnRaider(wb.getZoneId(), splitSize);
+        armyManager.spawnRaider(wb.getZoneId(), splitSize);
 
-        log("raider-split", "Split " + splitSize + " raiders from warboss at " + wb.getZoneId() +
-                ", warboss remaining " + wb.getSize());
+        // Log warboss size after split (before any movement merges)
+        log("raider-split", "Split " + splitSize + " from warboss at " + wb.getZoneId()
+                + " — warboss now " + wb.getSize()
+                + " (note: may increase if warboss merges with raiders on move)");
         log.add("☠ " + splitSize + " barbarian raiders break off from the Warboss.");
 
         return log;
     }
 
-    // ─── Movement ────────────────────────────────────────────────────────────
+// ─── Movement ────────────────────────────────────────────────────────────
     private List<String> moveArmies() {
         List<String> log = new ArrayList<>();
 
@@ -393,7 +396,7 @@ public class BarbInvasionProcessor {
         return log;
     }
 
-    private List<String> resolveCombatInZone(BarbArmy barb, String zoneId, ResourcePool playerResources) {
+private List<String> resolveCombatInZone(BarbArmy barb, String zoneId, ResourcePool playerResources) {
         List<String> log = new ArrayList<>();
         NobleHouse owner = nobleHouseManager.getOwnerOfZone(zoneId);
 
@@ -413,9 +416,22 @@ public class BarbInvasionProcessor {
             if (zoneId.equals(a.getZoneId()) && a.isAlive()) playerArmies.add(a);
         }
 
-        boolean hasNobleDefender = owner != null;
+        boolean hasNobleDefender  = owner != null;
         boolean hasPlayerDefender = !playerArmies.isEmpty();
-        boolean hasDefenders = hasNobleDefender || hasPlayerDefender;
+        boolean hasDefenders      = hasNobleDefender || hasPlayerDefender;
+
+        // Desolate zones have nothing to conquer or raid — skip entirely
+        Zone zone = zoneManager.getZone(zoneId);
+        boolean isDesolate = zone != null && zone.isDesolate();
+        if (isDesolate && !hasDefenders) {
+            log("combat-skip", barb.getType() + " [" + barb.getId() + "] in desolate " + zoneId + " — no action");
+            return log;
+        }
+
+        log("combat-zone-check", barb.getType() + " [" + barb.getId() + "] at " + zoneId
+                + " — noble=" + hasNobleDefender
+                + " player=" + hasPlayerDefender
+                + " size=" + barb.getSize());
 
         if (!hasDefenders) {
             if (barb.isRaider()) {
@@ -448,22 +464,21 @@ public class BarbInvasionProcessor {
             }
         }
 
-        // --- Collect ALL noble defenders in this zone (owner garrison + any noble armies) ---
+        // Collect ALL noble defenders in this zone (owner garrison + any noble armies)
         int nobleGarrison = 0;
-        int nobleFort = 0;
+        int nobleFort     = 0;
         int nobleMilitary = 0;
         List<NobleArmy> nobleArmies = new ArrayList<>();
         if (hasNobleDefender) {
             nobleGarrison = owner.getGarrisonFor(zoneId);
-            nobleFort = owner.getFortificationFor(zoneId);
+            nobleFort     = owner.getFortificationFor(zoneId);
             nobleMilitary = owner.getActiveCharacter() != null ? owner.getActiveCharacter().getMilitary() : 0;
-            // Owner's armies in zone
             nobleArmies.addAll(nobleHouseManager.getArmyManager()
                     .getArmiesInZone(zoneId, owner.getId()));
         }
 
         // Non-owner noble armies in zone also defend (idle armies only)
-        for (NobleHouse allied : nobleHouseManager.getHouses()) {
+        for (NobleHouse allied : new ArrayList<>(nobleHouseManager.getHouses())) {
             if (allied == owner || allied.isEliminated()) continue;
             for (NobleArmy na : nobleHouseManager.getArmyManager()
                     .getArmiesInZone(zoneId, allied.getId())) {
@@ -484,18 +499,24 @@ public class BarbInvasionProcessor {
         totalDefenderSize += playerContribution;
 
         // Barbarians are always the attacker — apply defender bonus
-        double defBonus = 1.0 + GameParameters.BARB_DEFENDER_BONUS;
-        int boostedDefSize = (int) (totalDefenderSize * defBonus);
+        double defBonus       = 1.0 + GameParameters.BARB_DEFENDER_BONUS;
+        int    boostedDefSize = (int) (totalDefenderSize * defBonus);
 
-        log.add("☠ " + barb.getType().name() + " attacks " + zoneId + " (" + barb.getSize() + " vs " +
-                totalDefenderSize + " defenders" +
-                (nobleGarrison > 0 ? ", garrison: " + nobleGarrison : "") +
-                (playerContribution > 0 ? ", player: " + playerContribution : "") + ")");
+        String defenderLabel = hasNobleDefender ? owner.getId() : "player";
+        log.add("☠ " + barb.getType().name() + " attacks " + zoneId
+                + " (" + barb.getSize() + " vs " + totalDefenderSize + " defenders"
+                + (nobleGarrison     > 0 ? ", garrison: " + nobleGarrison     : "")
+                + (playerContribution > 0 ? ", player: "  + playerContribution : "")
+                + ")");
+
+        log("combat-resolve", barb.getType() + " " + barb.getId()
+                + " fighting at " + zoneId + " vs " + defenderLabel
+                + " boostedDef=" + boostedDefSize);
 
         main.nobles.combat.ArmyForce atkForce = new main.nobles.combat.ArmyForce(
                 "barbarians", barb.getSize(), 0, 0);
         main.nobles.combat.ArmyForce defForce = new main.nobles.combat.ArmyForce(
-                hasNobleDefender ? owner.getId() : "player", boostedDefSize, nobleFort, nobleMilitary);
+                defenderLabel, boostedDefSize, nobleFort, nobleMilitary);
 
         main.nobles.combat.CombatResult result = main.nobles.combat.CombatResolver.resolve(atkForce, defForce);
         log.addAll(result.getLog());
@@ -504,15 +525,28 @@ public class BarbInvasionProcessor {
         int rawDefLoss = (int) (result.getDefenderLosses() / defBonus);
         boolean barbWon = "barbarians".equals(result.getWinnerId());
 
+        log("combat-outcome", barb.getType() + " at " + zoneId
+                + " — barbWon=" + barbWon
+                + " barbRemaining=" + barb.getSize()
+                + " rawDefLoss=" + rawDefLoss);
+
+        distributeDefenderLosses(rawDefLoss, nobleGarrison, nobleArmies, playerArmies, owner, zoneId, log);
+
         if (barbWon) {
-            distributeDefenderLosses(rawDefLoss, nobleGarrison, nobleArmies, playerArmies, owner, zoneId, log);
+            // Recall surviving player armies to heartland
+            for (Army a : playerArmies) {
+                if (a.isAlive()) {
+                    a.recallToCity();
+                    log.add("☠ " + a.getDisplayName() + " is driven back to the Heartland!");
+                    log("player-recall", a.getDisplayName() + " recalled after barb win at " + zoneId);
+                }
+            }
             if (barb.isRaider()) {
                 log.addAll(raidZone(barb, zoneId, owner));
             } else {
                 log.addAll(conquerZone(barb, zoneId, owner));
             }
         } else {
-            distributeDefenderLosses(rawDefLoss, nobleGarrison, nobleArmies, playerArmies, owner, zoneId, log);
             log.add("Defenders repel the barbarian assault on " + zoneId + ".");
             log("combat-defended", "Barbarians defeated at " + zoneId);
             if (!barb.isAlive()) {
@@ -524,7 +558,7 @@ public class BarbInvasionProcessor {
         return log;
     }
 
-    private void distributeDefenderLosses(int rawLoss, int nobleGarrison, List<NobleArmy> nobleArmies,
+private void distributeDefenderLosses(int rawLoss, int nobleGarrison, List<NobleArmy> nobleArmies,
                                           List<Army> playerArmies, NobleHouse owner, String zoneId, List<String> log) {
         int remaining = rawLoss;
 
