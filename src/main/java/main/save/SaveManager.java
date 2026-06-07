@@ -268,10 +268,11 @@ private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs
             e.dragging    = a.isDragging();
             main.army.Commander cmd = a.getCommander();
             if (cmd != null) {
-                e.commanderName        = cmd.getName();
-                e.commanderRace        = cmd.getRace();
-                e.commanderAffiliation = cmd.getAffiliation().name();
-                e.commanderSkill       = cmd.getCommandingSkill();
+                e.commanderName      = cmd.getName();
+                e.commanderRace      = cmd.getRace();
+                e.commanderPartyName = cmd.getPartyName();
+                e.commanderSkill     = cmd.getCommandingSkill();
+                e.commanderXp        = cmd.getXp();
             }
             list.add(e);
         }
@@ -564,19 +565,33 @@ private static void applyPlayerArmies(SaveData data, GameState gs) {
             for (Army army : am.getArmies()) {
                 if (army.getDisplayName().equals(entry.displayName)) {
                     army.setSize(entry.size);
-                    army.moveTo(entry.zoneId);
+                    // Restore commander BEFORE moveTo so the deployment guard passes
                     if (entry.commanderName != null) {
-                        main.politics.PolitcalView affil;
-                        try {
-                            affil = main.politics.PolitcalView.valueOf(entry.commanderAffiliation);
-                        } catch (Exception ex) {
-                            affil = main.politics.PolitcalView.NONE;
+                        main.politics.PoliticalParty party = null;
+                        if (entry.commanderPartyName != null) {
+                            for (main.politics.PoliticalParty p
+                                    : gs.getPartyManager().getParties()) {
+                                if (p.getName().equals(entry.commanderPartyName)) {
+                                    party = p;
+                                    break;
+                                }
+                            }
                         }
-                        army.setCommander(new main.army.Commander(
+                        main.army.Commander cmd = new main.army.Commander(
                                 entry.commanderName,
                                 entry.commanderRace,
-                                affil,
-                                entry.commanderSkill));
+                                party,
+                                entry.commanderSkill);
+                        if (entry.commanderXp > 0) cmd.addXp(entry.commanderXp);
+                        army.setCommander(cmd);
+                    }
+                    // moveTo after commander set — guard will allow if commander present
+                    if (Army.HEARTLAND_ID.equals(entry.zoneId)) {
+                        army.recallToCity();
+                    } else {
+                        // Bypass the guard for save restoration by setting field directly
+                        // via the internal-zone setter (no commander required on load)
+                        army.restoreZone(entry.zoneId);
                     }
                     break;
                 }

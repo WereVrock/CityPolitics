@@ -377,11 +377,11 @@ private List<String> resolvePlayerAttack(
             }
 
             // Prestige for affiliated party
-            if (playerWon && partyManager != null) {
+            if (playerWon && c.getParty() != null) {
                 int prestige = CombatPrestigeCalculator.computePrestige(rawScore);
-                partyManager.addPrestige(c.getAffiliation(), prestige);
+                c.getParty().addPrestige(prestige);
                 Debug.log("player-combat", "prestige",
-                        c.getName() + " party=" + c.getAffiliation() + " +" + prestige);
+                        c.getName() + " party=" + c.getPartyName() + " +" + prestige);
             }
 
             // Death roll — use the army's size before and after to get losses

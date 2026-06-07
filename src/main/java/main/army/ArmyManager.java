@@ -17,18 +17,14 @@ public class ArmyManager {
     }
 
 private void spawnStartingArmies() {
-        addArmy(new Army("army_1", "Thunder Legion",
-                new Commander("General Aldric Vane", "Human",
-                        main.politics.PolitcalView.MILITARIST, 3)));
-        addArmy(new Army("army_2", "Knights of Ruin",
-                new Commander("Commander Syla Dorn", "Human",
-                        main.politics.PolitcalView.HUMAN_SUPREMACIST, 2)));
-        addArmy(new Army("army_3", "Iron Wolves",
-                new Commander("Warchief Brunn Ashfist", "Orc",
-                        main.politics.PolitcalView.WARMONGERING, 4)));
+        // Starting armies have no party-affiliated commanders —
+        // player assigns commanders via the Military panel.
+        addArmy(new Army("army_1", "Thunder Legion"));
+        addArmy(new Army("army_2", "Knights of Ruin"));
+        addArmy(new Army("army_3", "Iron Wolves"));
     }
 
-    private void addArmy(Army army) {
+private void addArmy(Army army) {
         armies.add(army);
         armyById.put(army.getId(), army);
         Debug.log("army-manager", "add", army.getId() + " — " + army.getDisplayName());

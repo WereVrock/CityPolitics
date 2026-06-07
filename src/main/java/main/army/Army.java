@@ -51,13 +51,28 @@ public class Army {
     public boolean isDeployed() { return !isInCity(); }
     public boolean isDragging() { return dragging; }
 
+/**
+     * Moves the army to the given zone.
+     * Silently refuses and recalls to heartland if the army has no living commander.
+     */
+
+/**
+     * Moves the army to the given zone.
+     * Silently refuses and recalls to heartland if the army has no living commander.
+     */
     public void moveTo(String zoneId) {
+        if (!hasLivingCommander()) {
+            Debug.log("army", "move-blocked",
+                    id + " cannot deploy — no living commander. Recalled.");
+            recallToCity();
+            return;
+        }
         this.zoneId   = zoneId;
         this.dragging = false;
         Debug.log("army", "move", id + " → " + zoneId);
     }
 
-    /**
+/**
      * Returns the army to heartland and cancels any drag state.
      * Called on player loss, commander death, or manual unassign.
      */
@@ -67,7 +82,16 @@ public class Army {
         Debug.log("army", "recalled", id + " — " + displayName);
     }
 
-    public void startDrag()  { this.dragging = true; }
+/**
+     * Restores the army's zone during save/load without the commander check.
+     * Must only be called from SaveManager during game restoration.
+     */
+    public void restoreZone(String zoneId) {
+        this.zoneId   = zoneId;
+        this.dragging = false;
+    }
+
+public void startDrag()  { this.dragging = true; }
     public void cancelDrag() { this.dragging = false; }
 
     // ─── Size / alive ─────────────────────────────────────────────────────────
@@ -109,9 +133,18 @@ public class Army {
     // ─── Commander ────────────────────────────────────────────────────────────
 
     public Commander getCommander()            { return commander; }
-    public void      setCommander(Commander c) { this.commander = c; }
 
-    /**
+public void setCommander(Commander c) {
+        this.commander = c;
+        // If commander removed and army is deployed, force recall immediately
+        if (c == null && !isInCity()) {
+            recallToCity();
+            Debug.log("army", "unassign-recall",
+                    id + " recalled — commander unassigned while deployed");
+        }
+    }
+
+/**
      * Commanding skill used in combat.
      * Defaults to 1 if no commander assigned.
      */

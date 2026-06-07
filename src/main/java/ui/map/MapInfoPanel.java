@@ -583,7 +583,7 @@ private void showCommanderDialog(main.army.Commander cmd) {
             new Color(180, 210, 255), UITheme.FONT_HEADER), dc);
     dc.gridy = row++; content.add(makeDialogLabel("Race: " + cmd.getRace(),
             UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), dc);
-    dc.gridy = row++; content.add(makeDialogLabel("Affiliation: " + cmd.getAffiliation().name(),
+    dc.gridy = row++; content.add(makeDialogLabel("Affiliation: " + cmd.getPartyName(),
             UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), dc);
     dc.gridy = row++; content.add(sep(), dc);
     dc.gridy = row++; content.add(makeDialogLabel(

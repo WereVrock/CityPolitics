@@ -5,7 +5,7 @@ import debug.Debug;
 import main.army.Commander;
 import main.parameters.GameParameters;
 import main.politics.PartyManager;
-import main.politics.PolitcalView;
+import main.politics.PoliticalParty;
 import main.resources.ResourcePool;
 
 import java.util.ArrayList;
@@ -46,10 +46,11 @@ public boolean recruit(Commander c) {
         if (resources.getInfluence() < cost) return false;
         resources.spendInfluence(cost);
         commanders.add(c);
-        partyManager.adjustOpinion(c.getAffiliation(),
-                GameParameters.COMMANDER_RECRUIT_OPINION_GAIN);
+        if (c.getParty() != null) {
+            c.getParty().adjustPlayerOpinion(GameParameters.COMMANDER_RECRUIT_OPINION_GAIN);
+        }
         Debug.log("commander-roster", "recruit",
-                c.getName() + " recruited. Influence spent=" + cost);
+                c.getName() + " party=" + c.getPartyName() + " influence spent=" + cost);
         return true;
     }
 
@@ -65,10 +66,11 @@ public boolean dismiss(Commander c) {
         if (resources.getInfluence() < cost) return false;
         resources.spendInfluence(cost);
         commanders.remove(c);
-        partyManager.adjustOpinion(c.getAffiliation(),
-                -GameParameters.COMMANDER_DISMISS_OPINION_LOSS);
+        if (c.getParty() != null) {
+            c.getParty().adjustPlayerOpinion(-GameParameters.COMMANDER_DISMISS_OPINION_LOSS);
+        }
         Debug.log("commander-roster", "dismiss",
-                c.getName() + " dismissed. Influence spent=" + cost);
+                c.getName() + " party=" + c.getPartyName() + " influence spent=" + cost);
         return true;
     }
 
@@ -113,9 +115,10 @@ public List<String> processTurnUpkeep() {
      * Returns how much power this roster contributes to a given party.
      * (10 per alive commander affiliated with that party.)
      */
-    public int getPartyPowerContribution(PolitcalView view) {
+
+public int getPartyPowerContribution(main.politics.PoliticalParty party) {
         int count = (int) commanders.stream()
-                .filter(c -> c.isAlive() && c.getAffiliation() == view)
+                .filter(c -> c.isAlive() && c.getParty() == party)
                 .count();
         return count * GameParameters.COMMANDER_PARTY_POWER_PER_ALIVE;
     }
@@ -124,14 +127,10 @@ public List<String> processTurnUpkeep() {
      * Applies commander party power contributions to all parties.
      * Called each turn after upkeep.
      */
-    public void applyPartyPowerContributions(PartyManager pm) {
+
+public void applyPartyPowerContributions(PartyManager pm) {
         for (main.politics.PoliticalParty party : pm.getParties()) {
-            PolitcalView dominantView = party.getViews().entrySet().stream()
-                    .filter(e -> e.getValue().getMultiplier() >= 0.5)
-                    .map(java.util.Map.Entry::getKey)
-                    .findFirst().orElse(null);
-            if (dominantView == null) continue;
-            int bonus = getPartyPowerContribution(dominantView);
+            int bonus = getPartyPowerContribution(party);
             if (bonus > 0) {
                 party.setPower(Math.min(100, party.getPower() + bonus));
                 Debug.log("commander-roster", "party-power",

@@ -234,7 +234,7 @@ public class MilitaryMenuUI extends JPanel {
                 "Skill " + c.getCommandingSkill()
                 + " | XP " + c.getXp()
                 + (c.xpToNextLevel() > 0 ? " (+" + c.xpToNextLevel() + " to next)" : " [MAX]")
-                + " | " + c.getAffiliation().getDisplayName());
+                + " | " + c.getPartyName());
         detailLabel.setFont(UITheme.FONT_SMALL);
         detailLabel.setForeground(UITheme.TEXT_SECONDARY);
 
@@ -258,7 +258,7 @@ public class MilitaryMenuUI extends JPanel {
                 int confirm = JOptionPane.showConfirmDialog(this,
                         "Dismiss " + c.getName() + "?\nCosts "
                         + GameParameters.COMMANDER_DISMISS_COST + " influence and lowers "
-                        + c.getAffiliation().getDisplayName() + " party opinion by "
+                        + c.getPartyName() + " party opinion by "
                         + GameParameters.COMMANDER_DISMISS_OPINION_LOSS + ".",
                         "Confirm Dismiss",
                         JOptionPane.YES_NO_OPTION);
@@ -299,7 +299,7 @@ public class MilitaryMenuUI extends JPanel {
             main.army.Commander c = available.get(i);
             options[i + 1] = c.getName()
                     + " [Skill " + c.getCommandingSkill()
-                    + " | " + c.getAffiliation().getDisplayName() + "]";
+                    + " | " + c.getPartyName() + "]";
         }
 
         String current = army.hasLivingCommander()

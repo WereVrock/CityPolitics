@@ -161,8 +161,9 @@ public class SaveData {
         // Commander fields (nullable — armies without commanders use defaults)
         public String  commanderName;
         public String  commanderRace;
-        public String  commanderAffiliation;
+        public String  commanderPartyName;   // PoliticalParty.getName()
         public int     commanderSkill;
+        public int     commanderXp;
         public PlayerArmyEntry() {}
     }
 

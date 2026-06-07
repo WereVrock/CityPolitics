@@ -147,7 +147,7 @@ public class CommanderRecruitUI extends JPanel {
         skillLabel.setFont(UITheme.FONT_SMALL);
         skillLabel.setForeground(UITheme.TEXT_SECONDARY);
 
-        JLabel partyLabel = new JLabel("Party: " + c.getAffiliation().getDisplayName());
+        JLabel partyLabel = new JLabel("Party: " + c.getPartyName());
         partyLabel.setFont(UITheme.FONT_SMALL);
         partyLabel.setForeground(UITheme.TEXT_SECONDARY);
 
@@ -184,8 +184,6 @@ public class CommanderRecruitUI extends JPanel {
                 Debug.log("recruit-ui", "recruited", c.getName() + " recruited successfully");
                 influenceLabel.setText("Influence: " + resources.getInfluence());
                 build();
-                JOptionPane.showMessageDialog(this,
-                        c.getName() + " has joined your forces!");
             }
         });
         card.add(recruitBtn);

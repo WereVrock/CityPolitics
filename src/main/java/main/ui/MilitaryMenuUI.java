@@ -4,7 +4,6 @@ import debug.Debug;
 import main.army.*;
 import main.parameters.GameParameters;
 import main.politics.PartyManager;
-import main.politics.PolitcalView;
 import main.politics.PoliticalParty;
 import main.resources.ResourcePool;
 
@@ -262,8 +261,7 @@ public class MilitaryMenuUI extends JPanel {
                         : "  [MAX SKILL]"),
                 UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
 
-        // Show party name, not PolitcalView enum name
-        String partyName = resolvePartyName(c.getAffiliation());
+        String partyName = resolvePartyName(c);
         addInfoLabel(info,
                 "Party: " + partyName
                 + "  |  Upkeep: " + String.format("%.1f", c.getUpkeepCost()) + " gold/turn",
@@ -364,12 +362,10 @@ public class MilitaryMenuUI extends JPanel {
         if (choice < 0) return;
 
         Army target      = targets.get(choice);
-        int  transferred = armyManager.mergeArmies(source, target);
+        int transferred = armyManager.mergeArmies(source, target);
         Debug.log("military-ui", "merge",
                 source.getDisplayName() + " → " + target.getDisplayName()
                 + " transferred=" + transferred);
-        JOptionPane.showMessageDialog(this,
-                transferred + " soldiers merged into " + target.getDisplayName() + ".");
         build();
     }
 
@@ -389,7 +385,7 @@ public class MilitaryMenuUI extends JPanel {
             Commander c = available.get(i);
             options[i + 1] = c.getName()
                     + "  [Skill " + c.getCommandingSkill()
-                    + " | " + resolvePartyName(c.getAffiliation()) + "]";
+                    + " | " + c.getPartyName() + "]";
         }
 
         String current = army.hasLivingCommander()
@@ -603,13 +599,8 @@ public class MilitaryMenuUI extends JPanel {
      * Resolves the player-facing party name from a PolitcalView affiliation.
      * Falls back to the view display name if no party claims that view strongly.
      */
-    private String resolvePartyName(PolitcalView view) {
-        if (view == null) return "None";
-        for (PoliticalParty party : partyManager.getParties()) {
-            double strength = party.getViewStrength(view).getMultiplier();
-            if (strength >= 0.5) return party.getName();
-        }
-        return view.getDisplayName();
+    private String resolvePartyName(main.army.Commander c) {
+        return c.getPartyName();
     }
 
     // ─── Button factories ─────────────────────────────────────────────────────

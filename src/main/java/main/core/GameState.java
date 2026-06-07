@@ -88,7 +88,7 @@ public class GameState {
         playerCombatProcessor = new main.army.PlayerCombatProcessor();
         playerCombatProcessor.setPartyManager(partyManager);
         commanderRoster      = new main.army.CommanderRoster(resources, partyManager);
-        commanderRecruitPool = new main.army.CommanderRecruitPool(resources);
+        commanderRecruitPool = new main.army.CommanderRecruitPool(resources, partyManager);
         // Note: zoneAwardCallback is re-wired by MainWindow after reset via
         // rewireCallbacks(). Do not set it here.
         bootstrapLedger();

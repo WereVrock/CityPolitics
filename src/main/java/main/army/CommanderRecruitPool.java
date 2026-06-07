@@ -19,8 +19,12 @@ public class CommanderRecruitPool {
     private final ResourcePool    resources;
     private boolean               refreshUsedThisTurn = false;
 
-    public CommanderRecruitPool(ResourcePool resources) {
-        this.resources = resources;
+    private final main.politics.PartyManager partyManager;
+
+    public CommanderRecruitPool(ResourcePool resources,
+                                main.politics.PartyManager partyManager) {
+        this.resources    = resources;
+        this.partyManager = partyManager;
         refillBase();
     }
 
@@ -36,11 +40,11 @@ public class CommanderRecruitPool {
 
 private void refillBase() {
         for (int i = 0; i < GameParameters.COMMANDER_POOL_BASE_SIZE; i++) {
-            pool.add(CommanderFactory.createRandom());
+            pool.add(CommanderFactory.createRandom(partyManager));
         }
     }
 
-    /**
+/**
      * Pay influence to add 3 more candidates.
      * @return false if player cannot afford it.
      */
@@ -49,7 +53,8 @@ private void refillBase() {
      * Pay influence to add 3 more candidates. Can only be used once per turn.
      * @return false if already used this turn or player cannot afford.
      */
-    public boolean refreshPool() {
+
+public boolean refreshPool() {
         if (refreshUsedThisTurn) {
             Debug.log("recruit-pool", "refresh-denied", "Already refreshed this turn.");
             return false;
@@ -61,7 +66,7 @@ private void refillBase() {
         }
         refreshUsedThisTurn = true;
         for (int i = 0; i < GameParameters.COMMANDER_POOL_REFRESH_SIZE; i++) {
-            pool.add(CommanderFactory.createRandom());
+            pool.add(CommanderFactory.createRandom(partyManager));
         }
         Debug.log("recruit-pool", "refresh", "Added " + GameParameters.COMMANDER_POOL_REFRESH_SIZE
                 + " candidates. Total pool=" + pool.size());
