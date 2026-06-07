@@ -26,7 +26,7 @@ public class ArmyListPanel extends JPanel {
 
     static final DataFlavor ARMY_FLAVOR = new DataFlavor(Army.class, "Army");
 
-    private final ArmyManager      armyManager;
+    private       ArmyManager      armyManager;
     private       DragDropCallback callback;
     private final JPanel           listContainer;
 
@@ -127,12 +127,9 @@ public class ArmyListPanel extends JPanel {
 /**
      * Re-wires the ArmyManager reference after gameState.reset() (new game).
      */
-    public void reinitialize(main.army.ArmyManager newArmyManager) {
-        try {
-            java.lang.reflect.Field f = ArmyListPanel.class.getDeclaredField("armyManager");
-            f.setAccessible(true);
-            f.set(this, newArmyManager);
-        } catch (Exception ignored) {}
+
+public void reinitialize(ArmyManager newArmyManager) {
+        this.armyManager = newArmyManager;
         refresh();
     }
 

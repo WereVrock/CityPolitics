@@ -308,11 +308,15 @@ private void swapCenter(JPanel panel) {
         swapCenter(mapView);
     }
 
-    private void showMilitaryView() {
+private void showMilitaryView() {
         main.army.CommanderRoster      roster = gameState.getCommanderRoster();
         main.army.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
-        ui.MilitaryMenuUI militaryUI     = new ui.MilitaryMenuUI(
-                gameState.getArmyManager(), roster, pool, gameState.getResources(),
+        main.ui.MilitaryMenuUI militaryUI     = new main.ui.MilitaryMenuUI(
+                gameState.getArmyManager(),
+                roster,
+                pool,
+                gameState.getResources(),
+                gameState.getPartyManager(),
                 this::showMainView);
         swapCenter(militaryUI);
     }

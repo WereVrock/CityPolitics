@@ -28,9 +28,58 @@ private void spawnStartingArmies() {
                         main.politics.PolitcalView.WARMONGERING, 4)));
     }
 
-private void addArmy(Army army) {
+    private void addArmy(Army army) {
         armies.add(army);
         armyById.put(army.getId(), army);
+        Debug.log("army-manager", "add", army.getId() + " — " + army.getDisplayName());
+    }
+
+    /**
+     * Creates a new army in heartland with the given display name and no commander.
+     * ID is generated automatically and guaranteed unique.
+     */
+    public Army createArmy(String displayName) {
+        String id   = generateId();
+        Army   army = new Army(id, displayName);
+        addArmy(army);
+        Debug.log("army-manager", "create", id + " — " + displayName);
+        return army;
+    }
+
+    /**
+     * Removes an army from the roster entirely.
+     * Caller is responsible for returning soldiers to manpower before calling this.
+     */
+    public void removeArmy(Army army) {
+        armies.remove(army);
+        armyById.remove(army.getId());
+        Debug.log("army-manager", "remove", army.getId() + " — " + army.getDisplayName());
+    }
+
+    /**
+     * Merges source into target: transfers all soldiers, then removes source.
+     * Source must be in heartland. Target receives soldiers.
+     * Returns number of soldiers transferred.
+     */
+    public int mergeArmies(Army source, Army target) {
+        int transferred = source.getSoldierCount();
+        target.addSoldiers(transferred);
+        source.removeSoldiers(transferred);
+        removeArmy(source);
+        Debug.log("army-manager", "merge",
+                source.getDisplayName() + " → " + target.getDisplayName()
+                + " transferred=" + transferred);
+        return transferred;
+    }
+
+    private String generateId() {
+        int n = armies.size() + 1;
+        String candidate = "army_" + n;
+        while (armyById.containsKey(candidate)) {
+            n++;
+            candidate = "army_" + n;
+        }
+        return candidate;
     }
 
     public List<Army> getArmies()        { return Collections.unmodifiableList(armies); }
@@ -58,11 +107,11 @@ private void addArmy(Army army) {
      * Armies whose commander has died are recalled to heartland on access.
      * Excludes dragging ones.
      */
-    public List<Army> getDeployedArmies() {
+
+public List<Army> getDeployedArmies() {
         List<Army> result = new ArrayList<>();
-        for (Army a : armies) {
+        for (Army a : new ArrayList<>(armies)) {
             if (!a.isInCity() && !a.isDragging()) {
-                // Enforce commander requirement: recall if commander is gone
                 if (!a.hasLivingCommander()) {
                     a.recallToCity();
                     Debug.log("army-manager", "forced-recall",
@@ -75,7 +124,19 @@ private void addArmy(Army army) {
         return result;
     }
 
-public void reset() {
+/**
+     * Returns armies in heartland that can potentially be deployed.
+     * Armies without a living commander are recalled here automatically.
+     */
+    public List<Army> getHeartlandArmies() {
+        List<Army> result = new ArrayList<>();
+        for (Army a : armies) {
+            if (a.isInCity()) result.add(a);
+        }
+        return result;
+    }
+
+    public void reset() {
         armies.clear();
         armyById.clear();
         spawnStartingArmies();
