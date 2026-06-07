@@ -26,6 +26,7 @@ public class PoliticalParty {
     private int publicOpinion; // 0-100
     private int power;         // 0-100
     private int favour;        // starts 0; negative = player owes them
+    private int prestige;      // accumulated from commander battle victories
 
     public PoliticalParty(String name, int seats, int playerOpinion, int publicOpinion, int power,
                           String leaderName, String personality, List<SideLeader> sideLeaders) {
@@ -84,8 +85,15 @@ public class PoliticalParty {
     public int    getPower()         { return power; }
     public int    getFavour()        { return favour; }
 
-    public void setPlayerOpinion(int v) { playerOpinion = Math.max(0, Math.min(100, v)); }
-    public void setPublicOpinion(int v) { publicOpinion = Math.max(0, Math.min(100, v)); }
-    public void setPower(int v)         { power         = Math.max(0, Math.min(100, v)); }
-    public void setFavour(int v)        { favour        = v; }
+    public void setPlayerOpinion(int v)    { playerOpinion = Math.max(0, Math.min(100, v)); }
+    public void setPublicOpinion(int v)    { publicOpinion = Math.max(0, Math.min(100, v)); }
+    public void setPower(int v)            { power         = Math.max(0, Math.min(100, v)); }
+    public void setFavour(int v)           { favour        = v; }
+    public int  getPrestige()              { return prestige; }
+    public void addPrestige(int amount)    { prestige = Math.max(0, prestige + amount); }
+
+    /** Adjusts playerOpinion by delta, clamped to [0, 100]. */
+    public void adjustPlayerOpinion(int delta) {
+        setPlayerOpinion(playerOpinion + delta);
+    }
 }

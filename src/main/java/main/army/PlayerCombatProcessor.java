@@ -15,7 +15,9 @@ import main.nobles.NobleHouseManager;
 import main.combat.ArmyForce;
 import main.combat.CombatResolver;
 import main.combat.CombatResult;
+import main.combat.CombatPrestigeCalculator;
 import main.parameters.GameParameters;
+import main.politics.PartyManager;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -46,8 +48,10 @@ public class PlayerCombatProcessor {
     }
 
     private ZoneAwardCallback zoneAwardCallback;
+    private PartyManager      partyManager;
 
     public void setZoneAwardCallback(ZoneAwardCallback cb) { this.zoneAwardCallback = cb; }
+    public void setPartyManager(PartyManager pm)           { this.partyManager = pm; }
 
     // ─── Main entry ──────────────────────────────────────────────────────────
 
@@ -227,6 +231,17 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
     }
 
 /**
+     * Finds which player army owns the given commander.
+     * Returns null if not found (shouldn't happen in normal flow).
+     */
+    private Army findArmyForCommander(List<Army> armies, Commander commander) {
+        for (Army a : armies) {
+            if (a.getCommander() == commander) return a;
+        }
+        return null;
+    }
+
+/**
      * Player is ATTACKER.
      * - Player + noble mobile armies attack. NO garrison help for player.
      * - ALL barbs in zone (mobile + garrison) defend together.
@@ -235,7 +250,8 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
      * - Barbs lose → alive barbs retreat to desolate zone; dead barbs removed.
      * - If barb garrison was cleared → offer zone to claimant noble.
      */
-    private List<String> resolvePlayerAttack(
+
+private List<String> resolvePlayerAttack(
             List<Army> playerArmies,
             List<BarbArmy> allBarbs,
             String zoneId, Zone zone,
@@ -248,13 +264,18 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
         List<String> log = new ArrayList<>();
         if (playerArmies.isEmpty() || allBarbs.isEmpty()) return log;
 
-        // ── Attacker side: player armies + noble mobile armies (no garrison) ──
+        // ── Attacker side ──────────────────────────────────────────────────────
         List<NobleArmy>  nobleAllies     = collectNobleAllies(zoneId, nobleHouseManager);
         List<ArmyForce>  attackerForces  = new ArrayList<>();
         List<ArmyForce>  playerForces    = new ArrayList<>();
         List<ArmyForce>  nobleAllyForces = new ArrayList<>();
 
-        for (Army a : playerArmies) {
+        // Track sizes before battle for death/prestige resolution
+        int[] playerSizesBefore = new int[playerArmies.size()];
+
+        for (int i = 0; i < playerArmies.size(); i++) {
+            Army a = playerArmies.get(i);
+            playerSizesBefore[i] = a.getSize();
             int skill = a.getCommandingSkill();
             ArmyForce f = new ArmyForce("player_" + a.getId(), a.getSize(), 0, skill);
             attackerForces.add(f);
@@ -274,8 +295,8 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
                     + " mobile forces join the player's attack at " + zoneId + ".");
         }
 
-        // ── Defender side: ALL barbs combined, desolate terrain bonus ─────────
-        boolean isDesolate  = zone != null && zone.isDesolate();
+        // ── Defender side ──────────────────────────────────────────────────────
+        boolean isDesolate   = zone != null && zone.isDesolate();
         int     totalBarbRaw = 0;
         for (BarbArmy b : allBarbs) totalBarbRaw += b.getSize();
 
@@ -290,6 +311,7 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
         int totalPlayerSize = 0;
         for (Army a : playerArmies) totalPlayerSize += a.getSize();
         int totalAllySize = nobleAllies.stream().mapToInt(NobleArmy::getSize).sum();
+        int totalAttackerSize = totalPlayerSize + totalAllySize;
 
         log.add("Player ATTACKS — player: " + totalPlayerSize
                 + ", noble allies: " + totalAllySize
@@ -301,7 +323,7 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
                 attackerForces, defenderForces, leadId, "barbarians", 0);
         log.addAll(result.getLog());
 
-        // Apply losses to player armies
+        // ── Apply losses to player armies ──────────────────────────────────────
         for (int i = 0; i < playerArmies.size(); i++) {
             playerArmies.get(i).setSize(playerForces.get(i).getRawSize());
         }
@@ -310,7 +332,7 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
             nobleAllies.get(i).setSize(nobleAllyForces.get(i).getRawSize());
         }
 
-        // Apply barb losses proportionally across all barb armies
+        // Apply barb losses proportionally
         int barbRawLoss = isDesolate
                 ? (int)(result.getDefenderLosses() / (1.0 + GameParameters.BARB_DEFENDER_BONUS))
                 : result.getDefenderLosses();
@@ -319,12 +341,72 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
         boolean playerWon = result.getWinnerId() != null
                 && result.getWinnerId().startsWith("player_");
 
+        // ── Prestige & XP calculation ──────────────────────────────────────────
+        int enemyBonusPct = isDesolate ? (int)(GameParameters.BARB_DEFENDER_BONUS * 100) : 0;
+        double rawScore = CombatPrestigeCalculator.computeRawScore(
+                totalAttackerSize, totalBarbRaw, enemyBonusPct, playerWon);
+
+        // Collect participating commanders and their force sizes
+        List<Commander> participatingCommanders = new ArrayList<>();
+        int[]           commanderForceSizes     = new int[playerArmies.size()];
+        int             cmdIdx                  = 0;
+        for (Army a : playerArmies) {
+            if (a.hasLivingCommander()) {
+                participatingCommanders.add(a.getCommander());
+                commanderForceSizes[cmdIdx++] = playerSizesBefore[playerArmies.indexOf(a)];
+            }
+        }
+        // Trim array to actual count
+        int[] trimmedForceSizes = new int[participatingCommanders.size()];
+        System.arraycopy(commanderForceSizes, 0, trimmedForceSizes, 0, participatingCommanders.size());
+
+        int[] xpGrants = CombatPrestigeCalculator.distributeXp(
+                participatingCommanders, trimmedForceSizes, rawScore);
+
+        // ── Per-commander: XP, prestige, death ────────────────────────────────
+        for (int i = 0; i < participatingCommanders.size(); i++) {
+            Commander c = participatingCommanders.get(i);
+            if (!c.isAlive()) continue;
+
+            // XP
+            boolean levelledUp = c.addXp(xpGrants[i]);
+            if (levelledUp) {
+                log.add("★ " + c.getName() + " has reached skill level " + c.getCommandingSkill() + "!");
+                Debug.log("player-combat", "commander-levelup",
+                        c.getName() + " new skill=" + c.getCommandingSkill());
+            }
+
+            // Prestige for affiliated party
+            if (playerWon && partyManager != null) {
+                int prestige = CombatPrestigeCalculator.computePrestige(rawScore);
+                partyManager.addPrestige(c.getAffiliation(), prestige);
+                Debug.log("player-combat", "prestige",
+                        c.getName() + " party=" + c.getAffiliation() + " +" + prestige);
+            }
+
+            // Death roll — use the army's size before and after to get losses
+            Army ownerArmy = findArmyForCommander(playerArmies, c);
+            if (ownerArmy != null) {
+                int sizeBefore = playerSizesBefore[playerArmies.indexOf(ownerArmy)];
+                int lost       = sizeBefore - ownerArmy.getSize();
+                boolean died   = CommanderDeathResolver.resolve(c, sizeBefore, lost, playerWon);
+                if (died) {
+                    log.add("✝ " + c.getName() + " has fallen in battle.");
+                    Debug.log("player-combat", "commander-death", c.getName() + " died at " + zoneId);
+                    // Army with dead commander recalls to heartland
+                    ownerArmy.recallToCity();
+                    log.add(ownerArmy.getDisplayName() + " retreats to Heartland — their commander has fallen.");
+                }
+            }
+        }
+
+        // ── Outcome ───────────────────────────────────────────────────────────
         if (playerWon) {
             log.add("✓ Player forces victorious at " + zoneId + ".");
             Debug.log("player-combat", "outcome", "PLAYER WIN at " + zoneId);
 
             boolean hadGarrison = false;
-            for (BarbArmy b : allBarbs) {
+            for (BarbArmy b : new ArrayList<>(allBarbs)) {
                 if (b.isGarrison()) { hadGarrison = true; }
                 if (!b.isAlive()) {
                     barbArmyManager.remove(b);
@@ -349,7 +431,7 @@ private List<NobleArmy> collectNobleAllies(String zoneId, NobleHouseManager nhm)
         return log;
     }
 
-    /**
+/**
      * Distribute barbarian losses proportionally across all participating barb armies.
      * Last army absorbs rounding remainder.
      */

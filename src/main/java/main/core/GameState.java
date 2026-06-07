@@ -47,6 +47,8 @@ public class GameState {
     private RavagedZoneManager    ravagedZoneManager;
     private BarbInvasionProcessor barbInvasionProcessor;
     private main.army.PlayerCombatProcessor playerCombatProcessor;
+    private main.army.CommanderRoster       commanderRoster;
+    private main.army.CommanderRecruitPool  commanderRecruitPool;
 
     private final List<VotingSession> activeSessions = new ArrayList<>();
 
@@ -84,6 +86,9 @@ public class GameState {
                 armyManager);
         nobleHouseManager.setRavagedZoneManager(ravagedZoneManager);
         playerCombatProcessor = new main.army.PlayerCombatProcessor();
+        playerCombatProcessor.setPartyManager(partyManager);
+        commanderRoster      = new main.army.CommanderRoster(resources, partyManager);
+        commanderRecruitPool = new main.army.CommanderRecruitPool(resources);
         // Note: zoneAwardCallback is re-wired by MainWindow after reset via
         // rewireCallbacks(). Do not set it here.
         bootstrapLedger();
@@ -165,6 +170,8 @@ private void bootstrapLedger() {
     public BarbInvasionProcessor       getBarbInvasionProcessor()  { return barbInvasionProcessor; }
     public main.ledger.Ledger          getLedger()                 { return ledger; }
     public main.army.PlayerCombatProcessor getPlayerCombatProcessor() { return playerCombatProcessor; }
+    public main.army.CommanderRoster       getCommanderRoster()       { return commanderRoster; }
+    public main.army.CommanderRecruitPool  getCommanderRecruitPool()  { return commanderRecruitPool; }
 
     /** Resets barbarian subsystem for new game. */
     public void resetBarbarians() {

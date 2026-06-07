@@ -138,11 +138,8 @@ public final class GameParameters {
     public static final double DEAL_MONEY_FACTOR             = 18.0;
     public static final double DEAL_INFLUENCE_FACTOR         = 10.0;
     public static final double DEAL_HAPPINESS_FACTOR         = 3.0;
-
-    // Favour is only demanded when the party's opposition is strong enough.
-    // Score magnitude must exceed these thresholds (after squaring) for favour to be required.
-    public static final double DEAL_FAVOUR_THRESHOLD_1       = 1;  // 1 favour
-    public static final double DEAL_FAVOUR_THRESHOLD_2       = 1.8;  // 2 favour
+    public static final double DEAL_FAVOUR_THRESHOLD_1       = 1;
+    public static final double DEAL_FAVOUR_THRESHOLD_2       = 1.8;
 
     // =========================================================
     // PASSIVE PER-TURN EFFECTS
@@ -180,53 +177,19 @@ public final class GameParameters {
     // =========================================================
     // NOBLE HOUSES
     // =========================================================
-
-    /** Starting opinion of every noble house toward the player (0–100). */
     public static final int    NOBLE_HOUSE_STARTING_OPINION          = 50;
-
-    /** Starting influence for every noble house. */
     public static final int    NOBLE_HOUSE_STARTING_INFLUENCE        = 10;
-
-    /** Opinion clamps shared with parties for uniformity. */
     public static final int    NOBLE_OPINION_MIN                     = 0;
     public static final int    NOBLE_OPINION_MAX                     = 100;
-
-    /**
-     * Opinion at or below which a house is considered hostile and sends
-     * nothing to the player.
-     */
     public static final int    NOBLE_HOSTILE_OPINION_THRESHOLD       = 15;
-
-    /**
-     * Maximum fraction of manpower a house sends to the player.
-     * Reached at 100 opinion. Scales linearly from 0 at hostile threshold.
-     */
     public static final double NOBLE_MAX_MANPOWER_SEND_FRACTION      = 0.50;
-
-    /** Raw manpower each controlled zone generates per turn (2–10 range). */
     public static final int    NOBLE_ZONE_MANPOWER_PER_TURN          = 6;
-
-    /** Gold each controlled zone generates for the house per turn (half sent to player). */
     public static final int    NOBLE_ZONE_GOLD_PER_TURN              = 5;
-
-    /** Base influence gained per house per turn. */
     public static final double NOBLE_INFLUENCE_BASE_PER_TURN         = 1.0;
-
-    /** Additional influence per controlled zone per turn. */
     public static final double NOBLE_INFLUENCE_PER_ZONE              = 0.3;
-
-    /**
-     * Standing army size = manpower-per-turn × this multiplier.
-     * Housed in the capital, free of upkeep and recruitment cost.
-     */
     public static final int    NOBLE_STANDING_ARMY_MANPOWER_MULTIPLIER = 5;
-
-    /** Gold cost to recruit one soldier into the raised army. */
-    public static final int    NOBLE_RECRUIT_COST_PER_SOLDIER        = 1; // there is a bug about using upkeep instead of this. until it is fixed should stay teh same as upkeep
-
-    /** Gold cost per soldier per turn to maintain the raised army. */
+    public static final int    NOBLE_RECRUIT_COST_PER_SOLDIER        = 1;
     public static final int    NOBLE_UPKEEP_COST_PER_SOLDIER         = 1;
-    /** Discount multiplier for armies that are defending (no pending attack/raid order and in friendly zone). */
     public static final double NOBLE_UPKEEP_DEFENSE_DISCOUNT         = 0.25;
 
     // =========================================================
@@ -234,14 +197,14 @@ public final class GameParameters {
     // =========================================================
     public static final int    NOBLE_STARTING_PRESTIGE               = 50;
     public static final int    NOBLE_STARTING_DEFENSE                = 10;
-    public static final double NOBLE_INFLUENCE_PRESTIGE_FACTOR       = 0.002; // per prestige point
+    public static final double NOBLE_INFLUENCE_PRESTIGE_FACTOR       = 0.002;
 
     // =========================================================
-    // COMBAT (placeholder values)
+    // COMBAT
     // =========================================================
     public static final double COMBAT_BASE_CASUALTY_RATE             = 0.20;
     public static final double COMBAT_CASUALTY_VARIANCE              = 0.10;
-    public static final double COMBAT_DEFENSE_REDUCTION              = 0.50; // max 50% reduction at 100 defense
+    public static final double COMBAT_DEFENSE_REDUCTION              = 0.50;
 
     // =========================================================
     // DEMAND FORMULA
@@ -259,29 +222,14 @@ public final class GameParameters {
     public static final int    DEMAND_PRESTIGE_AMOUNT                = 8;
 
     // =========================================================
-    // NOBLE AI
-    // =========================================================
-    // =========================================================
-    // CLAIM FABRICATION
-    // =========================================================
-    // =========================================================
     // COALITION
     // =========================================================
     public static final int    COALITION_ZONE_THRESHOLD              = 3;
     public static final double COALITION_ARMY_THRESHOLD              = 0.90;
-
-    // =========================================================
-    // COALITION ZONE AWARD WEIGHTS
-    // =========================================================
-    /** Flat bonus added to coordinator's weight in zone award roll. */
     public static final double COALITION_COORDINATOR_BONUS           = 3.0;
-    /** Per cunning point added to weight. */
     public static final double COALITION_CUNNING_WEIGHT              = 0.4;
-    /** Per diplomacy point added to weight. */
     public static final double COALITION_DIPLOMACY_WEIGHT            = 0.4;
-    /** Per prestige point added to weight. */
     public static final double COALITION_PRESTIGE_WEIGHT             = 0.02;
-    /** Army participation fraction multiplier added to weight. */
     public static final double COALITION_ARMY_PARTICIPATION_WEIGHT   = 2.0;
 
     // =========================================================
@@ -289,14 +237,18 @@ public final class GameParameters {
     // =========================================================
     public static final double THREATENED_BASE_CHANCE_MULTIPLIER     = 5.0;
     public static final double THREATENED_DECAY_CHANCE               = 0.05;
-    /** Extra multiplier applied to threat chance for claimless attacks. */
     public static final double THREATENED_CLAIMLESS_MULTIPLIER       = 2.0;
 
     // =========================================================
-    // RAID COOLDOWN & PRODUCTION MALUS
+    // RAID
     // =========================================================
     public static final int    RAID_COOLDOWN_TURNS                   = 3;
     public static final double RAID_PRODUCTION_MALUS                 = 0.30;
+    public static final double RAID_INTERCEPT_BASE_CHANCE            = 0.20;
+    public static final double RAID_INTERCEPT_MILITARY_BONUS         = 0.05;
+    public static final double RAID_GOLD_PER_SOLDIER                 = 1.0;
+    public static final double RAID_GOLD_ZONE_MULTIPLIER             = 3.0;
+    public static final double RAID_MAX_GOLD_ZONE_MULTIPLIER         = 3.0;
 
     // =========================================================
     // CONQUEST MALUS
@@ -311,16 +263,18 @@ public final class GameParameters {
     public static final double SUPERIORITY_BASE_ACCEPT_CHANCE        = 0.60;
     public static final double SUPERIORITY_RANDOM_RANGE              = 0.20;
 
-   
-
+    // =========================================================
+    // CLAIM
+    // =========================================================
     public static final double CLAIM_BASE_SUCCESS_CHANCE             = 0.40;
     public static final double CLAIM_CUNNING_BONUS_PER_POINT         = 0.15;
     public static final double CLAIM_OWNER_CUNNING_PENALTY_PER_POINT = 0.10;
-    /** Multiplier applied when target zone is not adjacent to any owned zone. */
     public static final double CLAIM_ADJACENCY_PENALTY               = 0.50;
+    public static final double CLAIM_DECAY_CHANCE                    = 0.30;
+    public static final int    CLAIM_DECAY_INFLUENCE_COST            = 3;
 
     // =========================================================
-    // SCHEME SUCCESS
+    // SCHEME
     // =========================================================
     public static final double SCHEME_BASE_SUCCESS_CHANCE            = 0.40;
     public static final double SCHEME_CUNNING_BONUS_PER_POINT        = 0.15;
@@ -331,7 +285,7 @@ public final class GameParameters {
     public static final double MILITARY_SKILL_BONUS_PER_POINT        = 0.10;
 
     // =========================================================
-    // ALLIANCE RULES
+    // ALLIANCE
     // =========================================================
     public static final int    ALLIANCE_MAX_PER_HOUSE                = 2;
     public static final double ALLIANCE_MIN_ARMY_FRACTION            = 0.50;
@@ -345,11 +299,6 @@ public final class GameParameters {
     // RELATIONSHIP DECAY
     // =========================================================
     public static final int    HOSTILE_DECAY_TURNS                   = 3;
-
-    // =========================================================
-    // RAID CAP
-    // =========================================================
-    public static final double RAID_MAX_GOLD_ZONE_MULTIPLIER         = 3.0;
 
     // =========================================================
     // DEMAND — DIPLOMACY BONUS
@@ -367,10 +316,9 @@ public final class GameParameters {
     public static final int    GIFT_WEALTH_GOLD_THRESHOLD            = 150;
 
     // =========================================================
-    // NOBLE AI — INFLUENCE COSTS (new)
+    // NOBLE AI — INFLUENCE COSTS
     // =========================================================
     public static final int    AI_INFLUENCE_COST_FABRICATE           = 2;
-
     public static final double AI_DOMINANT_MOTIVATION_CHANCE         = 0.75;
     public static final int    AI_FORTIFY_THRESHOLD                  = 30;
     public static final double AI_RAID_GOLD_FRACTION                 = 0.15;
@@ -390,212 +338,223 @@ public final class GameParameters {
     // =========================================================
     // NOBLE GARRISON
     // =========================================================
-    /** Garrison size at capital = manpower-per-turn × this multiplier. */
-    public static final int    GARRISON_CAPITAL_MULTIPLIER              = 3;
-    /** Garrison size at other zones = manpower-per-turn × this multiplier. */
-    public static final int    GARRISON_OTHER_MULTIPLIER                = 1;
+    public static final int    GARRISON_CAPITAL_MULTIPLIER           = 3;
+    public static final int    GARRISON_OTHER_MULTIPLIER             = 1;
 
     // =========================================================
     // NOBLE ARMY RECRUITMENT
     // =========================================================
-    /** Minimum army size the AI will recruit. */
-    public static final int    NOBLE_ARMY_MIN_RECRUIT_SIZE              = 5;
-  
-    /** AI won't recruit if gold below this threshold. */
-    public static final int    NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD        = 30;
-    /** AI disbands army if gold below this threshold (to avoid forced disband). */
-    public static final int    NOBLE_ARMY_DISBAND_GOLD_THRESHOLD        = 15;
+    public static final int    NOBLE_ARMY_MIN_RECRUIT_SIZE           = 5;
+    public static final int    NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD     = 30;
+    public static final int    NOBLE_ARMY_DISBAND_GOLD_THRESHOLD     = 15;
 
     // =========================================================
     // NOBLE FORTIFICATION
     // =========================================================
-    /** Fortification gained per FORTIFY action. */
-    public static final int    NOBLE_FORTIFY_GAIN                       = 10;
-    /** Garrison soldiers added per FORTIFY action. */
-    public static final int    FORTIFY_GARRISON_GAIN                    = 5;
-    /** Maximum total garrison bonus that can be accumulated from fortifying. */
-    public static final int    FORTIFY_GARRISON_MAX_BONUS               = 50;
-    /** Gold cost per FORTIFY action. */
-    public static final int    NOBLE_FORTIFY_GOLD_COST                  = 20;
-
-    // =========================================================
-    // RAID INTERCEPT
-    // =========================================================
-    /** Base chance defender army intercepts a raid (20%). */
-    public static final double RAID_INTERCEPT_BASE_CHANCE               = 0.20;
-    /** Per military skill point bonus to intercept chance. */
-    public static final double RAID_INTERCEPT_MILITARY_BONUS            = 0.05;
-    /** Gold stolen per raiding soldier. */
-    public static final double RAID_GOLD_PER_SOLDIER                    = 1.0;
-    /** Max gold stolen = zone gold production × this multiplier. */
-    public static final double RAID_GOLD_ZONE_MULTIPLIER                = 3.0;
-
-    // =========================================================
-    // CLAIM DECAY
-    // =========================================================
-    /** Per-turn chance a house must defend a random claim or lose it. */
-    public static final double CLAIM_DECAY_CHANCE                     = 0.30;
-    /** Influence cost to maintain a claim when decay triggers. */
-    public static final int    CLAIM_DECAY_INFLUENCE_COST             = 3;
-
-    // =========================================================
-    // ATTACK STRENGTH THRESHOLDS
-    // =========================================================
-    /** Minimum attacker/defender power ratio for normal attacks. */
-    public static final double NORMAL_ATTACK_STRENGTH_THRESHOLD = 0.5;
-    /** Minimum coalition estimated power ratio vs defender to proceed. */
-    public static final double COALITION_STRENGTH_THRESHOLD      = 0.4;
-    /** Minimum attacker/defender power ratio for reckless claimless attacks. */
-    public static final double RECKLESS_MIN_STRENGTH             = 0.6;
-    /** Reckless target must be this many times better than best claimed zone. */
-    public static final double RECKLESS_VALUE_MULTIPLIER         = 2.0;
+    public static final int    NOBLE_FORTIFY_GAIN                    = 10;
+    public static final int    FORTIFY_GARRISON_GAIN                 = 5;
+    public static final int    FORTIFY_GARRISON_MAX_BONUS            = 50;
+    public static final int    NOBLE_FORTIFY_GOLD_COST               = 20;
 
     // =========================================================
     // SABOTAGE
     // =========================================================
-    /** Gold cost for sabotage action. */
-    public static final int    AI_SABOTAGE_GOLD_COST                  = 30;
-    /** Base success chance for sabotage. */
-    public static final double SABOTAGE_BASE_SUCCESS_CHANCE           = 0.40;
-    /** Per cunning point bonus to sabotage success. */
-    public static final double SABOTAGE_CUNNING_BONUS_PER_POINT       = 0.15;
+    public static final int    AI_SABOTAGE_GOLD_COST                 = 30;
+    public static final double SABOTAGE_BASE_SUCCESS_CHANCE          = 0.40;
+    public static final double SABOTAGE_CUNNING_BONUS_PER_POINT      = 0.15;
 
     // =========================================================
-    // ARMY
+    // OPPORTUNISM
     // =========================================================
-    // =========================================================
-    // MAP CANVAS
-    // =========================================================
-    // =========================================================
-    // OPPORTUNISM (OpportunismEvaluator)
-    // =========================================================
-    /** Attacker field army / defender(est.field+garrison) for hostile/rival targets. */
-    public static final double OPPORTUNISM_STRENGTH_RATIO_HOSTILE  = 2.0;
-    /** Same ratio for neutral targets. */
-    public static final double OPPORTUNISM_STRENGTH_RATIO_NEUTRAL  = 2.5;
-    /** Ratio for security‑driven attacks (threats only). */
-    public static final double OPPORTUNISM_SECURITY_STRENGTH_RATIO = 1.7;
-    /** Ratio for prestige‑driven attacks (rivals only). */
-    public static final double OPPORTUNISM_PRESTIGE_STRENGTH_RATIO = 3.0;
-    /** Ratio for wealth‑driven attacks (high‑gold zones only). */
-    public static final double OPPORTUNISM_WEALTH_STRENGTH_RATIO   = 3.0;
-    /** Turns a house skips opportunism after a failed fabrication. */
-    public static final int    OPPORTUNISM_FABRICATE_COOLDOWN      = 1;
+    public static final double OPPORTUNISM_STRENGTH_RATIO_HOSTILE    = 2.0;
+    public static final double OPPORTUNISM_STRENGTH_RATIO_NEUTRAL    = 2.5;
+    public static final double OPPORTUNISM_SECURITY_STRENGTH_RATIO   = 1.7;
+    public static final double OPPORTUNISM_PRESTIGE_STRENGTH_RATIO   = 3.0;
+    public static final double OPPORTUNISM_WEALTH_STRENGTH_RATIO     = 3.0;
+    public static final int    OPPORTUNISM_FABRICATE_COOLDOWN        = 1;
 
     // =========================================================
     // WAR CHEST
     // =========================================================
-    /** Base savings priority per motivation (fraction of target to maintain). */
-    public static final double WAR_CHEST_PRIORITY_EXPANSION = 0.95;
-    public static final double WAR_CHEST_PRIORITY_SECURITY  = 0.90;
-    public static final double WAR_CHEST_PRIORITY_WEALTH    = 0.75;
-    public static final double WAR_CHEST_PRIORITY_PRESTIGE  = 0.60;
-    /** Expected upkeep turns for war‑chest calculation. */
-    public static final int    WAR_CHEST_UPKEEP_TURNS        = 2;
-    /** Readiness threshold for reckless leaders (fraction of target). */
-    public static final double RECKLESS_READINESS_THRESHOLD = 0.70;
-    /** Base fuzziness for war‑chest estimates. */
-    public static final double WAR_CHEST_FUZZ_BASE          = 0.07;
-    /** Per missing cunning point fuzziness for war‑chest estimates. */
-    public static final double WAR_CHEST_FUZZ_PER_MISSING   = 0.13;
+    public static final double WAR_CHEST_PRIORITY_EXPANSION          = 0.95;
+    public static final double WAR_CHEST_PRIORITY_SECURITY           = 0.90;
+    public static final double WAR_CHEST_PRIORITY_WEALTH             = 0.75;
+    public static final double WAR_CHEST_PRIORITY_PRESTIGE           = 0.60;
+    public static final int    WAR_CHEST_UPKEEP_TURNS                = 2;
+    public static final double RECKLESS_READINESS_THRESHOLD          = 0.70;
+    public static final double WAR_CHEST_FUZZ_BASE                   = 0.07;
+    public static final double WAR_CHEST_FUZZ_PER_MISSING            = 0.13;
+
+    // =========================================================
+    // ATTACK STRENGTH THRESHOLDS
+    // =========================================================
+    public static final double NORMAL_ATTACK_STRENGTH_THRESHOLD      = 0.5;
+    public static final double COALITION_STRENGTH_THRESHOLD          = 0.4;
+    public static final double RECKLESS_MIN_STRENGTH                 = 0.6;
+    public static final double RECKLESS_VALUE_MULTIPLIER             = 2.0;
 
     // =========================================================
     // REBELLION
     // =========================================================
-    /** Base admin capacity for a house (added to cunning). */
-    public static final int    ADMIN_CAPACITY_BASE                = 3;
-    /** Base chance per turn to increase rebellion power in an overextended zone. */
-    public static final double REBELLION_BASE_CHANCE              = 0.30;
-    /** Additional chance per zone over capacity. */
-    public static final double REBELLION_OVEREXTENSION_PER_ZONE   = 0.05;
-    /** Rebellion power added on a successful increase roll. */
-    public static final int    REBELLION_POWER_INCREASE           = 5;
-    /** Base chance per turn to decay rebellion power when not overextended. */
-    public static final double REBELLION_DECAY_BASE_CHANCE        = 0.30;
-    /** Additional decay chance per point of owner cunning. */
-    public static final double REBELLION_DECAY_CUNNING_PER_POINT  = 0.05;
-    /** Rebellion power removed on a successful decay roll. */
-    public static final int    REBELLION_POWER_DECREASE           = 5;
-    /** Multiplier of (garrison + idle armies) that rebellion power must exceed for auto-flip. */
-    public static final double REBELLION_FLIP_MULTIPLIER          = 1.5;
+    public static final int    ADMIN_CAPACITY_BASE                   = 3;
+    public static final double REBELLION_BASE_CHANCE                 = 0.30;
+    public static final double REBELLION_OVEREXTENSION_PER_ZONE      = 0.05;
+    public static final int    REBELLION_POWER_INCREASE              = 5;
+    public static final double REBELLION_DECAY_BASE_CHANCE           = 0.30;
+    public static final double REBELLION_DECAY_CUNNING_PER_POINT     = 0.05;
+    public static final int    REBELLION_POWER_DECREASE              = 5;
+    public static final double REBELLION_FLIP_MULTIPLIER             = 1.5;
 
     // =========================================================
     // MAP CANVAS
     // =========================================================
-    public static final int MAP_CANVAS_WIDTH  = 1200;
-    public static final int MAP_CANVAS_HEIGHT = 700;
+    public static final int MAP_CANVAS_WIDTH                         = 1200;
+    public static final int MAP_CANVAS_HEIGHT                        = 700;
 
     // =========================================================
     // BARBARIAN INVASION — COUNTDOWN
     // =========================================================
-    /** Minimum years before first/next invasion. */
-    public static final int    BARB_COUNTDOWN_MIN_YEARS          = 7;
-    /** Maximum years before first/next invasion. */
-    public static final int    BARB_COUNTDOWN_MAX_YEARS          = 15;
+    public static final int    BARB_COUNTDOWN_MIN_YEARS              = 7;
+    public static final int    BARB_COUNTDOWN_MAX_YEARS              = 15;
 
     // =========================================================
     // BARBARIAN INVASION — WARBOSS
     // =========================================================
-    public static final int    BARB_WARBOSS_BASE_SIZE            = 800;
-    public static final int    BARB_WARBOSS_SIZE_PER_TURN        = 10;
-    /** Fraction of warboss size that splits into a raider each turn. */
-    public static final double BARB_WARBOSS_RAIDER_FRACTION      = 0.05;
-    /** Minimum raider split size. */
-    public static final int    BARB_WARBOSS_RAIDER_MIN           = 30;
-    /** Chance warboss moves to unvisited zone instead of pathfinding. */
-    public static final double BARB_WARBOSS_DETOUR_CHANCE        = 0.50;
+    public static final int    BARB_WARBOSS_BASE_SIZE                = 800;
+    public static final int    BARB_WARBOSS_SIZE_PER_TURN            = 10;
+    public static final double BARB_WARBOSS_RAIDER_FRACTION          = 0.05;
+    public static final int    BARB_WARBOSS_RAIDER_MIN               = 30;
+    public static final double BARB_WARBOSS_DETOUR_CHANCE            = 0.50;
 
     // =========================================================
     // BARBARIAN INVASION — WAVES
     // =========================================================
-    /** Minimum turns between reinforcement waves. */
-    public static final int    BARB_WAVE_MIN_TURNS               = 8;
-    /** Maximum turns between reinforcement waves. */
-    public static final int    BARB_WAVE_MAX_TURNS               = 16;
-    /** Raiders per wave. */
-    public static final int    BARB_WAVE_RAIDER_COUNT            = 2;
-    /** Ravagers per wave. */
-    public static final int    BARB_WAVE_RAVAGER_COUNT           = 1;
-    /** Size of each raider in a wave. */
-    public static final int    BARB_WAVE_RAIDER_SIZE             = 60;
-    /** Size of each ravager in a wave. */
-    public static final int    BARB_WAVE_RAVAGER_SIZE            = 120;
+    public static final int    BARB_WAVE_MIN_TURNS                   = 8;
+    public static final int    BARB_WAVE_MAX_TURNS                   = 16;
+    public static final int    BARB_WAVE_RAIDER_COUNT                = 2;
+    public static final int    BARB_WAVE_RAVAGER_COUNT               = 1;
+    public static final int    BARB_WAVE_RAIDER_SIZE                 = 60;
+    public static final int    BARB_WAVE_RAVAGER_SIZE                = 120;
 
     // =========================================================
     // BARBARIAN INVASION — COMBAT
     // =========================================================
-    /** Defender bonus when barbarians are the attacker. */
-    public static final double BARB_DEFENDER_BONUS               = 0.30;
-    /** Garrison size left by warboss after conquest. */
-    public static final int    BARB_WARBOSS_GARRISON_SIZE        = 15;
-    /** Garrison size left by ravager after conquest. */
-    public static final int    BARB_RAVAGER_GARRISON_SIZE        = 5;
+    public static final double BARB_DEFENDER_BONUS                   = 0.30;
+    public static final int    BARB_WARBOSS_GARRISON_SIZE            = 15;
+    public static final int    BARB_RAVAGER_GARRISON_SIZE            = 5;
 
     // =========================================================
     // BARBARIAN INVASION — PAY-OFF
     // =========================================================
-    /** Gold per man for cheap pay-off (stand down). */
-    public static final int    BARB_PAYOFF_GOLD_PER_MAN          = 2;
-    /** Food per man for cheap pay-off. */
-    public static final int    BARB_PAYOFF_FOOD_PER_MAN          = 1;
-    /** Gold per man for full player dismissal. */
-    public static final int    BARB_DISMISS_GOLD_PER_MAN         = 6;
-    /** Price multiplier for dismissing the warboss specifically. */
-    public static final double BARB_WARBOSS_DISMISS_MULTIPLIER   = 1.3;
-    /** Multiplier applied to dismissal cost for Warboss. */
-    public static final double BARB_WARBOSS_DISMISS_COST_MULTIPLIER = 1.3;
-
+    public static final int    BARB_PAYOFF_GOLD_PER_MAN              = 2;
+    public static final int    BARB_PAYOFF_FOOD_PER_MAN              = 1;
+    public static final int    BARB_DISMISS_GOLD_PER_MAN             = 6;
+    public static final double BARB_WARBOSS_DISMISS_MULTIPLIER       = 1.3;
+    public static final double BARB_WARBOSS_DISMISS_COST_MULTIPLIER  = 1.3;
 
     // =========================================================
     // BARBARIAN INVASION — RAVAGED STATUS
     // =========================================================
-    /** Production penalty for ravaged zones (0.0–1.0). */
-    public static final double BARB_RAVAGED_PENALTY              = 0.50;
-    /** Production penalty for heavily ravaged zones (0.0–1.0). */
-    public static final double BARB_HEAVILY_RAVAGED_PENALTY      = 0.80;
+    public static final double BARB_RAVAGED_PENALTY                  = 0.50;
+    public static final double BARB_HEAVILY_RAVAGED_PENALTY          = 0.80;
 
     // =========================================================
-    // PLAYER ARMY
+    // PLAYER ARMY — BASE
     // =========================================================
-    public static final int    PLAYER_ARMY_STARTING_SIZE         = 100;
+    public static final int    PLAYER_ARMY_STARTING_SIZE             = 100;
+
+    // =========================================================
+    // COMMANDER RECRUITMENT
+    // =========================================================
+    /** Number of candidates shown in the base recruitment pool. */
+    public static final int    COMMANDER_POOL_BASE_SIZE              = 3;
+    /** Number of extra candidates revealed on a paid refresh. */
+    public static final int    COMMANDER_POOL_REFRESH_SIZE           = 3;
+    /** Influence cost to reveal extra candidates. */
+    public static final int    COMMANDER_POOL_REFRESH_COST           = 2;
+    /** Influence cost to recruit a commander. */
+    public static final int    COMMANDER_RECRUIT_BASE_COST           = 3;
+    /** Party opinion gain when a commander of that affiliation is recruited. */
+    public static final int    COMMANDER_RECRUIT_OPINION_GAIN        = 8;
+    /** Influence cost to dismiss a commander. */
+    public static final int    COMMANDER_DISMISS_COST                = 2;
+    /** Party opinion loss when a commander of that affiliation is dismissed.
+     *  Intentionally larger than the recruit gain to discourage churn. */
+    public static final int    COMMANDER_DISMISS_OPINION_LOSS        = 15;
+
+    // =========================================================
+    // COMMANDER SKILL ROLL — cumulative thresholds out of 100
+    // Skill 0 = 25 %, Skill 1 = 55 %, Skill 2 = 15 %, Skill 3 = 5 %
+    // =========================================================
+    public static final int    COMMANDER_SKILL_WEIGHT_0              = 25;   // 0–24  → skill 0
+    public static final int    COMMANDER_SKILL_WEIGHT_1              = 80;   // 25–79 → skill 1
+    public static final int    COMMANDER_SKILL_WEIGHT_2              = 95;   // 80–94 → skill 2
+    // 95–99 → skill 3 (remainder)
+
+    // =========================================================
+    // COMMANDER CAP & OVERCAP COST
+    // =========================================================
+    /** Commanders up to this count cost no extra influence. */
+    public static final int    COMMANDER_FREE_CAP                    = 3;
+    /** Influence drained per extra commander per turn (fractional, ceiled). */
+    public static final double COMMANDER_OVERCAP_INFLUENCE_COST      = 0.5;
+
+    // =========================================================
+    // COMMANDER GOLD UPKEEP — by skill level (index = skill 0..3)
+    // =========================================================
+    public static final double[] COMMANDER_UPKEEP_BY_SKILL           = { 0.8, 1.2, 1.5, 2.0 };
+
+    // =========================================================
+    // COMMANDER PARTY POWER
+    // =========================================================
+    /** Power added to a party per living affiliated commander. */
+    public static final int    COMMANDER_PARTY_POWER_PER_ALIVE       = 10;
+
+    // =========================================================
+    // COMMANDER XP THRESHOLDS (skill level 1→2, 2→3, 3→4)
+    // =========================================================
+    /** XP needed to advance from skill N to skill N+1 (index 0 = skill 0→1). */
+    public static final int[]  COMMANDER_XP_THRESHOLDS               = { 100, 250, 500 };
+
+    // =========================================================
+    // COMMANDER DEATH IN BATTLE
+    // =========================================================
+    /** Casualty fraction below which no death roll is made. */
+    public static final double COMMANDER_DEATH_CASUALTY_LOWER        = 0.30;
+    /** Casualty fraction at or above which death chance equals full casualty %. */
+    public static final double COMMANDER_DEATH_CASUALTY_UPPER        = 0.80;
+    /** Multiplier applied to death chance when the player's side won. */
+    public static final double COMMANDER_DEATH_WIN_MODIFIER          = 0.70;
+
+    // =========================================================
+    // SOLDIER RECRUITMENT
+    // =========================================================
+    /** Gold cost per soldier recruited. */
+    public static final int    SOLDIER_RECRUIT_GOLD_COST             = 2;
+    /** Manpower cost per soldier recruited. */
+    public static final int    SOLDIER_RECRUIT_MANPOWER_COST         = 1;
+    /** Gold upkeep per soldier per turn. */
+    public static final double SOLDIER_UPKEEP_GOLD                   = 0.3;
+
+    // =========================================================
+    // SOLDIER DESERTION (when upkeep skipped)
+    // =========================================================
+    /** Minimum fraction of soldiers that desert when upkeep is not paid. */
+    public static final double SOLDIER_DESERTION_MIN_FRACTION        = 0.10;
+    /** Maximum fraction of soldiers that desert when upkeep is not paid. */
+    public static final double SOLDIER_DESERTION_MAX_FRACTION        = 0.30;
+
+    // =========================================================
+    // PRESTIGE & XP FROM COMBAT
+    // =========================================================
+    /** Victory multiplier applied to raw battle score. */
+    public static final double COMBAT_WIN_PRESTIGE_MULTIPLIER        = 1.30;
+    /** Multiplier converting raw score to party prestige points. */
+    public static final double PRESTIGE_COEFFICIENT                  = 1.0;
+    /** Multiplier converting raw score to commander XP points. */
+    public static final double XP_COEFFICIENT                        = 10.0;
+    /** Min ratio cap used in raw score calculation (prevents extreme values). */
+    public static final double COMBAT_SCORE_RATIO_MIN                = 0.5;
+    /** Max ratio cap used in raw score calculation. */
+    public static final double COMBAT_SCORE_RATIO_MAX                = 2.0;
 }

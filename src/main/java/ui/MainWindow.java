@@ -215,6 +215,16 @@ public class MainWindow extends JFrame {
         ledgerBtn.setPreferredSize(new Dimension(90, 48));
         ledgerBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         ledgerBtn.addActionListener(e -> showLedger());
+
+        JButton militaryBtn = new JButton("MILITARY");
+        militaryBtn.setFont(UITheme.FONT_BUTTON);
+        militaryBtn.setForeground(UITheme.TEXT_SECONDARY);
+        militaryBtn.setBackground(UITheme.BUTTON_BG);
+        militaryBtn.setBorderPainted(false);
+        militaryBtn.setFocusPainted(false);
+        militaryBtn.setPreferredSize(new Dimension(100, 48));
+        militaryBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        militaryBtn.addActionListener(e -> showMilitaryView());
       
 
         JPanel wrapper = new JPanel(new BorderLayout(6, 0));
@@ -227,7 +237,8 @@ public class MainWindow extends JFrame {
         leftBtns.add(noblesBtn);
         leftBtns.add(mapBtn);
         leftBtns.add(openVoteBtn);
-  leftBtns.add(ledgerBtn);
+        leftBtns.add(ledgerBtn);
+        leftBtns.add(militaryBtn);
   
         wrapper.add(leftBtns, BorderLayout.WEST);
         return wrapper;
@@ -297,7 +308,16 @@ private void swapCenter(JPanel panel) {
         swapCenter(mapView);
     }
 
-    private void showVoteSession() {
+    private void showMilitaryView() {
+        main.army.CommanderRoster      roster = gameState.getCommanderRoster();
+        main.army.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
+        ui.MilitaryMenuUI militaryUI     = new ui.MilitaryMenuUI(
+                gameState.getArmyManager(), roster, pool, gameState.getResources(),
+                this::showMainView);
+        swapCenter(militaryUI);
+    }
+
+private void showVoteSession() {
         voteSessionPanel.refresh();
         swapCenter(voteSessionPanel);
     }

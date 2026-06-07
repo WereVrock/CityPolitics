@@ -1,6 +1,7 @@
 // ArmyManager.java
 package main.army;
 
+import debug.Debug;
 import java.util.*;
 
 /**
@@ -36,6 +37,12 @@ private void addArmy(Army army) {
     public Army       getArmy(String id) { return armyById.get(id); }
 
     /** Armies currently in heartland (shown in city list). Excludes dragging ones. */
+
+/**
+     * Armies currently in heartland (shown in city list). Excludes dragging ones.
+     * Armies without a living commander are always considered in-city even if
+     * their zoneId somehow got set externally — they cannot deploy.
+     */
     public List<Army> getCityArmies() {
         List<Army> result = new ArrayList<>();
         for (Army a : armies) {
@@ -44,16 +51,31 @@ private void addArmy(Army army) {
         return result;
     }
 
-    /** Armies deployed outside heartland. Excludes dragging ones. */
+/** Armies deployed outside heartland. Excludes dragging ones. */
+
+/**
+     * Armies deployed outside heartland that have a living commander.
+     * Armies whose commander has died are recalled to heartland on access.
+     * Excludes dragging ones.
+     */
     public List<Army> getDeployedArmies() {
         List<Army> result = new ArrayList<>();
         for (Army a : armies) {
-            if (a.isDeployed() && !a.isDragging()) result.add(a);
+            if (!a.isInCity() && !a.isDragging()) {
+                // Enforce commander requirement: recall if commander is gone
+                if (!a.hasLivingCommander()) {
+                    a.recallToCity();
+                    Debug.log("army-manager", "forced-recall",
+                            a.getId() + " recalled — no living commander");
+                } else {
+                    result.add(a);
+                }
+            }
         }
         return result;
     }
 
-    public void reset() {
+public void reset() {
         armies.clear();
         armyById.clear();
         spawnStartingArmies();

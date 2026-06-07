@@ -4,6 +4,7 @@ import main.actions.ActionRegistry;
 import main.barbarians.BarbArmy;
 import main.barbarians.BarbInvasionProcessor;
 import main.calendar.GameCalendar;
+import main.core.GameState;
 import main.effects.EffectManager;
 import main.nobles.NobleHouseManager;
 import main.parameters.GameParameters;
@@ -60,12 +61,33 @@ public List<String> processTurn(
         int goldBefore = resources.getMoney();
         int manBefore  = resources.getManpower();
 
-        debug.Debug.log("turn", "cycle", calendar.getDisplayString());
+        Debug.log("turn", "cycle", calendar.getDisplayString());
 
         applyPopEconomics(popManager, log, ledger);
         log.addAll(nobleHouseManager.processTurn(resources, ledger));
         applyStatDecay(stats, log, ledger);
         log.addAll(effectManager.processTurn(stats));
+
+        // ── Commander pool turn reset ─────────────────────────────────────────
+        gameState.getCommanderRecruitPool().newTurnRefresh();
+        Debug.log("turn", "commander-pool", "Recruit pool refreshed.");
+
+        // ── Commander upkeep & party power ────────────────────────────────────
+        main.army.CommanderRoster roster = gameState.getCommanderRoster();
+        log.addAll(roster.processTurnUpkeep());
+        roster.applyPartyPowerContributions(gameState.getPartyManager());
+
+        // ── Commander gold upkeep via ledger ──────────────────────────────────
+        double cmdGoldUpkeep = roster.getTotalGoldUpkeep();
+        if (cmdGoldUpkeep > 0) {
+            int cmdGoldCeil = (int) Math.ceil(cmdGoldUpkeep);
+            ledger.setRecurring(main.resources.ResourceType.GOLD,
+                    "commanders", "Commander Upkeep", -cmdGoldCeil);
+            log.add("Commander upkeep: -" + cmdGoldCeil + " gold.");
+        }
+
+        // ── Soldier upkeep — prompt each army ────────────────────────────────
+        log.addAll(processSoldierUpkeep(gameState, resources));
 
         applyLedgerToResources(ledger, resources);
 
@@ -98,7 +120,6 @@ public List<String> processTurn(
                 + " (Δ " + (resources.getManpower() - manBefore) + ")");
 
         log.add("--- " + calendar.getDisplayString() + " begins ---");
-
         return log;
     }
 
@@ -119,7 +140,42 @@ public List<String> processTurn(
         });
     }
 
-    // ─── Private helpers ─────────────────────────────────────────────────────
+/**
+     * For each deployed army, computes soldier upkeep and auto-pays it.
+     * If the army cannot afford upkeep, desertion fires.
+     * Uses SoldierUpkeepProcessor so the logic stays in one place.
+     * Upkeep is recorded as a one-time ledger expense per army.
+     */
+
+private List<String> processSoldierUpkeep(GameState gameState, ResourcePool resources) {
+        List<String> log = new ArrayList<>();
+        main.ledger.Ledger ledger = gameState.getLedger();
+        for (main.army.Army army : gameState.getArmyManager().getArmies()) {
+            if (army.getSize() <= 0) continue;
+            main.army.SoldierUpkeepProcessor sup =
+                    new main.army.SoldierUpkeepProcessor(resources, army);
+            double cost = sup.computeUpkeepCost();
+            if (cost <= 0) continue;
+            boolean paid = sup.payUpkeep();
+            if (paid) {
+                int costCeil = (int) Math.ceil(cost);
+                ledger.logOneTime(main.resources.ResourceType.GOLD,
+                        "soldiers", "Soldier Upkeep (" + army.getDisplayName() + ")",
+                        -costCeil);
+                Debug.log("soldier-upkeep", "paid",
+                        army.getDisplayName() + " cost=" + costCeil);
+            } else {
+                int lost = sup.processDesertion();
+                log.add("⚠ " + army.getDisplayName()
+                        + " could not pay upkeep — " + lost + " soldiers deserted.");
+                Debug.log("soldier-upkeep", "desertion",
+                        army.getDisplayName() + " lost=" + lost);
+            }
+        }
+        return log;
+    }
+
+// ─── Private helpers ─────────────────────────────────────────────────────
 
 private void applyPopEconomics(PopManager popManager,
                                     List<String> log, main.ledger.Ledger ledger) {

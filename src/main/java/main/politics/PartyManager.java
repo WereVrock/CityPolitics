@@ -197,6 +197,37 @@ public class PartyManager {
     public List<PoliticalParty> getParties()  { return Collections.unmodifiableList(parties); }
     public PoliticalParty       getOracles()  { return oracles; }
 
+    /**
+     * Finds the party whose view matches the given affiliation and adjusts
+     * their player opinion by delta. No-op if no party matches.
+     */
+    public void adjustOpinion(main.politics.PolitcalView affiliation, int delta) {
+        for (PoliticalParty party : parties) {
+            if (party.getViews().containsKey(affiliation)
+                    && party.getViewStrength(affiliation).getMultiplier() > 0) {
+                party.adjustPlayerOpinion(delta);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Adds prestige to the party most strongly associated with the given affiliation.
+     * Uses the party whose STRONGLY_FOR or FOR view matches first.
+     */
+    public void addPrestige(main.politics.PolitcalView affiliation, int amount) {
+        PoliticalParty best = null;
+        double bestStrength = Double.NEGATIVE_INFINITY;
+        for (PoliticalParty party : parties) {
+            double m = party.getViewStrength(affiliation).getMultiplier();
+            if (m > bestStrength) {
+                bestStrength = m;
+                best = party;
+            }
+        }
+        if (best != null) best.addPrestige(amount);
+    }
+
     public void reset() {
         for (PoliticalParty party : parties) {
             party.setPlayerOpinion(party == oracles ? 100 : 50);
