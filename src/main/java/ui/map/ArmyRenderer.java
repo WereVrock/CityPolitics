@@ -65,42 +65,30 @@ public class ArmyRenderer {
     }
 
 private void drawArmy(Graphics2D g2, Army army, int cx, int cy, boolean selected) {
-        if (selected) {
-            g2.setColor(COLOR_SELECTED_RING);
-            g2.setStroke(new BasicStroke(2f));
-            g2.drawOval(cx - 11, cy - 14, 22, 24);
-        }
-
-        // Shield
-        int[] sx = { cx - 7, cx + 7, cx + 7, cx,    cx - 7 };
-        int[] sy = { cy - 9,  cy - 9,  cy - 2, cy + 5, cy - 2 };
-        g2.setColor(COLOR_ARMY_BODY);
-        g2.fillPolygon(sx, sy, 5);
-        g2.setColor(COLOR_ARMY_OUTLINE);
-        g2.setStroke(new BasicStroke(1f));
-        g2.drawPolygon(sx, sy, 5);
-
-        // Banner pole
-        g2.drawLine(cx, cy - 9, cx, cy - 19);
-
-        // Banner flag
-        int[] bx = { cx, cx + 7, cx };
-        int[] by = { cy - 19, cy - 16, cy - 13 };
-        g2.setColor(COLOR_ARMY_BANNER);
-        g2.fillPolygon(bx, by, 3);
-
-        // Label centered under shield
-        String full  = army.getDisplayName();
-        String label = full.length() > 8 ? full.substring(0, 8) : full;
-        g2.setFont(FONT_LABEL);
-        FontMetrics fm = g2.getFontMetrics();
-        int labelX = cx - fm.stringWidth(label) / 2;
-        int labelY = cy + 18;
-        g2.setColor(COLOR_LABEL_SHADOW);
-        g2.drawString(label, labelX + 1, labelY + 1);
-        g2.setColor(COLOR_LABEL);
-        g2.drawString(label, labelX, labelY);
+    if (selected) {
+        g2.setColor(COLOR_SELECTED_RING);
+        g2.setStroke(new BasicStroke(2f));
+        g2.drawOval(cx - 11, cy - 14, 22, 24);
     }
+
+    // Shield
+    int[] sx = { cx - 7, cx + 7, cx + 7, cx,    cx - 7 };
+    int[] sy = { cy - 9,  cy - 9,  cy - 2, cy + 5, cy - 2 };
+    g2.setColor(COLOR_ARMY_BODY);
+    g2.fillPolygon(sx, sy, 5);
+    g2.setColor(COLOR_ARMY_OUTLINE);
+    g2.setStroke(new BasicStroke(1f));
+    g2.drawPolygon(sx, sy, 5);
+
+    // Banner pole
+    g2.drawLine(cx, cy - 9, cx, cy - 19);
+
+    // Banner flag
+    int[] bx = { cx, cx + 7, cx };
+    int[] by = { cy - 19, cy - 16, cy - 13 };
+    g2.setColor(COLOR_ARMY_BANNER);
+    g2.fillPolygon(bx, by, 3);
+}
 
 /** Returns the army at a given world point, or null. Checks all visible armies. */
     public Army hitTest(Point world, ZoneManager zm) {

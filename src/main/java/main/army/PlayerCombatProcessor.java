@@ -12,9 +12,9 @@ import main.nobles.NobleArmy;
 import main.nobles.NobleArmyManager;
 import main.nobles.NobleHouse;
 import main.nobles.NobleHouseManager;
-import main.nobles.combat.ArmyForce;
-import main.nobles.combat.CombatResolver;
-import main.nobles.combat.CombatResult;
+import main.combat.ArmyForce;
+import main.combat.CombatResolver;
+import main.combat.CombatResult;
 import main.parameters.GameParameters;
 
 import java.util.ArrayList;

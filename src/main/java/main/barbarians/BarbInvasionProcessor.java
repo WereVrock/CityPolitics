@@ -513,12 +513,12 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId, ResourceP
                 + " fighting at " + zoneId + " vs " + defenderLabel
                 + " boostedDef=" + boostedDefSize);
 
-        main.nobles.combat.ArmyForce atkForce = new main.nobles.combat.ArmyForce(
+        main.combat.ArmyForce atkForce = new main.combat.ArmyForce(
                 "barbarians", barb.getSize(), 0, 0);
-        main.nobles.combat.ArmyForce defForce = new main.nobles.combat.ArmyForce(
+        main.combat.ArmyForce defForce = new main.combat.ArmyForce(
                 defenderLabel, boostedDefSize, nobleFort, nobleMilitary);
 
-        main.nobles.combat.CombatResult result = main.nobles.combat.CombatResolver.resolve(atkForce, defForce);
+        main.combat.CombatResult result = main.combat.CombatResolver.resolve(atkForce, defForce);
         log.addAll(result.getLog());
 
         barb.applyLosses(result.getAttackerLosses());

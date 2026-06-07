@@ -30,6 +30,9 @@ final class DebugLogFrame extends JFrame {
     private JPanel typePanel;
     private JCheckBox showDetailsCheckbox;
     private JCheckBox stayOnTopCheckbox;
+    private int logFontSize = 12;
+    private static final int LOG_FONT_SIZE_MIN = 8;
+    private static final int LOG_FONT_SIZE_MAX = 24;
 
     // Preferences keys
     private static final String PREFS_NODE = "debug_log_viewer";
@@ -83,8 +86,15 @@ final class DebugLogFrame extends JFrame {
         chunkButton.addActionListener(e -> openChunkCopyDialog());
         clearButton.addActionListener(e -> clearLogs());
 
+        JButton fontDecBtn = new JButton("A-");
+        JButton fontIncBtn = new JButton("A+");
+        fontDecBtn.addActionListener(e -> adjustLogFontSize(-1));
+        fontIncBtn.addActionListener(e -> adjustLogFontSize(+1));
+
         controlBar.add(showDetailsCheckbox);
         controlBar.add(stayOnTopCheckbox);
+        controlBar.add(fontDecBtn);
+        controlBar.add(fontIncBtn);
         controlBar.add(copyButton);
         controlBar.add(chunkButton);
         controlBar.add(clearButton);
@@ -461,7 +471,14 @@ private void captureUserSelections() {
         updateFilter();
     }
 
-    private String getVisibleMessagesText() {
+private void adjustLogFontSize(int delta) {
+    logFontSize = Math.max(LOG_FONT_SIZE_MIN, Math.min(LOG_FONT_SIZE_MAX, logFontSize + delta));
+    Font f = table.getFont().deriveFont((float) logFontSize);
+    table.setFont(f);
+    table.setRowHeight(logFontSize + 6);
+}
+
+private String getVisibleMessagesText() {
         int visibleCount = sorter.getViewRowCount();
         if (visibleCount == 0) {
             return "";

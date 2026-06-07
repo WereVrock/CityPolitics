@@ -46,11 +46,13 @@ private final JLabel   damageLabel;
 private final JTextArea adjacentArea;
 
 // Army
-private final JLabel armyTitleLabel;
-private final JLabel armyZoneLabel;
-private final JLabel armyStatusLabel;
-private final JLabel armySizeLabel;
-private final JLabel armyUpkeepLabel;
+private final JLabel   armyTitleLabel;
+private final JLabel   armyZoneLabel;
+private final JLabel   armyStatusLabel;
+private final JLabel   armySizeLabel;
+private final JLabel   armyUpkeepLabel;
+private final JButton  commanderButton;
+private final JLabel   commanderSkillLabel;
 // Barbarian pay-off button
 private final JButton barbPayOffBtn;
 private final JButton barbDismissBtn;
@@ -136,6 +138,20 @@ armyStatusLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
 armySizeLabel   = makeLabel("", UITheme.TEXT_PRIMARY,   UITheme.FONT_BODY);
 armyUpkeepLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
 
+commanderButton = new JButton("");
+commanderButton.setFont(UITheme.FONT_BUTTON);
+commanderButton.setForeground(new Color(180, 210, 255));
+commanderButton.setBackground(UITheme.BG_PANEL);
+commanderButton.setBorderPainted(false);
+commanderButton.setFocusPainted(false);
+commanderButton.setContentAreaFilled(false);
+commanderButton.setHorizontalAlignment(SwingConstants.LEFT);
+commanderButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+commanderButton.setVisible(false);
+
+commanderSkillLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
+commanderSkillLabel.setVisible(false);
+
 barbPayOffBtn = new JButton("PAY OFF");
 barbPayOffBtn.setFont(UITheme.FONT_BUTTON);
 barbPayOffBtn.setForeground(new Color(210, 170, 80));
@@ -159,14 +175,17 @@ armyCard.setBackground(UITheme.BG_PANEL);
 GridBagConstraints ac = new GridBagConstraints();
 ac.gridx = 0; ac.weightx = 1.0; ac.fill = GridBagConstraints.HORIZONTAL;
 ac.insets = new Insets(2, 0, 2, 0);
-ac.gridy = 0; armyCard.add(armyTitleLabel,  ac);
-ac.gridy = 1; armyCard.add(armyZoneLabel,   ac);
-ac.gridy = 2; armyCard.add(armySizeLabel,   ac);
-ac.gridy = 3; armyCard.add(armyUpkeepLabel, ac);
-ac.gridy = 4; armyCard.add(armyStatusLabel, ac);
-ac.gridy = 5; armyCard.add(barbPayOffBtn,   ac);
-ac.gridy = 6; armyCard.add(barbDismissBtn,  ac);
-ac.gridy = 7; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
+ac.gridy = 0; armyCard.add(armyTitleLabel,      ac);
+ac.gridy = 1; armyCard.add(armyZoneLabel,        ac);
+ac.gridy = 2; armyCard.add(armySizeLabel,        ac);
+ac.gridy = 3; armyCard.add(armyUpkeepLabel,      ac);
+ac.gridy = 4; armyCard.add(armyStatusLabel,      ac);
+ac.gridy = 5; armyCard.add(sep(),                ac);
+ac.gridy = 6; armyCard.add(commanderButton,      ac);
+ac.gridy = 7; armyCard.add(commanderSkillLabel,  ac);
+ac.gridy = 8; armyCard.add(barbPayOffBtn,        ac);
+ac.gridy = 9; armyCard.add(barbDismissBtn,       ac);
+ac.gridy = 10; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
 armyCard.add(Box.createVerticalGlue(), ac);
 
 cards.add(armyCard, CARD_ARMY);
@@ -310,6 +329,23 @@ public void showArmy(main.army.Army army, ZoneManager zm) {
     armyUpkeepLabel.setText("");
     barbPayOffBtn.setVisible(false);
     barbDismissBtn.setVisible(false);
+
+    // Commander section
+    for (java.awt.event.ActionListener al : commanderButton.getActionListeners())
+        commanderButton.removeActionListener(al);
+
+    main.army.Commander cmd = army.getCommander();
+    if (cmd != null) {
+        commanderButton.setText("⚔ " + cmd.getName());
+        commanderButton.setVisible(true);
+        commanderSkillLabel.setText("Skill: " + skillLabel(cmd.getCommandingSkill()));
+        commanderSkillLabel.setVisible(true);
+        commanderButton.addActionListener(e -> showCommanderDialog(cmd));
+    } else {
+        commanderButton.setVisible(false);
+        commanderSkillLabel.setVisible(false);
+    }
+
     cardLayout.show(cards, CARD_ARMY);
 }
 
@@ -420,6 +456,8 @@ public void clearArmy() {
     armySizeLabel.setText("");
     armyUpkeepLabel.setText("");
     armyStatusLabel.setText("");
+    commanderButton.setVisible(false);
+    commanderSkillLabel.setVisible(false);
     barbPayOffBtn.setVisible(false);
     barbDismissBtn.setVisible(false);
     cardLayout.show(cards, CARD_EMPTY);
@@ -525,6 +563,55 @@ dialog.getContentPane().setBackground(UITheme.BG_PANEL);
 dialog.setVisible(true);
 }
 
+private void showCommanderDialog(main.army.Commander cmd) {
+    Window parent = SwingUtilities.getWindowAncestor(this);
+    JDialog dialog = new JDialog(parent instanceof Frame ? (Frame) parent : null,
+            cmd.getName(), true);
+    dialog.setSize(320, 260);
+    dialog.setLocationRelativeTo(this);
+
+    JPanel content = new JPanel(new GridBagLayout());
+    content.setBackground(UITheme.BG_PANEL);
+    content.setBorder(new EmptyBorder(16, 16, 16, 16));
+
+    GridBagConstraints dc = new GridBagConstraints();
+    dc.gridx = 0; dc.weightx = 1.0; dc.fill = GridBagConstraints.HORIZONTAL;
+    dc.insets = new Insets(3, 0, 3, 0);
+
+    int row = 0;
+    dc.gridy = row++; content.add(makeDialogLabel("⚔ " + cmd.getName(),
+            new Color(180, 210, 255), UITheme.FONT_HEADER), dc);
+    dc.gridy = row++; content.add(makeDialogLabel("Race: " + cmd.getRace(),
+            UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), dc);
+    dc.gridy = row++; content.add(makeDialogLabel("Affiliation: " + cmd.getAffiliation().name(),
+            UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), dc);
+    dc.gridy = row++; content.add(sep(), dc);
+    dc.gridy = row++; content.add(makeDialogLabel(
+            "Commanding Skill: " + cmd.getCommandingSkill() + " — " + skillLabel(cmd.getCommandingSkill()),
+            skillColor(cmd.getCommandingSkill()), UITheme.FONT_BODY), dc);
+    dc.gridy = row++; content.add(makeDialogLabel(
+            skillDescription(cmd.getCommandingSkill()),
+            UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), dc);
+
+    dc.gridy = row; dc.weighty = 1.0; dc.fill = GridBagConstraints.BOTH;
+    content.add(Box.createVerticalGlue(), dc);
+
+    JButton close = new JButton("CLOSE");
+    close.setFont(UITheme.FONT_BUTTON);
+    close.setForeground(UITheme.TEXT_SECONDARY);
+    close.setBackground(UITheme.BUTTON_BG);
+    close.setBorderPainted(false);
+    close.setFocusPainted(false);
+    close.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    close.addActionListener(e -> dialog.dispose());
+
+    dialog.setLayout(new BorderLayout());
+    dialog.add(content, BorderLayout.CENTER);
+    dialog.add(close,   BorderLayout.SOUTH);
+    dialog.getContentPane().setBackground(UITheme.BG_PANEL);
+    dialog.setVisible(true);
+}
+
 private JLabel makeDialogLabel(String text, Color color, Font font) {
 JLabel l = new JLabel(text);
 l.setFont(font);
@@ -536,6 +623,36 @@ private Color opinionColor(int v) {
 if (v >= 70) return UITheme.TEXT_GREEN;
 if (v <= 30) return UITheme.TEXT_RED;
 return UITheme.TEXT_PRIMARY;
+}
+
+private String skillLabel(int skill) {
+    return switch (skill) {
+        case 1 -> "Novice";
+        case 2 -> "Seasoned";
+        case 3 -> "Veteran";
+        case 4 -> "Legendary";
+        default -> "Unknown";
+    };
+}
+
+private Color skillColor(int skill) {
+    return switch (skill) {
+        case 1 -> UITheme.TEXT_SECONDARY;
+        case 2 -> UITheme.TEXT_PRIMARY;
+        case 3 -> new Color(120, 200, 100);
+        case 4 -> new Color(255, 210, 80);
+        default -> UITheme.TEXT_SECONDARY;
+    };
+}
+
+private String skillDescription(int skill) {
+    return switch (skill) {
+        case 1 -> "An inexperienced commander. Troops fight at base effectiveness.";
+        case 2 -> "A capable officer with battlefield experience.";
+        case 3 -> "A hardened veteran who inspires soldiers to fight harder.";
+        case 4 -> "A legendary warlord. Enemies falter before this commander's name.";
+        default -> "";
+    };
 }
 
 /**

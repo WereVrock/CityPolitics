@@ -1,4 +1,4 @@
-package main.nobles.combat;
+package main.combat;
 
 import main.parameters.GameParameters;
 

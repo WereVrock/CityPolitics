@@ -1,8 +1,8 @@
 package main.nobles;
 
-import main.nobles.combat.ArmyForce;
-import main.nobles.combat.CombatResolver;
-import main.nobles.combat.CombatResult;
+import main.combat.ArmyForce;
+import main.combat.CombatResolver;
+import main.combat.CombatResult;
 import main.map.ZoneManager;
 import main.map.ZoneState;
 import main.parameters.GameParameters;
