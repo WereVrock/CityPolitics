@@ -39,7 +39,8 @@ public class MainWindow extends JFrame {
     private final JPanel  centerPanel;
     private  JButton partiesBtn;
     private  JButton openVoteBtn;
-    private  LedgerDialog ledgerDialog;
+    private ui.ledger.LedgerPanel ledgerPanel;
+    private JDialog               ledgerDialog;
 
     public MainWindow(GameState gameState) {
         this.gameState = gameState;
@@ -232,15 +233,35 @@ public class MainWindow extends JFrame {
         return wrapper;
     }
 
-    private void showLedger() {
+private void showLedger() {
         if (ledgerDialog == null) {
-            ledgerDialog = new LedgerDialog(this, gameState);
+            ledgerPanel  = new ui.ledger.LedgerPanel(
+                    gameState.getLedger(), gameState.getResources());
+            ledgerDialog = new JDialog(this, "Ledger", false);
+            ledgerDialog.setSize(560, 600);
+            ledgerDialog.setMinimumSize(new Dimension(420, 440));
+            ledgerDialog.setLocationRelativeTo(this);
+            ledgerDialog.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+            ledgerDialog.getContentPane().setBackground(UITheme.BG_DARK);
+            ledgerDialog.getContentPane().setLayout(new BorderLayout());
+
+            JLabel title = new JLabel("  LEDGER");
+            title.setFont(UITheme.FONT_TITLE);
+            title.setForeground(UITheme.TEXT_GOLD);
+            title.setBorder(new javax.swing.border.EmptyBorder(10, 12, 8, 12));
+            title.setOpaque(true);
+            title.setBackground(UITheme.BG_PANEL);
+            ledgerDialog.getContentPane().add(title,       BorderLayout.NORTH);
+            ledgerDialog.getContentPane().add(ledgerPanel, BorderLayout.CENTER);
+
+            gameState.getTurnProcessor().setOnSnapshotRequested(
+                    () -> ledgerPanel.captureSnapshot());
         }
-        ledgerDialog.refresh();
+        ledgerPanel.refresh();
         ledgerDialog.setVisible(true);
     }
 
-    private void swapCenter(JPanel panel) {
+private void swapCenter(JPanel panel) {
         centerPanel.removeAll();
         centerPanel.add(panel, BorderLayout.CENTER);
         centerPanel.revalidate();
@@ -299,7 +320,7 @@ public class MainWindow extends JFrame {
         openVoteBtn.setVisible(blocked);
     }
 
-    private void endTurn() {
+private void endTurn() {
         List<String> log = gameState.getTurnProcessor().processTurn(
             gameState,
             gameState.getResources(),
@@ -315,8 +336,8 @@ public class MainWindow extends JFrame {
         resourcePanel.refresh();
         popPanel.refresh();
         actionsPanel.refresh();
-        if (ledgerDialog != null && ledgerDialog.isVisible()) {
-            ledgerDialog.refresh();
+        if (ledgerPanel != null && ledgerDialog != null && ledgerDialog.isVisible()) {
+            ledgerPanel.refresh();
         }
 
         if (centerPanel.getComponentCount() > 0 && centerPanel.getComponent(0) == mapView) {
@@ -329,7 +350,7 @@ public class MainWindow extends JFrame {
         }
     }
 
-    private void handleActionResult(ActionResult result) {
+private void handleActionResult(ActionResult result) {
         if (result.isPending()) {
             eventLogPanel.appendLine("⚑ " + result.getMessage());
             showVoteSession();
@@ -469,7 +490,8 @@ private JPanel createStatusBar() {
      * Re-wires all processor callbacks that reference UI components.
      * Must be called after construction and after gameState.reset() (new game).
      */
-    private void rewireCallbacks() {
+
+private void rewireCallbacks() {
         gameState.getPlayerCombatProcessor().setZoneAwardCallback(
                 (zoneId, claimants) -> showZoneAwardDialog(zoneId, claimants));
 
@@ -489,6 +511,11 @@ private JPanel createStatusBar() {
             }
             return result[0];
         });
+
+        if (ledgerPanel != null) {
+            gameState.getTurnProcessor().setOnSnapshotRequested(
+                    () -> ledgerPanel.captureSnapshot());
+        }
     }
 
 }

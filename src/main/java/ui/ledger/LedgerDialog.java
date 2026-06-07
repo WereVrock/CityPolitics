@@ -1,4 +1,4 @@
-package ui;
+package ui.ledger;
 
 import main.ledger.Ledger;
 import main.resources.ResourceType;
@@ -10,6 +10,7 @@ import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import ui.UITheme;
 
 /**
  * Non-modal dialog showing projected recurring income/costs

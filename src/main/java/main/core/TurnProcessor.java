@@ -30,9 +30,14 @@ public class TurnProcessor {
     }
 
     private PayOffDialogSupplier payOffDialogSupplier;
+    private Runnable             onSnapshotRequested;
 
     public void setPayOffDialogSupplier(PayOffDialogSupplier supplier) {
         this.payOffDialogSupplier = supplier;
+    }
+
+    public void setOnSnapshotRequested(Runnable callback) {
+        this.onSnapshotRequested = callback;
     }
 
 public List<String> processTurn(
@@ -48,6 +53,7 @@ public List<String> processTurn(
         List<String> log = new ArrayList<>();
 
         main.ledger.Ledger ledger = gameState.getLedger();
+        if (onSnapshotRequested != null) onSnapshotRequested.run();
         ledger.clearOneTime();
 
         int foodBefore = resources.getFood();
@@ -131,9 +137,6 @@ private void applyPopEconomics(PopManager popManager,
 
 private void applyStatDecay(StatBlock stats, List<String> log,
                                  main.ledger.Ledger ledger) {
-        ledger.setRecurring(main.resources.ResourceType.INFLUENCE, "decay", "Base Influence",
-                GameParameters.BASE_INFLUENCE_PER_TURN);
-
         stats.reduceHappiness(GameParameters.HAPPINESS_DECAY_PER_TURN);
         stats.reduceCorruption(GameParameters.CORRUPTION_DECAY_PER_TURN);
         log.add("Happiness -" + GameParameters.HAPPINESS_DECAY_PER_TURN
