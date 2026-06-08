@@ -1,9 +1,9 @@
 package ui;
 
 import debug.Debug;
-import main.army.Commander;
-import main.army.CommanderRecruitPool;
-import main.army.CommanderRoster;
+import main.army.commander.Commander;
+import main.army.commander.CommanderRecruitPool;
+import main.army.commander.CommanderRoster;
 import main.parameters.GameParameters;
 import main.resources.ResourcePool;
 

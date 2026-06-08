@@ -73,7 +73,7 @@ public List<String> processTurn(
         Debug.log("turn", "commander-pool", "Recruit pool refreshed.");
 
         // ── Commander upkeep & party power ────────────────────────────────────
-        main.army.CommanderRoster roster = gameState.getCommanderRoster();
+        main.army.commander.CommanderRoster roster = gameState.getCommanderRoster();
         log.addAll(roster.processTurnUpkeep());
         roster.applyPartyPowerContributions(gameState.getPartyManager());
 

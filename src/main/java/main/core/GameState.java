@@ -47,8 +47,8 @@ public class GameState {
     private RavagedZoneManager    ravagedZoneManager;
     private BarbInvasionProcessor barbInvasionProcessor;
     private main.army.PlayerCombatProcessor playerCombatProcessor;
-    private main.army.CommanderRoster       commanderRoster;
-    private main.army.CommanderRecruitPool  commanderRecruitPool;
+    private main.army.commander.CommanderRoster       commanderRoster;
+    private main.army.commander.CommanderRecruitPool  commanderRecruitPool;
 
     private final List<VotingSession> activeSessions = new ArrayList<>();
 
@@ -87,8 +87,8 @@ public class GameState {
         nobleHouseManager.setRavagedZoneManager(ravagedZoneManager);
         playerCombatProcessor = new main.army.PlayerCombatProcessor();
         playerCombatProcessor.setPartyManager(partyManager);
-        commanderRoster      = new main.army.CommanderRoster(resources, partyManager);
-        commanderRecruitPool = new main.army.CommanderRecruitPool(resources, partyManager);
+        commanderRoster      = new main.army.commander.CommanderRoster(resources, partyManager);
+        commanderRecruitPool = new main.army.commander.CommanderRecruitPool(resources, partyManager);
         // Note: zoneAwardCallback is re-wired by MainWindow after reset via
         // rewireCallbacks(). Do not set it here.
         bootstrapLedger();
@@ -170,8 +170,8 @@ private void bootstrapLedger() {
     public BarbInvasionProcessor       getBarbInvasionProcessor()  { return barbInvasionProcessor; }
     public main.ledger.Ledger          getLedger()                 { return ledger; }
     public main.army.PlayerCombatProcessor getPlayerCombatProcessor() { return playerCombatProcessor; }
-    public main.army.CommanderRoster       getCommanderRoster()       { return commanderRoster; }
-    public main.army.CommanderRecruitPool  getCommanderRecruitPool()  { return commanderRecruitPool; }
+    public main.army.commander.CommanderRoster       getCommanderRoster()       { return commanderRoster; }
+    public main.army.commander.CommanderRecruitPool  getCommanderRecruitPool()  { return commanderRecruitPool; }
 
     /** Resets barbarian subsystem for new game. */
     public void resetBarbarians() {

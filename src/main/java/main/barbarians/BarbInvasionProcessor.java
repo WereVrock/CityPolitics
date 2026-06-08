@@ -637,46 +637,57 @@ private void distributeDefenderLosses(int rawLoss, int nobleGarrison, List<Noble
     }
 
     // ─── Conquest ────────────────────────────────────────────────────────────
-    private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
-        List<String> log = new ArrayList<>();
 
-        if (previousOwner != null) {
-            previousOwner.removeZone(zoneId);
-            log.add(previousOwner.getName() + " loses " + zoneId + " to the barbarians!");
-        }
+private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previousOwner) {
+    List<String> log = new ArrayList<>();
 
-        if (barb.isWarboss()) {
-            ravagedZones.markHeavilyRavaged(zoneId);
-            log.add("☠ " + zoneId + " is heavily ravaged by the Warboss's horde!");
-        } else {
-            ravagedZones.markRavaged(zoneId);
-            log.add("☠ " + zoneId + " is ravaged by the barbarians!");
-        }
+    if (previousOwner != null) {
+        previousOwner.removeZone(zoneId);
+        // Give the displaced house a claim so the player can return it after liberation
+        nobleHouseManager.getClaimManager().addClaim(previousOwner.getId(), zoneId);
+        log.add(previousOwner.getName() + " loses " + zoneId
+                + " to the barbarians and gains a claim on it!");
+        Debug.log("barbarians", "conquest-claim",
+                previousOwner.getId() + " given claim on " + zoneId + " after barb conquest");
+    }
 
-        // Do not leave a garrison if the zone is already occupied by barbarians
-        if (!armyManager.getGarrisonsInZone(zoneId).isEmpty()) {
-            log.add("☠ " + zoneId + " is already under barbarian control – no new garrison left.");
-            return log;
-        }
+    if (barb.isWarboss()) {
+        ravagedZones.markHeavilyRavaged(zoneId);
+        log.add("☠ " + zoneId + " is heavily ravaged by the Warboss's horde!");
+    } else {
+        ravagedZones.markRavaged(zoneId);
+        log.add("☠ " + zoneId + " is ravaged by the barbarians!");
+    }
 
-        int garrisonSize = barb.isWarboss() ? GameParameters.BARB_WARBOSS_GARRISON_SIZE : GameParameters.BARB_RAVAGER_GARRISON_SIZE;
-        garrisonSize = Math.min(garrisonSize, barb.getSize());
-
-        if (garrisonSize > 0) {
-            barb.setSize(barb.getSize() - garrisonSize);
-            BarbArmy garrison = new BarbArmy(barb.getType(), garrisonSize, zoneId);
-            garrison.makeGarrison();
-            armyManager.addGarrison(garrison);
-            log.add(garrisonSize + " barbarians remain as garrison in " + zoneId + ".");
-            log("garrison-placed", "Placed " + garrisonSize + " garrison in " + zoneId + " from " + barb.getType());
-        } else {
-            log("garrison-skip", "No garrison placed in " + zoneId + " (size would be 0 or none)");
-        }
-
+    // Do not leave a garrison if the zone is already occupied by barbarians
+    if (!armyManager.getGarrisonsInZone(zoneId).isEmpty()) {
+        log.add("☠ " + zoneId + " is already under barbarian control – no new garrison left.");
         return log;
     }
 
-    // ─── Noble AI pay-off decision ────────────────────────────────────────────
+    int garrisonSize = barb.isWarboss()
+            ? GameParameters.BARB_WARBOSS_GARRISON_SIZE
+            : GameParameters.BARB_RAVAGER_GARRISON_SIZE;
+    garrisonSize = Math.min(garrisonSize, barb.getSize());
+
+    if (garrisonSize > 0) {
+        barb.setSize(barb.getSize() - garrisonSize);
+        BarbArmy garrison = new BarbArmy(barb.getType(), garrisonSize, zoneId);
+        garrison.makeGarrison();
+        armyManager.addGarrison(garrison);
+        log.add(garrisonSize + " barbarians remain as garrison in " + zoneId + ".");
+        Debug.log("barbarians", "garrison-placed",
+                "Placed " + garrisonSize + " garrison in " + zoneId
+                + " from " + barb.getType());
+    } else {
+        Debug.log("barbarians", "garrison-skip",
+                "No garrison placed in " + zoneId + " (size would be 0 or none)");
+    }
+
+    return log;
+}
+
+// ─── Noble AI pay-off decision ────────────────────────────────────────────
     private boolean shouldNoblePay(NobleHouse noble, BarbArmy barb) {
         int garrisonSize = noble.getGarrisonFor(barb.getZoneId());
         int armySize = 0;

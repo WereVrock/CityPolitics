@@ -1,5 +1,5 @@
 // ===== CommanderDeathResolver.java =====
-package main.army;
+package main.army.commander;
 
 import main.parameters.GameParameters;
 

@@ -1,4 +1,4 @@
-package main.army;
+package main.army.commander;
 
 import main.parameters.GameParameters;
 import main.politics.PoliticalParty;

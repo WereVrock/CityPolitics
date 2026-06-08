@@ -1,5 +1,6 @@
 package main.army;
 
+import main.army.commander.Commander;
 import debug.Debug;
 
 /**

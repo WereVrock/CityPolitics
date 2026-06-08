@@ -1,22 +1,30 @@
 package ui;
 
+import main.army.commander.Commander;
+import main.army.commander.CommanderRecruitPool;
+import main.army.commander.CommanderRoster;
 import debug.Debug;
 import main.army.*;
 import main.parameters.GameParameters;
+import main.politics.PartyManager;
+import main.politics.PoliticalParty;
 import main.resources.ResourcePool;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
+import ui.CommanderRecruitUI;
+import ui.UITheme;
 
 /**
- * Top-level military panel, accessed from the Actions menu.
+ * Top-level military panel.
  *
- * Left column  — army list with per-army controls (assign commander, recruit soldiers).
- * Right column — commander roster with dismiss button.
- * Bottom       — open recruitment screen button.
- * Top-right    — BACK / close button.
+ * Left  — army list: create / disband / merge / assign commander / recruit soldiers.
+ * Right — commander roster: shows party affiliation by name, dismiss button.
+ * Bottom — open commander recruitment screen.
  */
 public class MilitaryMenuUI extends JPanel {
 
@@ -24,10 +32,8 @@ public class MilitaryMenuUI extends JPanel {
     private final CommanderRoster      roster;
     private final CommanderRecruitPool pool;
     private final ResourcePool         resources;
+    private final PartyManager         partyManager;
     private final Runnable             onBack;
-
-    private JPanel armyListPanel;
-    private JPanel rosterPanel;
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -35,12 +41,14 @@ public class MilitaryMenuUI extends JPanel {
                           CommanderRoster roster,
                           CommanderRecruitPool pool,
                           ResourcePool resources,
+                          PartyManager partyManager,
                           Runnable onBack) {
-        this.armyManager = armyManager;
-        this.roster      = roster;
-        this.pool        = pool;
-        this.resources   = resources;
-        this.onBack      = onBack;
+        this.armyManager  = armyManager;
+        this.roster       = roster;
+        this.pool         = pool;
+        this.resources    = resources;
+        this.partyManager = partyManager;
+        this.onBack       = onBack;
         setLayout(new BorderLayout(8, 8));
         setBorder(new EmptyBorder(10, 10, 10, 10));
         setBackground(UITheme.BG_DARK);
@@ -51,61 +59,48 @@ public class MilitaryMenuUI extends JPanel {
 
     private void build() {
         removeAll();
+        add(buildTopBar(),    BorderLayout.NORTH);
+        add(buildCentre(),    BorderLayout.CENTER);
+        add(buildBottomBar(), BorderLayout.SOUTH);
+        revalidate();
+        repaint();
+    }
 
-        // ── Top bar ──────────────────────────────────────────────────────────
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(UITheme.BG_PANEL);
-        topBar.setBorder(new EmptyBorder(6, 10, 6, 10));
+    private JPanel buildTopBar() {
+        JPanel bar = new JPanel(new BorderLayout());
+        bar.setBackground(UITheme.BG_PANEL);
+        bar.setBorder(new EmptyBorder(6, 10, 6, 10));
 
         JLabel title = new JLabel("MILITARY");
         title.setFont(UITheme.FONT_TITLE);
         title.setForeground(UITheme.TEXT_GOLD);
 
-        JButton backBtn = new JButton("◀ BACK");
-        backBtn.setFont(UITheme.FONT_BUTTON);
-        backBtn.setForeground(UITheme.TEXT_SECONDARY);
-        backBtn.setBackground(UITheme.BUTTON_BG);
-        backBtn.setBorderPainted(false);
-        backBtn.setFocusPainted(false);
-        backBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        right.setBackground(UITheme.BG_PANEL);
+
+        JButton createBtn = makeBarButton("+ New Army");
+        createBtn.setForeground(UITheme.TEXT_GOLD);
+        createBtn.addActionListener(e -> openCreateArmyDialog());
+        right.add(createBtn);
+
+        JButton backBtn = makeBarButton("◀ BACK");
         backBtn.addActionListener(e -> onBack.run());
+        right.add(backBtn);
 
-        topBar.add(title,   BorderLayout.WEST);
-        topBar.add(backBtn, BorderLayout.EAST);
-        add(topBar, BorderLayout.NORTH);
-
-        // ── Centre: two columns ───────────────────────────────────────────────
-        JPanel centre = new JPanel(new GridLayout(1, 2, 12, 0));
-        centre.setBackground(UITheme.BG_DARK);
-
-        armyListPanel = buildArmyListPanel();
-        rosterPanel   = buildRosterPanel();
-
-        centre.add(new JScrollPane(armyListPanel));
-        centre.add(new JScrollPane(rosterPanel));
-        add(centre, BorderLayout.CENTER);
-
-        // ── Bottom: open recruitment ──────────────────────────────────────────
-        JButton recruitBtn = new JButton("Open Commander Recruitment");
-        recruitBtn.setFont(UITheme.FONT_BUTTON);
-        recruitBtn.setForeground(UITheme.TEXT_GOLD);
-        recruitBtn.setBackground(new Color(60, 40, 20));
-        recruitBtn.setBorderPainted(false);
-        recruitBtn.setFocusPainted(false);
-        recruitBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        recruitBtn.addActionListener(e -> openRecruitUI());
-        JPanel bottomBar = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        bottomBar.setBackground(UITheme.BG_DARK);
-        bottomBar.add(recruitBtn);
-        add(bottomBar, BorderLayout.SOUTH);
-
-        revalidate();
-        repaint();
+        bar.add(title, BorderLayout.WEST);
+        bar.add(right, BorderLayout.EAST);
+        return bar;
     }
 
-    // ─── Army list panel ─────────────────────────────────────────────────────
+    private JPanel buildCentre() {
+        JPanel centre = new JPanel(new GridLayout(1, 2, 12, 0));
+        centre.setBackground(UITheme.BG_DARK);
+        centre.add(buildArmyScrollPane());
+        centre.add(buildRosterScrollPane());
+        return centre;
+    }
 
-    private JPanel buildArmyListPanel() {
+    private JScrollPane buildArmyScrollPane() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(UITheme.BG_DARK);
@@ -114,83 +109,24 @@ public class MilitaryMenuUI extends JPanel {
                 "Armies", 0, 0,
                 UITheme.FONT_BUTTON, UITheme.TEXT_GOLD));
 
-        for (Army army : armyManager.getArmies()) {
+        List<Army> armies = armyManager.getArmies();
+        if (armies.isEmpty()) {
+            JLabel empty = new JLabel("  No armies.");
+            empty.setFont(UITheme.FONT_SMALL);
+            empty.setForeground(UITheme.TEXT_SECONDARY);
+            panel.add(empty);
+        }
+        for (Army army : armies) {
             panel.add(buildArmyCard(army));
             panel.add(Box.createVerticalStrut(6));
         }
-        return panel;
+        JScrollPane sp = new JScrollPane(panel);
+        sp.setBorder(null);
+        sp.getViewport().setBackground(UITheme.BG_DARK);
+        return sp;
     }
 
-    private JPanel buildArmyCard(Army army) {
-        JPanel card = new JPanel(new BorderLayout(6, 4));
-        card.setBackground(UITheme.BG_PANEL_LIGHT);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UITheme.BORDER_COLOR),
-                new EmptyBorder(8, 8, 8, 8)));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
-
-        // Info block
-        JPanel info = new JPanel();
-        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
-        info.setBackground(UITheme.BG_PANEL_LIGHT);
-
-        JLabel nameLabel = new JLabel(army.getDisplayName());
-        nameLabel.setFont(UITheme.FONT_BUTTON);
-        nameLabel.setForeground(UITheme.TEXT_PRIMARY);
-
-        String locationStr = army.isInCity() ? "In Heartland" : "Deployed: " + army.getZoneId();
-        JLabel locLabel = new JLabel(locationStr);
-        locLabel.setFont(UITheme.FONT_SMALL);
-        locLabel.setForeground(UITheme.TEXT_SECONDARY);
-
-        JLabel sizeLabel = new JLabel("Soldiers: " + army.getSoldierCount());
-        sizeLabel.setFont(UITheme.FONT_SMALL);
-        sizeLabel.setForeground(UITheme.TEXT_SECONDARY);
-
-        String cmdText = army.hasLivingCommander()
-                ? "Cmd: " + army.getCommander().getName()
-                  + " [Skill " + army.getCommandingSkill() + "]"
-                : "No Commander (cannot deploy)";
-        JLabel cmdLabel = new JLabel(cmdText);
-        cmdLabel.setFont(UITheme.FONT_SMALL);
-        cmdLabel.setForeground(army.hasLivingCommander()
-                ? UITheme.TEXT_PRIMARY : Color.ORANGE);
-
-        info.add(nameLabel);
-        info.add(locLabel);
-        info.add(sizeLabel);
-        info.add(cmdLabel);
-        card.add(info, BorderLayout.CENTER);
-
-        // Button column
-        JPanel buttons = new JPanel();
-        buttons.setLayout(new BoxLayout(buttons, BoxLayout.Y_AXIS));
-        buttons.setBackground(UITheme.BG_PANEL_LIGHT);
-
-        // Assign commander button
-        JButton assignBtn = new JButton("Assign Cmd");
-        styleSmallButton(assignBtn);
-        assignBtn.setToolTipText("Assign a commander from your roster to this army");
-        assignBtn.addActionListener(e -> openAssignCommanderDialog(army));
-        buttons.add(assignBtn);
-        buttons.add(Box.createVerticalStrut(4));
-
-        // Recruit soldiers button
-        JButton recruitSoldiersBtn = new JButton("Recruit");
-        styleSmallButton(recruitSoldiersBtn);
-        recruitSoldiersBtn.setToolTipText(
-                "Recruit soldiers — " + GameParameters.SOLDIER_RECRUIT_GOLD_COST
-                + " gold + " + GameParameters.SOLDIER_RECRUIT_MANPOWER_COST + " manpower each");
-        recruitSoldiersBtn.addActionListener(e -> openRecruitSoldiersDialog(army));
-        buttons.add(recruitSoldiersBtn);
-
-        card.add(buttons, BorderLayout.EAST);
-        return card;
-    }
-
-    // ─── Roster panel ────────────────────────────────────────────────────────
-
-    private JPanel buildRosterPanel() {
+    private JScrollPane buildRosterScrollPane() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(UITheme.BG_DARK);
@@ -199,106 +135,259 @@ public class MilitaryMenuUI extends JPanel {
                 "Commanders", 0, 0,
                 UITheme.FONT_BUTTON, UITheme.TEXT_GOLD));
 
-        List<main.army.Commander> commanders = roster.getAllCommanders();
-        if (commanders.isEmpty()) {
-            JLabel empty = new JLabel("No commanders recruited.");
-            empty.setForeground(UITheme.TEXT_SECONDARY);
+        List<Commander> all = roster.getAllCommanders();
+        if (all.isEmpty()) {
+            JLabel empty = new JLabel("  No commanders recruited.");
             empty.setFont(UITheme.FONT_SMALL);
+            empty.setForeground(UITheme.TEXT_SECONDARY);
             panel.add(empty);
         }
-
-        for (main.army.Commander c : commanders) {
+        for (Commander c : all) {
             panel.add(buildCommanderCard(c));
             panel.add(Box.createVerticalStrut(6));
         }
-        return panel;
+        JScrollPane sp = new JScrollPane(panel);
+        sp.setBorder(null);
+        sp.getViewport().setBackground(UITheme.BG_DARK);
+        return sp;
     }
 
-    private JPanel buildCommanderCard(main.army.Commander c) {
-        JPanel card = new JPanel(new BorderLayout(6, 4));
+    private JPanel buildBottomBar() {
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 6));
+        bar.setBackground(UITheme.BG_PANEL);
+        JButton btn = new JButton("Open Commander Recruitment");
+        btn.setFont(UITheme.FONT_BUTTON);
+        btn.setForeground(UITheme.TEXT_GOLD);
+        btn.setBackground(new Color(60, 40, 20));
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addActionListener(e -> openRecruitUI());
+        bar.add(btn);
+        return bar;
+    }
+
+    // ─── Army card ───────────────────────────────────────────────────────────
+
+    private JPanel buildArmyCard(Army army) {
+        JPanel card = new JPanel(new BorderLayout(8, 4));
         card.setBackground(UITheme.BG_PANEL_LIGHT);
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER_COLOR),
-                new EmptyBorder(8, 8, 8, 8)));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+                new EmptyBorder(8, 10, 8, 10)));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 190));
+
+        // Info block
+        JPanel info = new JPanel();
+        info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+        info.setBackground(UITheme.BG_PANEL_LIGHT);
+
+        addInfoLabel(info, army.getDisplayName(),
+                UITheme.FONT_BUTTON, UITheme.TEXT_PRIMARY);
+        addInfoLabel(info,
+                army.isInCity() ? "Location: Heartland" : "Deployed: " + army.getZoneId(),
+                UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
+        addInfoLabel(info, "Soldiers: " + army.getSoldierCount(),
+                UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
+
+        boolean hasCmd  = army.hasLivingCommander();
+        String  cmdText = hasCmd
+                ? "Cmd: " + army.getCommander().getName()
+                  + "  [Skill " + army.getCommandingSkill() + "]"
+                : "⚠ No Commander — stays in Heartland";
+        Color cmdColor  = hasCmd ? UITheme.TEXT_PRIMARY : new Color(220, 140, 40);
+        addInfoLabel(info, cmdText, UITheme.FONT_SMALL, cmdColor);
+
+        card.add(info, BorderLayout.CENTER);
+
+        // Button column
+        JPanel btns = new JPanel();
+        btns.setLayout(new BoxLayout(btns, BoxLayout.Y_AXIS));
+        btns.setBackground(UITheme.BG_PANEL_LIGHT);
+
+        JButton assignBtn = makeCardButton("Assign Cmd");
+        assignBtn.setToolTipText("Assign a commander from your roster");
+        assignBtn.addActionListener(e -> openAssignCommanderDialog(army));
+        btns.add(assignBtn);
+        btns.add(Box.createVerticalStrut(3));
+
+        JButton recruitBtn = makeCardButton("Recruit");
+        recruitBtn.setToolTipText("Recruit soldiers into this army");
+        recruitBtn.addActionListener(e -> openRecruitSoldiersDialog(army));
+        btns.add(recruitBtn);
+        btns.add(Box.createVerticalStrut(3));
+
+        boolean canMerge = army.isInCity()
+                && armyManager.getCityArmies().stream().anyMatch(a -> a != army);
+        JButton mergeBtn = makeCardButton("Merge Into");
+        mergeBtn.setToolTipText(
+                "Transfer all soldiers into another heartland army, then disband this one");
+        mergeBtn.setEnabled(canMerge);
+        if (!canMerge) mergeBtn.setForeground(Color.GRAY);
+        mergeBtn.addActionListener(e -> openMergeDialog(army));
+        btns.add(mergeBtn);
+        btns.add(Box.createVerticalStrut(3));
+
+        JButton disbandBtn = makeCardButton("Disband");
+        disbandBtn.setForeground(new Color(200, 80, 80));
+        disbandBtn.setToolTipText("Disband — soldiers return to manpower pool");
+        disbandBtn.addActionListener(e -> confirmDisband(army));
+        btns.add(disbandBtn);
+
+        card.add(btns, BorderLayout.EAST);
+        return card;
+    }
+
+    // ─── Commander card ───────────────────────────────────────────────────────
+
+    private JPanel buildCommanderCard(Commander c) {
+        JPanel card = new JPanel(new BorderLayout(8, 4));
+        card.setBackground(UITheme.BG_PANEL_LIGHT);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR),
+                new EmptyBorder(8, 10, 8, 10)));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
         JPanel info = new JPanel();
         info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
         info.setBackground(UITheme.BG_PANEL_LIGHT);
 
-        JLabel nameLabel = new JLabel(c.getName() + (c.isAlive() ? "" : "  ✝"));
-        nameLabel.setFont(UITheme.FONT_BUTTON);
-        nameLabel.setForeground(c.isAlive() ? UITheme.TEXT_PRIMARY : Color.GRAY);
+        Color nameColor = c.isAlive() ? UITheme.TEXT_PRIMARY : Color.GRAY;
+        addInfoLabel(info, c.getName() + (c.isAlive() ? "" : "  ✝"),
+                UITheme.FONT_BUTTON, nameColor);
 
-        JLabel detailLabel = new JLabel(
+        addInfoLabel(info,
                 "Skill " + c.getCommandingSkill()
-                + " | XP " + c.getXp()
-                + (c.xpToNextLevel() > 0 ? " (+" + c.xpToNextLevel() + " to next)" : " [MAX]")
-                + " | " + c.getPartyName());
-        detailLabel.setFont(UITheme.FONT_SMALL);
-        detailLabel.setForeground(UITheme.TEXT_SECONDARY);
+                + "  |  XP " + c.getXp()
+                + (c.xpToNextLevel() > 0
+                        ? "  (need " + c.xpToNextLevel() + " more)"
+                        : "  [MAX SKILL]"),
+                UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
 
-        JLabel upkeepLabel = new JLabel(
-                String.format("Upkeep: %.1f gold/turn", c.getUpkeepCost()));
-        upkeepLabel.setFont(UITheme.FONT_SMALL);
-        upkeepLabel.setForeground(UITheme.TEXT_SECONDARY);
+        String partyName = resolvePartyName(c);
+        addInfoLabel(info,
+                "Party: " + partyName
+                + "  |  Upkeep: " + String.format("%.1f", c.getUpkeepCost()) + " gold/turn",
+                UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
 
-        info.add(nameLabel);
-        info.add(detailLabel);
-        info.add(upkeepLabel);
+        // Which army is this commander assigned to?
+        String assigned = armyManager.getArmies().stream()
+                .filter(a -> a.getCommander() == c)
+                .map(Army::getDisplayName)
+                .findFirst().orElse("Unassigned");
+        addInfoLabel(info, "Army: " + assigned,
+                UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
+
         card.add(info, BorderLayout.CENTER);
 
         if (c.isAlive()) {
-            JButton dismissBtn = new JButton("Dismiss");
-            styleSmallButton(dismissBtn);
+            JButton dismissBtn = makeCardButton("Dismiss");
             dismissBtn.setForeground(new Color(200, 80, 80));
-            dismissBtn.setToolTipText("Dismiss — costs " + GameParameters.COMMANDER_DISMISS_COST
-                    + " influence, lowers party opinion");
+            dismissBtn.setToolTipText("Costs " + GameParameters.COMMANDER_DISMISS_COST
+                    + " influence; lowers " + partyName + " opinion");
             dismissBtn.addActionListener(e -> {
                 int confirm = JOptionPane.showConfirmDialog(this,
-                        "Dismiss " + c.getName() + "?\nCosts "
-                        + GameParameters.COMMANDER_DISMISS_COST + " influence and lowers "
-                        + c.getPartyName() + " party opinion by "
-                        + GameParameters.COMMANDER_DISMISS_OPINION_LOSS + ".",
-                        "Confirm Dismiss",
-                        JOptionPane.YES_NO_OPTION);
+                        "Dismiss " + c.getName() + "?\n"
+                        + "Cost: " + GameParameters.COMMANDER_DISMISS_COST + " influence\n"
+                        + partyName + " opinion −" + GameParameters.COMMANDER_DISMISS_OPINION_LOSS,
+                        "Confirm Dismiss", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     boolean ok = roster.dismiss(c);
                     if (!ok) {
                         JOptionPane.showMessageDialog(this, "Not enough influence.");
-                        Debug.log("military-ui", "dismiss-fail",
-                                c.getName() + " — not enough influence");
+                        Debug.log("military-ui", "dismiss-fail", c.getName());
                     } else {
-                        Debug.log("military-ui", "dismiss-ok", c.getName() + " dismissed");
+                        Debug.log("military-ui", "dismiss-ok", c.getName());
                         build();
                     }
                 }
             });
             card.add(dismissBtn, BorderLayout.EAST);
         }
-
         return card;
     }
 
-    // ─── Assign commander dialog ──────────────────────────────────────────────
+    // ─── Create army ─────────────────────────────────────────────────────────
 
-    private void openAssignCommanderDialog(Army army) {
-        List<main.army.Commander> available = roster.getAliveCommanders();
+    private void openCreateArmyDialog() {
+        String name = JOptionPane.showInputDialog(this,
+                "Enter name for new army:",
+                "Create New Army", JOptionPane.PLAIN_MESSAGE);
+        if (name == null || name.isBlank()) return;
+        Army army = armyManager.createArmy(name.trim());
+        Debug.log("military-ui", "create-army",
+                army.getId() + " — " + army.getDisplayName());
+        build();
+    }
 
-        if (available.isEmpty()) {
+    // ─── Disband army ─────────────────────────────────────────────────────────
+
+    private void confirmDisband(Army army) {
+        int soldiers = army.getSoldierCount();
+        int confirm  = JOptionPane.showConfirmDialog(this,
+                "Disband " + army.getDisplayName() + "?\n"
+                + soldiers + " soldiers return to manpower pool.",
+                "Confirm Disband", JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        resources.addManpower(soldiers);
+        armyManager.removeArmy(army);
+        Debug.log("military-ui", "disband",
+                army.getDisplayName() + " disbanded. +" + soldiers + " manpower returned.");
+        build();
+    }
+
+    // ─── Merge army ───────────────────────────────────────────────────────────
+
+    private void openMergeDialog(Army source) {
+        List<Army> targets = armyManager.getCityArmies().stream()
+                .filter(a -> a != source)
+                .toList();
+
+        if (targets.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "No living commanders available. Recruit one first.",
-                    "Assign Commander", JOptionPane.INFORMATION_MESSAGE);
+                    "No other heartland armies to merge into.");
             return;
         }
 
-        // Build display strings
+        String[] options = targets.stream()
+                .map(a -> a.getDisplayName() + "  (" + a.getSoldierCount() + " soldiers)")
+                .toArray(String[]::new);
+
+        int choice = JOptionPane.showOptionDialog(this,
+                "Merge " + source.getDisplayName()
+                + "  (" + source.getSoldierCount() + " soldiers)  into:",
+                "Merge Army",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+
+        if (choice < 0) return;
+
+        Army target      = targets.get(choice);
+        int transferred = armyManager.mergeArmies(source, target);
+        Debug.log("military-ui", "merge",
+                source.getDisplayName() + " → " + target.getDisplayName()
+                + " transferred=" + transferred);
+        build();
+    }
+
+    // ─── Assign commander ─────────────────────────────────────────────────────
+
+    private void openAssignCommanderDialog(Army army) {
+        List<Commander> available = roster.getAliveCommanders();
+        if (available.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No living commanders available. Recruit one first.");
+            return;
+        }
+
         String[] options = new String[available.size() + 1];
-        options[0] = "— None (remove commander) —";
+        options[0] = "— None (unassign) —";
         for (int i = 0; i < available.size(); i++) {
-            main.army.Commander c = available.get(i);
+            Commander c = available.get(i);
             options[i + 1] = c.getName()
-                    + " [Skill " + c.getCommandingSkill()
+                    + "  [Skill " + c.getCommandingSkill()
                     + " | " + c.getPartyName() + "]";
         }
 
@@ -309,109 +398,229 @@ public class MilitaryMenuUI extends JPanel {
         int choice = JOptionPane.showOptionDialog(this,
                 current + "\n\nSelect commander for " + army.getDisplayName() + ":",
                 "Assign Commander",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, options, options[0]);
 
-        if (choice < 0) return; // cancelled
+        if (choice < 0) return;
 
         if (choice == 0) {
+            // Unassigning — army must return to heartland immediately
             army.setCommander(null);
+            army.recallToCity();
             Debug.log("military-ui", "assign-cmd",
-                    army.getDisplayName() + " commander removed");
+                    army.getDisplayName() + " — commander removed, recalled to heartland");
         } else {
-            main.army.Commander chosen = available.get(choice - 1);
+            Commander chosen = available.get(choice - 1);
             army.setCommander(chosen);
             Debug.log("military-ui", "assign-cmd",
-                    army.getDisplayName() + " assigned " + chosen.getName());
+                    army.getDisplayName() + " → " + chosen.getName());
         }
         build();
     }
 
-    // ─── Recruit soldiers dialog ──────────────────────────────────────────────
+    // ─── Recruit soldiers ─────────────────────────────────────────────────────
 
     private void openRecruitSoldiersDialog(Army army) {
-        int maxByGold     = (int)(resources.getMoney()    / GameParameters.SOLDIER_RECRUIT_GOLD_COST);
-        int maxByManpower = resources.getManpower()       / GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
-        int maxRecruit    = Math.min(maxByGold, maxByManpower);
+        int maxByGold     = (int)(resources.getMoney()  / GameParameters.SOLDIER_RECRUIT_GOLD_COST);
+        int maxByManpower = resources.getManpower()     / GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
+        int maxRecruit    = Math.max(0, Math.min(maxByGold, maxByManpower));
 
         if (maxRecruit <= 0) {
             JOptionPane.showMessageDialog(this,
                     "Cannot recruit — need at least "
                     + GameParameters.SOLDIER_RECRUIT_GOLD_COST + " gold and "
-                    + GameParameters.SOLDIER_RECRUIT_MANPOWER_COST + " manpower per soldier.",
+                    + GameParameters.SOLDIER_RECRUIT_MANPOWER_COST
+                    + " manpower per soldier.",
                     "Recruit Soldiers", JOptionPane.WARNING_MESSAGE);
-            Debug.log("military-ui", "recruit-soldiers-fail",
-                    army.getDisplayName() + " — no resources");
             return;
         }
 
-        SpinnerNumberModel spinnerModel =
-                new SpinnerNumberModel(1, 1, maxRecruit, 1);
-        JSpinner spinner = new JSpinner(spinnerModel);
+        final int[] amount = {1};
 
-        JLabel costLabel = new JLabel(buildCostString(1));
-        spinner.addChangeListener(e ->
-                costLabel.setText(buildCostString((int) spinner.getValue())));
+        // ── Dialog panel ─────────────────────────────────────────────────────
+        JPanel dialog = new JPanel();
+        dialog.setLayout(new BoxLayout(dialog, BoxLayout.Y_AXIS));
+        dialog.setBackground(UITheme.BG_DARK);
+        dialog.setBorder(new EmptyBorder(12, 16, 12, 16));
 
-        JPanel panel = new JPanel(new GridLayout(0, 1, 4, 4));
-        panel.add(new JLabel("Soldiers to recruit (max " + maxRecruit + "):"));
-        panel.add(spinner);
-        panel.add(costLabel);
+        JLabel titleLbl = new JLabel("Recruit Soldiers — " + army.getDisplayName());
+        titleLbl.setFont(UITheme.FONT_TITLE);
+        titleLbl.setForeground(UITheme.TEXT_GOLD);
+        titleLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        dialog.add(titleLbl);
+        dialog.add(Box.createVerticalStrut(10));
 
-        int result = JOptionPane.showConfirmDialog(this, panel,
-                "Recruit Soldiers for " + army.getDisplayName(),
+        JLabel resLbl = new JLabel("Available: " + resources.getMoney()
+                + " gold  |  " + resources.getManpower() + " manpower  |  Max: " + maxRecruit);
+        resLbl.setFont(UITheme.FONT_SMALL);
+        resLbl.setForeground(UITheme.TEXT_SECONDARY);
+        resLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        dialog.add(resLbl);
+        dialog.add(Box.createVerticalStrut(12));
+
+        // Amount display
+        JLabel amountDisplay = new JLabel(String.valueOf(amount[0]));
+        amountDisplay.setFont(amountDisplay.getFont().deriveFont(Font.BOLD, 28f));
+        amountDisplay.setForeground(UITheme.TEXT_GOLD);
+        amountDisplay.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel costLbl = new JLabel(buildCostString(amount[0]));
+        costLbl.setFont(UITheme.FONT_SMALL);
+        costLbl.setForeground(UITheme.TEXT_SECONDARY);
+        costLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // Slider
+        JSlider slider = new JSlider(1, Math.max(1, maxRecruit), 1);
+        slider.setBackground(UITheme.BG_DARK);
+        slider.setForeground(UITheme.TEXT_SECONDARY);
+        slider.setAlignmentX(Component.LEFT_ALIGNMENT);
+        slider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        if (maxRecruit <= 20) {
+            slider.setMajorTickSpacing(1);
+            slider.setPaintTicks(true);
+            slider.setPaintLabels(true);
+        } else if (maxRecruit <= 200) {
+            slider.setMajorTickSpacing(50);
+            slider.setMinorTickSpacing(10);
+            slider.setPaintTicks(true);
+        }
+
+        Runnable updateAll = () -> {
+            amountDisplay.setText(String.valueOf(amount[0]));
+            costLbl.setText(buildCostString(amount[0]));
+            if (slider.getValue() != amount[0]) slider.setValue(amount[0]);
+        };
+
+        slider.addChangeListener(e -> {
+            if (amount[0] != slider.getValue()) {
+                amount[0] = slider.getValue();
+                amountDisplay.setText(String.valueOf(amount[0]));
+                costLbl.setText(buildCostString(amount[0]));
+            }
+        });
+
+        // +/− buttons with Ctrl/Shift multipliers
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        btnRow.setBackground(UITheme.BG_DARK);
+        btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JButton minusBtn = makeStepButton("−");
+        JButton plusBtn  = makeStepButton("+");
+
+        minusBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                amount[0] = Math.max(1, amount[0] - resolveStep(e));
+                updateAll.run();
+            }
+        });
+        plusBtn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                amount[0] = Math.min(maxRecruit, amount[0] + resolveStep(e));
+                updateAll.run();
+            }
+        });
+
+        JButton maxBtn = makeCardButton("MAX");
+        maxBtn.addActionListener(e -> { amount[0] = maxRecruit; updateAll.run(); });
+
+        btnRow.add(minusBtn);
+        btnRow.add(amountDisplay);
+        btnRow.add(plusBtn);
+        btnRow.add(Box.createHorizontalStrut(8));
+        btnRow.add(maxBtn);
+
+        JLabel hintLbl = new JLabel("Ctrl=×10  Shift=×100  Ctrl+Shift=×1000");
+        hintLbl.setFont(UITheme.FONT_SMALL);
+        hintLbl.setForeground(new Color(120, 120, 120));
+        hintLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        dialog.add(btnRow);
+        dialog.add(Box.createVerticalStrut(4));
+        dialog.add(hintLbl);
+        dialog.add(Box.createVerticalStrut(8));
+        dialog.add(slider);
+        dialog.add(Box.createVerticalStrut(10));
+        dialog.add(costLbl);
+
+        int result = JOptionPane.showConfirmDialog(this, dialog,
+                "Recruit Soldiers",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
         if (result != JOptionPane.OK_OPTION) return;
 
-        int amount    = (int) spinner.getValue();
-        int goldCost  = amount * GameParameters.SOLDIER_RECRUIT_GOLD_COST;
-        int manCost   = amount * GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
+        int goldCost = amount[0] * GameParameters.SOLDIER_RECRUIT_GOLD_COST;
+        int manCost  = amount[0] * GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
 
         if (!resources.spendMoney(goldCost)) {
-            JOptionPane.showMessageDialog(this, "Not enough gold.");
-            return;
+            JOptionPane.showMessageDialog(this, "Not enough gold."); return;
         }
         if (!resources.spendManpower(manCost)) {
-            // Refund gold already spent
             resources.addMoney(goldCost);
-            JOptionPane.showMessageDialog(this, "Not enough manpower.");
-            return;
+            JOptionPane.showMessageDialog(this, "Not enough manpower."); return;
         }
 
-        army.addSoldiers(amount);
+        army.addSoldiers(amount[0]);
         Debug.log("military-ui", "recruit-soldiers",
-                army.getDisplayName() + " +" + amount
-                + " soldiers. Gold cost=" + goldCost + " manpower cost=" + manCost);
+                army.getDisplayName() + " +" + amount[0]
+                + "  gold=" + goldCost + "  manpower=" + manCost);
         build();
     }
 
-    private String buildCostString(int amount) {
-        return String.format("Cost: %d gold + %d manpower | Upkeep: %.1f gold/turn",
-                amount * GameParameters.SOLDIER_RECRUIT_GOLD_COST,
-                amount * GameParameters.SOLDIER_RECRUIT_MANPOWER_COST,
-                amount * GameParameters.SOLDIER_UPKEEP_GOLD);
+    private int resolveStep(MouseEvent e) {
+        boolean ctrl  = (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK)  != 0;
+        boolean shift = (e.getModifiersEx() & MouseEvent.SHIFT_DOWN_MASK) != 0;
+        if (ctrl && shift) return 1000;
+        if (shift)         return 100;
+        if (ctrl)          return 10;
+        return 1;
+    }
+
+    private String buildCostString(int n) {
+        return String.format("Cost: %d gold  +  %d manpower  |  Upkeep: %.1f gold/turn",
+                n * GameParameters.SOLDIER_RECRUIT_GOLD_COST,
+                n * GameParameters.SOLDIER_RECRUIT_MANPOWER_COST,
+                n * GameParameters.SOLDIER_UPKEEP_GOLD);
     }
 
     // ─── Recruitment pool dialog ──────────────────────────────────────────────
 
     private void openRecruitUI() {
-        JDialog dialog = new JDialog(
+        JDialog d = new JDialog(
                 SwingUtilities.getWindowAncestor(this),
                 "Commander Recruitment",
                 Dialog.ModalityType.APPLICATION_MODAL);
-        dialog.setContentPane(new CommanderRecruitUI(roster, pool, resources,
-                () -> { dialog.dispose(); build(); }));
-        dialog.setSize(700, 480);
-        dialog.setMinimumSize(new Dimension(560, 380));
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
+        d.setContentPane(new CommanderRecruitUI(roster, pool, resources,
+                () -> { d.dispose(); build(); }));
+        d.setSize(720, 500);
+        d.setMinimumSize(new Dimension(580, 400));
+        d.setLocationRelativeTo(this);
+        d.setVisible(true);
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    // ─── Party name resolution ────────────────────────────────────────────────
 
-    private void styleSmallButton(JButton btn) {
+    /**
+     * Resolves the player-facing party name from a PolitcalView affiliation.
+     * Falls back to the view display name if no party claims that view strongly.
+     */
+    private String resolvePartyName(main.army.commander.Commander c) {
+        return c.getPartyName();
+    }
+
+    // ─── Button factories ─────────────────────────────────────────────────────
+
+    private JButton makeBarButton(String label) {
+        JButton btn = new JButton(label);
+        btn.setFont(UITheme.FONT_BUTTON);
+        btn.setForeground(UITheme.TEXT_SECONDARY);
+        btn.setBackground(UITheme.BUTTON_BG);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+    private JButton makeCardButton(String label) {
+        JButton btn = new JButton(label);
         btn.setFont(UITheme.FONT_SMALL);
         btn.setForeground(UITheme.TEXT_SECONDARY);
         btn.setBackground(UITheme.BUTTON_BG);
@@ -419,5 +628,26 @@ public class MilitaryMenuUI extends JPanel {
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return btn;
+    }
+
+    private JButton makeStepButton(String label) {
+        JButton btn = new JButton(label);
+        btn.setFont(btn.getFont().deriveFont(Font.BOLD, 18f));
+        btn.setForeground(UITheme.TEXT_GOLD);
+        btn.setBackground(UITheme.BUTTON_BG);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(38, 38));
+        return btn;
+    }
+
+    private void addInfoLabel(JPanel panel, String text, Font font, Color color) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(font);
+        lbl.setForeground(color);
+        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(lbl);
     }
 }

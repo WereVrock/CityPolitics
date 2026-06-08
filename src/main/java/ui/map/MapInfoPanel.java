@@ -334,7 +334,7 @@ public void showArmy(main.army.Army army, ZoneManager zm) {
     for (java.awt.event.ActionListener al : commanderButton.getActionListeners())
         commanderButton.removeActionListener(al);
 
-    main.army.Commander cmd = army.getCommander();
+    main.army.commander.Commander cmd = army.getCommander();
     if (cmd != null) {
         commanderButton.setText("⚔ " + cmd.getName());
         commanderButton.setVisible(true);
@@ -563,7 +563,7 @@ dialog.getContentPane().setBackground(UITheme.BG_PANEL);
 dialog.setVisible(true);
 }
 
-private void showCommanderDialog(main.army.Commander cmd) {
+private void showCommanderDialog(main.army.commander.Commander cmd) {
     Window parent = SwingUtilities.getWindowAncestor(this);
     JDialog dialog = new JDialog(parent instanceof Frame ? (Frame) parent : null,
             cmd.getName(), true);

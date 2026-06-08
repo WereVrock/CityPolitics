@@ -309,9 +309,9 @@ private void swapCenter(JPanel panel) {
     }
 
 private void showMilitaryView() {
-        main.army.CommanderRoster      roster = gameState.getCommanderRoster();
-        main.army.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
-        main.ui.MilitaryMenuUI militaryUI     = new main.ui.MilitaryMenuUI(
+        main.army.commander.CommanderRoster      roster = gameState.getCommanderRoster();
+        main.army.commander.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
+        ui.MilitaryMenuUI militaryUI     = new ui.MilitaryMenuUI(
                 gameState.getArmyManager(),
                 roster,
                 pool,

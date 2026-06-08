@@ -1,8 +1,8 @@
 // ===== CommanderRoster.java =====
-package main.army;
+package main.army.commander;
 
 import debug.Debug;
-import main.army.Commander;
+import main.army.commander.Commander;
 import main.parameters.GameParameters;
 import main.politics.PartyManager;
 import main.politics.PoliticalParty;
@@ -152,4 +152,22 @@ return alive;
 public List<Commander> getAllCommanders() {
         return Collections.unmodifiableList(commanders);
     }
+
+/**
+ * Adds a pre-built commander directly (used by SaveManager on load).
+ * Does not spend resources or adjust party opinion.
+ */
+public void addRestoredCommander(main.army.commander.Commander c) {
+    commanders.add(c);
+    debug.Debug.log("commander-roster", "restore", c.getName() + " restored to roster");
+}
+
+/**
+ * Clears all commanders. Used by SaveManager before restoring from save.
+ */
+public void reset() {
+    commanders.clear();
+    debug.Debug.log("commander-roster", "reset", "Roster cleared");
+}
+
 }

@@ -1,5 +1,5 @@
 // ===== CommanderRecruitPool.java =====
-package main.army;
+package main.army.commander;
 
 import debug.Debug;
 import main.parameters.GameParameters;

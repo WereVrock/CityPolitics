@@ -132,7 +132,8 @@ public class SaveManager {
         data.nobleArmies    = serializeNobleArmies(gs);
 
         // Player armies
-        data.playerArmies   = serializePlayerArmies(gs);
+        data.playerArmies      = serializePlayerArmies(gs);
+        data.commanderRoster   = serializeCommanderRoster(gs);
 
         // Barbarian system
         data.barbInvasionState = serializeBarbState(gs);
@@ -266,7 +267,7 @@ private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs
             e.zoneId      = a.getZoneId();
             e.size        = a.getSize();
             e.dragging    = a.isDragging();
-            main.army.Commander cmd = a.getCommander();
+            main.army.commander.Commander cmd = a.getCommander();
             if (cmd != null) {
                 e.commanderName      = cmd.getName();
                 e.commanderRace      = cmd.getRace();
@@ -278,6 +279,28 @@ private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs
         }
         return list;
     }
+
+private static List<SaveData.CommanderRosterEntry> serializeCommanderRoster(GameState gs) {
+    List<SaveData.CommanderRosterEntry> list = new ArrayList<>();
+    main.army.commander.CommanderRoster roster = gs.getCommanderRoster();
+    // Collect commanders NOT assigned to any army to avoid double-saving
+    java.util.Set<main.army.commander.Commander> assignedCommanders = new java.util.HashSet<>();
+    for (Army a : gs.getArmyManager().getArmies()) {
+        if (a.getCommander() != null) assignedCommanders.add(a.getCommander());
+    }
+    for (main.army.commander.Commander c : roster.getAllCommanders()) {
+        if (assignedCommanders.contains(c)) continue; // already saved with army
+        SaveData.CommanderRosterEntry e = new SaveData.CommanderRosterEntry();
+        e.name      = c.getName();
+        e.race      = c.getRace();
+        e.partyName = c.getPartyName();
+        e.skill     = c.getCommandingSkill();
+        e.xp        = c.getXp();
+        e.alive     = c.isAlive();
+        list.add(e);
+    }
+    return list;
+}
 
 private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) {
         BarbInvasionState s = gs.getBarbInvasionState();
@@ -394,6 +417,7 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
         applyClaims(data, gs);
         applyNobleArmies(data, gs);
         applyPlayerArmies(data, gs);
+        applyCommanderRoster(data, gs);
         applyBarbState(data, gs);
         applyBarbArmies(data, gs);
         applyRavagedZones(data, gs);
@@ -577,7 +601,7 @@ private static void applyPlayerArmies(SaveData data, GameState gs) {
                                 }
                             }
                         }
-                        main.army.Commander cmd = new main.army.Commander(
+                        main.army.commander.Commander cmd = new main.army.commander.Commander(
                                 entry.commanderName,
                                 entry.commanderRace,
                                 party,
@@ -598,6 +622,35 @@ private static void applyPlayerArmies(SaveData data, GameState gs) {
             }
         }
     }
+
+private static void applyCommanderRoster(SaveData data, GameState gs) {
+    main.army.commander.CommanderRoster roster = gs.getCommanderRoster();
+    // Clear existing unassigned commanders (assigned ones are restored via applyPlayerArmies)
+    // We rebuild the full roster: assigned commanders come from armies, rest from saved list.
+    // Reset roster then re-add army commanders + saved roster entries.
+    roster.reset();
+
+    // Re-add commanders that were restored onto armies
+    for (Army a : gs.getArmyManager().getArmies()) {
+        main.army.commander.Commander cmd = a.getCommander();
+        if (cmd != null) roster.addRestoredCommander(cmd);
+    }
+
+    if (data.commanderRoster == null) return;
+    for (SaveData.CommanderRosterEntry entry : data.commanderRoster) {
+        main.politics.PoliticalParty party = null;
+        if (entry.partyName != null && !entry.partyName.equals("None")) {
+            for (main.politics.PoliticalParty p : gs.getPartyManager().getParties()) {
+                if (p.getName().equals(entry.partyName)) { party = p; break; }
+            }
+        }
+        main.army.commander.Commander cmd = new main.army.commander.Commander(
+                entry.name, entry.race, party, entry.skill);
+        if (entry.xp > 0) cmd.addXp(entry.xp);
+        if (!entry.alive) cmd.kill();
+        roster.addRestoredCommander(cmd);
+    }
+}
 
 private static void applyBarbState(SaveData data, GameState gs) {
         if (data.barbInvasionState == null) return;

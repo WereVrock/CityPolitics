@@ -34,7 +34,8 @@ public class SaveData {
     public List<NobleArmyEntry>    nobleArmies;
 
     // Player armies
-    public List<PlayerArmyEntry>   playerArmies;
+    public List<PlayerArmyEntry>      playerArmies;
+    public List<CommanderRosterEntry> commanderRoster;
 
     // Barbarian system
     public BarbInvasionStateEntry  barbInvasionState;
@@ -148,6 +149,18 @@ public class SaveData {
         public boolean isCoalitionAttack;
         public List<String> coalitionMemberIds;
         public NobleArmyEntry() {}
+    }
+
+    // ─── Commander roster (unassigned commanders) ─────────────────────────────
+
+    public static class CommanderRosterEntry {
+        public String  name;
+        public String  race;
+        public String  partyName;
+        public int     skill;
+        public int     xp;
+        public boolean alive;
+        public CommanderRosterEntry() {}
     }
 
     // ─── Player armies ───────────────────────────────────────────────────────

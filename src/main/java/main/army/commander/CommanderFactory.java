@@ -1,5 +1,5 @@
 // ===== CommanderFactory.java =====
-package main.army;
+package main.army.commander;
 
 import main.politics.PartyManager;
 import main.politics.PoliticalParty;

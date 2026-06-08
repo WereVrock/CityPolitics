@@ -1,7 +1,7 @@
 // ===== CombatPrestigeCalculator.java =====
 package main.combat;
 
-import main.army.Commander;
+import main.army.commander.Commander;
 import main.parameters.GameParameters;
 
 import java.util.List;
