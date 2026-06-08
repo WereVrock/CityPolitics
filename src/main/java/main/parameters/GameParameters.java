@@ -557,4 +557,7 @@ public final class GameParameters {
     public static final double COMBAT_SCORE_RATIO_MIN                = 0.5;
     /** Max ratio cap used in raw score calculation. */
     public static final double COMBAT_SCORE_RATIO_MAX                = 2.0;
+
+public static final int LIBERATED_ZONE_OPINION_BONUS = 15;
+
 }

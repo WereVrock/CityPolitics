@@ -199,8 +199,12 @@ public List<String> awardZoneToClaimant(
     chosen.addZone(zoneId);
     chosen.resetGarrison(zoneId);
     claimManager.removeClaim(chosen.getId(), zoneId);
+    chosen.adjustPlayerOpinion(main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
+    log.add(chosen.getName() + " is grateful for the liberation. (+"
+            + main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS + " opinion)");
     Debug.log("player-combat", "zone-award",
-            chosen.getId() + " awarded " + zoneId + " after liberation");
+            chosen.getId() + " awarded " + zoneId + " after liberation, opinion +"
+            + main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
     return log;
 }
 
