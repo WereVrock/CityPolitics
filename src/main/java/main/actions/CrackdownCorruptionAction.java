@@ -56,12 +56,16 @@ public class CrackdownCorruptionAction extends AbstractFormalAction {
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
     @Override
-    public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
+
+public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
         int moneyCost = CostCalculator.apply(GameParameters.CRACKDOWN_MONEY_COST, stats.getCorruption());
-        if (!resources.spendMoney(moneyCost)) {
+        if (resources.getMoney() < moneyCost) {
             return ActionResult.fail("Not enough money after vote. Need " + moneyCost + ".");
         }
+        getLedger().applyOneTime(main.resources.ResourceType.GOLD, "action", getName(),
+                -moneyCost, resources);
         stats.reduceCorruption(GameParameters.CRACKDOWN_CORRUPTION_REDUCTION);
         return ActionResult.ok("Crackdown executed. Corruption -" + GameParameters.CRACKDOWN_CORRUPTION_REDUCTION + ".");
     }
+
 }

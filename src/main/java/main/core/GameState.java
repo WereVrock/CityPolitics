@@ -63,6 +63,7 @@ public class GameState {
         stats              = new StatBlock();
         popManager         = new PopManager();
         partyManager       = new PartyManager(popManager);
+        ledger             = new main.ledger.Ledger();
         actionRegistry     = new ActionRegistry(this);
         effectManager      = new EffectManager();
         voteSessionManager = new VoteSessionManager();
@@ -72,7 +73,6 @@ public class GameState {
         nobleHouseManager  = new NobleHouseManager(zoneManager);
         armyManager        = new ArmyManager();
         turnProcessor      = new TurnProcessor();
-        ledger             = new main.ledger.Ledger();
 
         barbInvasionState     = new BarbInvasionState();
         barbArmyManager       = new BarbArmyManager(zoneManager);
