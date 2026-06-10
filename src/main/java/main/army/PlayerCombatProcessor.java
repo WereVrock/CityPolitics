@@ -160,53 +160,51 @@ private List<String> resolvePlayerVsGarrison(
      */
 
 public List<String> awardZoneToClaimant(
-        String zoneId,
-        NobleHouseManager nobleHouseManager,
-        ClaimManager claimManager) {
+            String zoneId,
+            NobleHouseManager nobleHouseManager,
+            ClaimManager claimManager) {
 
-    List<String> log = new ArrayList<>();
+        List<String> log = new ArrayList<>();
 
-    // Gather houses with a formal claim on this zone (include eliminated — claim is explicit record of loss)
-    List<NobleHouse> claimants = new ArrayList<>();
-    for (NobleHouse house : nobleHouseManager.getHouses()) {
-        if (claimManager.hasClaim(house.getId(), zoneId)) {
-            claimants.add(house);
+        List<NobleHouse> claimants = new ArrayList<>();
+        for (NobleHouse house : nobleHouseManager.getHouses()) {
+            if (claimManager.hasClaim(house.getId(), zoneId)) {
+                claimants.add(house);
+            }
         }
-    }
 
-    // If no claimants found, fall back to any non-eliminated house that borders the zone
-    if (claimants.isEmpty()) {
+        if (claimants.isEmpty()) {
+            Debug.log("player-combat", "zone-award",
+                    "No claimants for " + zoneId + " — zone remains unowned.");
+            log.add("No noble house holds a claim on " + zoneId + ". Zone remains ungoverned.");
+            return log;
+        }
+
+        NobleHouse chosen = null;
+        if (zoneAwardCallback != null) {
+            chosen = zoneAwardCallback.askPlayerChooseClaimant(zoneId, claimants);
+        }
+
+        if (chosen == null) {
+            chosen = claimants.get(0);
+            log.add("No selection made. " + chosen.getName()
+                    + " assumes control of " + zoneId + ".");
+        } else {
+            log.add(chosen.getName() + " receives " + zoneId
+                    + " from the player's liberation.");
+        }
+
+        chosen.addZone(zoneId);
+        chosen.resetGarrison(zoneId);
+        claimManager.removeClaim(chosen.getId(), zoneId);
+        chosen.adjustPlayerOpinion(main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
+        log.add(chosen.getName() + " is grateful for the liberation. (+"
+                + main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS + " opinion)");
         Debug.log("player-combat", "zone-award",
-                "No claimants for " + zoneId + " — zone remains unowned.");
-        log.add("No noble house holds a claim on " + zoneId + ". Zone remains ungoverned.");
+                chosen.getId() + " awarded " + zoneId + " after liberation, opinion +"
+                + main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
         return log;
     }
-
-    NobleHouse chosen = null;
-    if (zoneAwardCallback != null) {
-        chosen = zoneAwardCallback.askPlayerChooseClaimant(zoneId, claimants);
-    }
-
-    if (chosen == null) {
-        chosen = claimants.get(0);
-        log.add("No selection made. " + chosen.getName()
-                + " assumes control of " + zoneId + ".");
-    } else {
-        log.add(chosen.getName() + " receives " + zoneId
-                + " from the player's liberation.");
-    }
-
-    chosen.addZone(zoneId);
-    chosen.resetGarrison(zoneId);
-    claimManager.removeClaim(chosen.getId(), zoneId);
-    chosen.adjustPlayerOpinion(main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
-    log.add(chosen.getName() + " is grateful for the liberation. (+"
-            + main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS + " opinion)");
-    Debug.log("player-combat", "zone-award",
-            chosen.getId() + " awarded " + zoneId + " after liberation, opinion +"
-            + main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
-    return log;
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 

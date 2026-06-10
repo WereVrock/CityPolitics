@@ -124,6 +124,10 @@ public class MainWindow extends JFrame {
     }
 
     private JPanel buildSaveLoadBar() {
+        JButton menuBtn = buildBarButton("☰ MENU");
+        menuBtn.setForeground(UITheme.TEXT_GOLD);
+        menuBtn.addActionListener(e -> showGameMenu());
+
         JButton newBtn  = buildBarButton("NEW");
         JButton saveBtn = buildBarButton("SAVE");
         JButton loadBtn = buildBarButton("LOAD");
@@ -143,9 +147,10 @@ public class MainWindow extends JFrame {
             eventLogPanel.appendLine("Game loaded.");
         }));
 
-        JPanel bar = new JPanel(new GridLayout(1, 3, 6, 0));
+        JPanel bar = new JPanel(new GridLayout(1, 4, 6, 0));
         bar.setBackground(UITheme.BG_DARK);
         bar.setBorder(new EmptyBorder(0, 12, 4, 12));
+        bar.add(menuBtn);
         bar.add(newBtn);
         bar.add(saveBtn);
         bar.add(loadBtn);
@@ -272,6 +277,191 @@ private void showLedger() {
         ledgerDialog.setVisible(true);
     }
 
+private void showGameMenu() {
+        JDialog menu = new JDialog(this, "Game Menu", true);
+        menu.setUndecorated(true);
+        menu.setSize(320, 380);
+        menu.setLocationRelativeTo(this);
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(UITheme.BG_PANEL);
+        root.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 2));
+
+        JLabel title = new JLabel("  GAME MENU");
+        title.setFont(UITheme.FONT_TITLE);
+        title.setForeground(UITheme.TEXT_GOLD);
+        title.setBorder(new javax.swing.border.EmptyBorder(12, 12, 12, 12));
+        title.setBackground(UITheme.BG_PANEL_LIGHT);
+        title.setOpaque(true);
+
+        JPanel btns = new JPanel(new GridLayout(0, 1, 0, 8));
+        btns.setBackground(UITheme.BG_PANEL);
+        btns.setBorder(new javax.swing.border.EmptyBorder(16, 24, 16, 24));
+
+        JButton newBtn = makeMenuButton("🗺  New Game");
+        newBtn.addActionListener(e -> {
+            menu.dispose();
+            saveLoadDialog.newGame(() -> {
+                mapView.reinitialize(gameState);
+                rewireCallbacks();
+                showMainView();
+                resetLogs();
+            });
+        });
+
+        JButton saveBtn = makeMenuButton("💾  Save Game");
+        saveBtn.addActionListener(e -> {
+            menu.dispose();
+            saveLoadDialog.save();
+        });
+
+        JButton loadBtn = makeMenuButton("📂  Load Game");
+        loadBtn.addActionListener(e -> {
+            menu.dispose();
+            saveLoadDialog.load(() -> {
+                showMainView();
+                if (gameState.hasActiveSession()) showVoteSession();
+                updateEndTurnState();
+                resetLogs();
+                eventLogPanel.appendLine("Game loaded.");
+            });
+        });
+
+        JButton settingsBtn = makeMenuButton("⚙  Settings");
+        settingsBtn.addActionListener(e -> {
+            menu.dispose();
+            showSettings();
+        });
+
+        JButton closeBtn = makeMenuButton("✕  Close");
+        closeBtn.setForeground(UITheme.TEXT_SECONDARY);
+        closeBtn.addActionListener(e -> menu.dispose());
+
+        btns.add(newBtn);
+        btns.add(saveBtn);
+        btns.add(loadBtn);
+        btns.add(settingsBtn);
+        btns.add(Box.createVerticalStrut(8));
+        btns.add(closeBtn);
+
+        root.add(title, BorderLayout.NORTH);
+        root.add(btns,  BorderLayout.CENTER);
+
+        menu.setContentPane(root);
+        menu.setVisible(true);
+    }
+
+private JButton makeMenuButton(String label) {
+        JButton btn = new JButton(label);
+        btn.setFont(UITheme.FONT_HEADER);
+        btn.setForeground(UITheme.TEXT_PRIMARY);
+        btn.setBackground(UITheme.BUTTON_BG);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(0, 42));
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setBackground(UITheme.BUTTON_HOVER);
+            }
+            @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setBackground(UITheme.BUTTON_BG);
+            }
+        });
+        return btn;
+    }
+
+private void showSettings() {
+        JDialog settings = new JDialog(this, "Settings", true);
+        settings.setUndecorated(true);
+        settings.setSize(360, 260);
+        settings.setLocationRelativeTo(this);
+
+        JPanel root = new JPanel(new BorderLayout());
+        root.setBackground(UITheme.BG_PANEL);
+        root.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 2));
+
+        JLabel title = new JLabel("  SETTINGS");
+        title.setFont(UITheme.FONT_TITLE);
+        title.setForeground(UITheme.TEXT_GOLD);
+        title.setBorder(new javax.swing.border.EmptyBorder(12, 12, 12, 12));
+        title.setBackground(UITheme.BG_PANEL_LIGHT);
+        title.setOpaque(true);
+
+        JPanel body = new JPanel(new GridBagLayout());
+        body.setBackground(UITheme.BG_PANEL);
+        body.setBorder(new javax.swing.border.EmptyBorder(16, 24, 16, 24));
+
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.insets = new java.awt.Insets(6, 0, 6, 8);
+        gc.weightx = 0;
+
+        JLabel fontLabel = new JLabel("Font Size:");
+        fontLabel.setFont(UITheme.FONT_BODY);
+        fontLabel.setForeground(UITheme.TEXT_PRIMARY);
+        gc.gridx = 0; gc.gridy = 0;
+        body.add(fontLabel, gc);
+
+        int currentSize = UITheme.FONT_BODY.getSize();
+        JSlider fontSlider = new JSlider(9, 18, currentSize);
+        fontSlider.setBackground(UITheme.BG_PANEL);
+        fontSlider.setMajorTickSpacing(3);
+        fontSlider.setMinorTickSpacing(1);
+        fontSlider.setPaintTicks(true);
+        fontSlider.setPaintLabels(true);
+        fontSlider.setForeground(UITheme.TEXT_SECONDARY);
+        gc.gridx = 1; gc.weightx = 1.0;
+        body.add(fontSlider, gc);
+
+        JLabel sizeDisplay = new JLabel(currentSize + "px");
+        sizeDisplay.setFont(UITheme.FONT_SMALL);
+        sizeDisplay.setForeground(UITheme.TEXT_SECONDARY);
+        gc.gridx = 2; gc.weightx = 0;
+        body.add(sizeDisplay, gc);
+
+        fontSlider.addChangeListener(e -> {
+            int sz = fontSlider.getValue();
+            sizeDisplay.setText(sz + "px");
+        });
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        btnRow.setBackground(UITheme.BG_PANEL);
+        btnRow.setBorder(new javax.swing.border.EmptyBorder(8, 16, 12, 16));
+
+        JButton applyBtn = new JButton("Apply");
+        applyBtn.setFont(UITheme.FONT_BUTTON);
+        applyBtn.setForeground(UITheme.TEXT_GOLD);
+        applyBtn.setBackground(UITheme.BUTTON_BG);
+        applyBtn.setBorderPainted(false);
+        applyBtn.setFocusPainted(false);
+        applyBtn.addActionListener(e -> {
+            int newSize = fontSlider.getValue();
+            UITheme.applyFontScale(newSize);
+            SwingUtilities.updateComponentTreeUI(this);
+            settings.dispose();
+        });
+
+        JButton cancelBtn = new JButton("Cancel");
+        cancelBtn.setFont(UITheme.FONT_BUTTON);
+        cancelBtn.setForeground(UITheme.TEXT_SECONDARY);
+        cancelBtn.setBackground(UITheme.BUTTON_BG);
+        cancelBtn.setBorderPainted(false);
+        cancelBtn.setFocusPainted(false);
+        cancelBtn.addActionListener(e -> settings.dispose());
+
+        btnRow.add(cancelBtn);
+        btnRow.add(applyBtn);
+
+        root.add(title,  BorderLayout.NORTH);
+        root.add(body,   BorderLayout.CENTER);
+        root.add(btnRow, BorderLayout.SOUTH);
+
+        settings.setContentPane(root);
+        settings.setVisible(true);
+    }
+
 private void swapCenter(JPanel panel) {
         centerPanel.removeAll();
         centerPanel.add(panel, BorderLayout.CENTER);
@@ -311,13 +501,17 @@ private void swapCenter(JPanel panel) {
 private void showMilitaryView() {
         main.army.commander.CommanderRoster      roster = gameState.getCommanderRoster();
         main.army.commander.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
-        ui.MilitaryMenuUI militaryUI     = new ui.MilitaryMenuUI(
+        ui.MilitaryMenuUI militaryUI = new ui.MilitaryMenuUI(
                 gameState.getArmyManager(),
                 roster,
                 pool,
                 gameState.getResources(),
                 gameState.getPartyManager(),
-                this::showMainView);
+                this::showMainView,
+                () -> {
+                    resourcePanel.refresh();
+                    popPanel.refresh();
+                });
         swapCenter(militaryUI);
     }
 
@@ -484,30 +678,126 @@ private JPanel createStatusBar() {
      * Shows a modal dialog asking the player to assign a liberated zone to a noble house.
      * Returns the chosen house, or the first claimant if the player closes without choosing.
      */
-    private main.nobles.NobleHouse showZoneAwardDialog(
+
+private main.nobles.NobleHouse showZoneAwardDialog(
             String zoneId, java.util.List<main.nobles.NobleHouse> claimants) {
 
         if (claimants.isEmpty()) return null;
 
         String zoneName = zoneId.replace("_", " ");
-        String[] options = claimants.stream()
-                .map(h -> h.getName() + " (opinion: " + h.getPlayerOpinion() + ")")
-                .toArray(String[]::new);
 
-        int choice = JOptionPane.showOptionDialog(
-                this,
-                "The zone " + zoneName + " has been liberated from the barbarians!\n"
-                + "Which noble house should receive it?",
-                "Assign Liberated Zone",
-                JOptionPane.DEFAULT_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                null,
-                options,
-                options[0]);
+        JDialog dialog = new JDialog(this, "Assign Liberated Zone", true);
+        dialog.setUndecorated(false);
+        dialog.setSize(420, 340);
+        dialog.setLocationRelativeTo(this);
 
-        return (choice >= 0 && choice < claimants.size())
-                ? claimants.get(choice)
-                : claimants.get(0);
+        JPanel root = new JPanel(new BorderLayout(0, 8));
+        root.setBackground(UITheme.BG_PANEL);
+        root.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 2));
+
+        JLabel title = new JLabel("  Zone Liberated: " + zoneName);
+        title.setFont(UITheme.FONT_TITLE);
+        title.setForeground(UITheme.TEXT_GOLD);
+        title.setBorder(new javax.swing.border.EmptyBorder(10, 12, 10, 12));
+        title.setBackground(UITheme.BG_PANEL_LIGHT);
+        title.setOpaque(true);
+
+        JLabel subtitle = new JLabel("  Which noble house should receive this zone?");
+        subtitle.setFont(UITheme.FONT_BODY);
+        subtitle.setForeground(UITheme.TEXT_SECONDARY);
+        subtitle.setBorder(new javax.swing.border.EmptyBorder(6, 12, 6, 12));
+
+        JPanel topBlock = new JPanel(new BorderLayout());
+        topBlock.setBackground(UITheme.BG_PANEL);
+        topBlock.add(title,    BorderLayout.NORTH);
+        topBlock.add(subtitle, BorderLayout.SOUTH);
+
+        JPanel listPanel = new JPanel();
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        listPanel.setBackground(UITheme.BG_DARK);
+        listPanel.setBorder(new javax.swing.border.EmptyBorder(8, 8, 8, 8));
+
+        final main.nobles.NobleHouse[] chosen = {null};
+        ButtonGroup group = new ButtonGroup();
+
+        for (main.nobles.NobleHouse house : claimants) {
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setBackground(UITheme.BG_PANEL);
+            row.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                    new javax.swing.border.EmptyBorder(6, 10, 6, 10)));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+
+            JRadioButton rb = new JRadioButton();
+            rb.setBackground(UITheme.BG_PANEL);
+            group.add(rb);
+
+            JLabel nameLabel = new JLabel(house.getName());
+            nameLabel.setFont(UITheme.FONT_BUTTON);
+            nameLabel.setForeground(UITheme.TEXT_GOLD);
+
+            JLabel opinionLabel = new JLabel("Opinion: " + house.getPlayerOpinion());
+            opinionLabel.setFont(UITheme.FONT_SMALL);
+            opinionLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+            JPanel infoCol = new JPanel();
+            infoCol.setLayout(new BoxLayout(infoCol, BoxLayout.Y_AXIS));
+            infoCol.setBackground(UITheme.BG_PANEL);
+            infoCol.add(nameLabel);
+            infoCol.add(opinionLabel);
+
+            row.add(rb,      BorderLayout.WEST);
+            row.add(infoCol, BorderLayout.CENTER);
+
+            row.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                    rb.setSelected(true);
+                    chosen[0] = house;
+                }
+            });
+
+            listPanel.add(row);
+            listPanel.add(Box.createVerticalStrut(4));
+        }
+
+        JScrollPane scroll = new JScrollPane(listPanel);
+        scroll.setBorder(null);
+        scroll.setBackground(UITheme.BG_DARK);
+        scroll.getViewport().setBackground(UITheme.BG_DARK);
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        btnRow.setBackground(UITheme.BG_PANEL);
+
+        JButton confirmBtn = new JButton("Assign");
+        confirmBtn.setFont(UITheme.FONT_BUTTON);
+        confirmBtn.setForeground(UITheme.TEXT_GOLD);
+        confirmBtn.setBackground(UITheme.BUTTON_BG);
+        confirmBtn.setBorderPainted(false);
+        confirmBtn.setFocusPainted(false);
+        confirmBtn.addActionListener(e -> dialog.dispose());
+
+        JButton cancelBtn = new JButton("First Claimant");
+        cancelBtn.setFont(UITheme.FONT_BUTTON);
+        cancelBtn.setForeground(UITheme.TEXT_SECONDARY);
+        cancelBtn.setBackground(UITheme.BUTTON_BG);
+        cancelBtn.setBorderPainted(false);
+        cancelBtn.setFocusPainted(false);
+        cancelBtn.addActionListener(e -> {
+            chosen[0] = null;
+            dialog.dispose();
+        });
+
+        btnRow.add(cancelBtn);
+        btnRow.add(confirmBtn);
+
+        root.add(topBlock, BorderLayout.NORTH);
+        root.add(scroll,   BorderLayout.CENTER);
+        root.add(btnRow,   BorderLayout.SOUTH);
+
+        dialog.setContentPane(root);
+        dialog.setVisible(true);
+
+        return (chosen[0] != null) ? chosen[0] : claimants.get(0);
     }
 
 /**

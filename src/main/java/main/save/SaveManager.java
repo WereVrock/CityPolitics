@@ -588,7 +588,9 @@ private static void applyPlayerArmies(SaveData data, GameState gs) {
         for (SaveData.PlayerArmyEntry entry : data.playerArmies) {
             for (Army army : am.getArmies()) {
                 if (army.getDisplayName().equals(entry.displayName)) {
+                    // Directly set both fields to avoid sync issues
                     army.setSize(entry.size);
+                    army.setSoldierCount(entry.size);
                     // Restore commander BEFORE moveTo so the deployment guard passes
                     if (entry.commanderName != null) {
                         main.politics.PoliticalParty party = null;

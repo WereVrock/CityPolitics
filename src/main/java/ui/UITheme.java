@@ -24,12 +24,25 @@ public class UITheme {
     public static final Color BUTTON_DISABLED= new Color(35, 30, 45);
     public static final Color LOG_BG         = new Color(12, 10, 18);
 
+    // ─── Font base size (mutable for settings) ────────────────────────────────
+    private static int BASE_SIZE = 12;
+
     // ─── Fonts ────────────────────────────────────────────────────────────────
-    public static final Font FONT_TITLE   = new Font("Serif",      Font.BOLD,  20);
-    public static final Font FONT_HEADER  = new Font("Serif",      Font.BOLD,  14);
-    public static final Font FONT_BODY    = new Font("Monospaced", Font.PLAIN, 12);
-    public static final Font FONT_SMALL   = new Font("Monospaced", Font.PLAIN, 11);
-    public static final Font FONT_BUTTON  = new Font("Serif",      Font.BOLD,  12);
+    public static Font FONT_TITLE   = new Font("Serif",      Font.BOLD,  BASE_SIZE + 8);
+    public static Font FONT_HEADER  = new Font("Serif",      Font.BOLD,  BASE_SIZE + 2);
+    public static Font FONT_BODY    = new Font("Monospaced", Font.PLAIN, BASE_SIZE);
+    public static Font FONT_SMALL   = new Font("Monospaced", Font.PLAIN, BASE_SIZE - 1);
+    public static Font FONT_BUTTON  = new Font("Serif",      Font.BOLD,  BASE_SIZE);
+
+    /** Apply a new base font size across all theme fonts. */
+    public static void applyFontScale(int baseSize) {
+        BASE_SIZE  = baseSize;
+        FONT_TITLE  = new Font("Serif",      Font.BOLD,  BASE_SIZE + 8);
+        FONT_HEADER = new Font("Serif",      Font.BOLD,  BASE_SIZE + 2);
+        FONT_BODY   = new Font("Monospaced", Font.PLAIN, BASE_SIZE);
+        FONT_SMALL  = new Font("Monospaced", Font.PLAIN, BASE_SIZE - 1);
+        FONT_BUTTON = new Font("Serif",      Font.BOLD,  BASE_SIZE);
+    }
 
     private UITheme() {}
 }

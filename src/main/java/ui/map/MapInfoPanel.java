@@ -567,8 +567,9 @@ private void showCommanderDialog(main.army.commander.Commander cmd) {
     Window parent = SwingUtilities.getWindowAncestor(this);
     JDialog dialog = new JDialog(parent instanceof Frame ? (Frame) parent : null,
             cmd.getName(), true);
-    dialog.setSize(320, 260);
-    dialog.setLocationRelativeTo(this);
+    dialog.setUndecorated(true);
+    dialog.setSize(340, 280);
+    dialog.setLocationRelativeTo(null);
 
     JPanel content = new JPanel(new GridBagLayout());
     content.setBackground(UITheme.BG_PANEL);

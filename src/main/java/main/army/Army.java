@@ -98,9 +98,22 @@ public void startDrag()  { this.dragging = true; }
     // ─── Size / alive ─────────────────────────────────────────────────────────
 
     public int     getSize()              { return size; }
-    public void    setSize(int size)      { this.size = Math.max(0, size); }
-    public void    applyLosses(int v)     { this.size = Math.max(0, size - v); }
-    public boolean isAlive()              { return size > 0; }
+
+public void setSize(int size) {
+        int clamped = Math.max(0, size);
+        // Keep soldierCount in sync
+        this.soldierCount = this.soldierCount + (clamped - this.size);
+        if (this.soldierCount < 0) this.soldierCount = 0;
+        this.size = clamped;
+    }
+
+public void applyLosses(int v) {
+        int lost = Math.min(Math.max(0, v), this.size);
+        this.size         = Math.max(0, size - lost);
+        this.soldierCount = Math.max(0, soldierCount - lost);
+    }
+
+public boolean isAlive()              { return size > 0; }
 
     /**
      * Soldier count as tracked by the recruitment/upkeep system.
@@ -112,26 +125,28 @@ public void startDrag()  { this.dragging = true; }
     /**
      * Adds recruited soldiers, updating both size and soldierCount.
      */
-    public void addSoldiers(int amount) {
+
+public void addSoldiers(int amount) {
         int added      = Math.max(0, amount);
         this.size         += added;
         this.soldierCount += added;
         Debug.log("army", "add-soldiers", id + " +" + added
-                + " total=" + this.size);
+                + " total=" + this.size + " soldierCount=" + this.soldierCount);
     }
 
-    /**
+/**
      * Removes soldiers (desertion or combat loss), updating both size and soldierCount.
      */
-    public void removeSoldiers(int amount) {
+
+public void removeSoldiers(int amount) {
         int removed       = Math.min(Math.max(0, amount), this.size);
         this.size         -= removed;
         this.soldierCount  = Math.max(0, this.soldierCount - removed);
         Debug.log("army", "remove-soldiers", id + " -" + removed
-                + " remaining=" + this.size);
+                + " remaining=" + this.size + " soldierCount=" + this.soldierCount);
     }
 
-    // ─── Commander ────────────────────────────────────────────────────────────
+// ─── Commander ────────────────────────────────────────────────────────────
 
     public Commander getCommander()            { return commander; }
 
