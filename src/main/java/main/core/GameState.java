@@ -85,6 +85,7 @@ public class GameState {
                 nobleHouseManager,
                 armyManager);
         nobleHouseManager.setRavagedZoneManager(ravagedZoneManager);
+        nobleHouseManager.setBarbArmyManager(barbArmyManager);
         playerCombatProcessor = new main.army.PlayerCombatProcessor();
         playerCombatProcessor.setPartyManager(partyManager);
         commanderRoster      = new main.army.commander.CommanderRoster(resources, partyManager);

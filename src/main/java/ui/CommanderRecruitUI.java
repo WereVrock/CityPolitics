@@ -41,7 +41,7 @@ public class CommanderRecruitUI extends JPanel {
         build();
     }
 
-    private void build() {
+private void build() {
         removeAll();
 
         // ── Top bar ──────────────────────────────────────────────────────────
@@ -105,6 +105,7 @@ public class CommanderRecruitUI extends JPanel {
             } else {
                 Debug.log("recruit-ui", "refresh-ok",
                         "Extra candidates revealed. Pool size=" + pool.getCandidates().size());
+                influenceLabel.setText("Influence: " + resources.getInfluence());
                 build();
             }
         });
@@ -118,7 +119,7 @@ public class CommanderRecruitUI extends JPanel {
         repaint();
     }
 
-    private void refreshCandidateCards() {
+private void refreshCandidateCards() {
         candidatePanel.removeAll();
         for (Commander c : pool.getCandidates()) {
             candidatePanel.add(buildCandidateCard(c));
@@ -127,7 +128,7 @@ public class CommanderRecruitUI extends JPanel {
         candidatePanel.repaint();
     }
 
-    private JPanel buildCandidateCard(Commander c) {
+private JPanel buildCandidateCard(Commander c) {
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(UITheme.BG_PANEL_LIGHT);
@@ -183,10 +184,12 @@ public class CommanderRecruitUI extends JPanel {
                 pool.removeCandidate(c);
                 Debug.log("recruit-ui", "recruited", c.getName() + " recruited successfully");
                 influenceLabel.setText("Influence: " + resources.getInfluence());
-                build();
+                // Notify parent that resources changed, then rebuild
+                onClose.run();
             }
         });
         card.add(recruitBtn);
         return card;
     }
+
 }

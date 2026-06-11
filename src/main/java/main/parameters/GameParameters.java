@@ -560,4 +560,18 @@ public final class GameParameters {
 
 public static final int LIBERATED_ZONE_OPINION_BONUS = 15;
 
+    // =========================================================
+    // NOBLE BARBARIAN INTERACTION
+    // =========================================================
+    /** Prestige gained per barbarian soldier killed by a noble army. */
+    public static final double NOBLE_BARB_PRESTIGE_PER_KILL      = 0.08;
+    /** Minimum prestige awarded for any barbarian engagement won. */
+    public static final int    NOBLE_BARB_PRESTIGE_MIN_WIN        = 5;
+    /** Strength ratio required for a noble to consider hunting barbarians (noble/barb). */
+    public static final double NOBLE_BARB_HUNT_STRENGTH_RATIO     = 1.8;
+    /** Strength ratio required for last-zone desperate defense. */
+    public static final double NOBLE_BARB_DESPERATE_DEFENSE_RATIO = 0.5;
+    /** Fraction of all available manpower+gold spent on warboss defense army. */
+    public static final double NOBLE_WARBOSS_DEFENSE_ARMY_FRACTION = 0.90;
+
 }

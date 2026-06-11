@@ -26,6 +26,7 @@ public class NobleHouseManager {
     private final NobleArmyManager    armyManager;
     private final CoalitionManager    coalitionManager;
     private       main.barbarians.RavagedZoneManager ravagedZoneManager;
+    private       main.barbarians.BarbArmyManager    barbArmyManager;
     private       int lastPlayerGoldSent = 0;
     private       int lastPlayerFoodSent = 0;
 
@@ -44,6 +45,14 @@ public class NobleHouseManager {
 
     public void setRavagedZoneManager(main.barbarians.RavagedZoneManager rzm) {
         this.ravagedZoneManager = rzm;
+    }
+
+    public void setBarbArmyManager(main.barbarians.BarbArmyManager bam) {
+        this.barbArmyManager = bam;
+    }
+
+    public main.barbarians.BarbArmyManager getBarbArmyManagerRef() {
+        return barbArmyManager;
     }
 
     private void buildZoneMaps() {
@@ -103,6 +112,14 @@ public List<String> processTurn(ResourcePool playerResources, main.ledger.Ledger
 
         processRebellions(new ArrayList<>(houses), log);
 
+        if (barbArmyManager != null) {
+            log.addAll(NobleBarbHunter.processTurn(
+                    new ArrayList<>(houses),
+                    armyManager,
+                    nobleHouseManager -> nobleHouseManager,
+                    this,
+                    zoneManager));
+        }
         log.addAll(coalitionManager.checkCoalitions(new ArrayList<>(houses)));
 
         for (NobleHouse house : houses) {
@@ -440,6 +457,9 @@ private int computeHouseFood(NobleHouse house) {
     }
 
     public CoalitionManager getCoalitionManager() { return coalitionManager; }
+
+    /** Convenience accessor used by NobleBarbHunter. */
+    public NobleHouseManager getSelf() { return this; }
 
     public int getLastPlayerGoldSent() { return lastPlayerGoldSent; }
     public int getLastPlayerFoodSent() { return lastPlayerFoodSent; }

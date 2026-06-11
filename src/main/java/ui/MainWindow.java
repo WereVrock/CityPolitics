@@ -123,41 +123,17 @@ public class MainWindow extends JFrame {
         eventLogPanel.appendLine("The realm awaits your guidance. The Frost Giants stir in the north.");
     }
 
-    private JPanel buildSaveLoadBar() {
-        JButton menuBtn = buildBarButton("☰ MENU");
-        menuBtn.setForeground(UITheme.TEXT_GOLD);
-        menuBtn.addActionListener(e -> showGameMenu());
-
-        JButton newBtn  = buildBarButton("NEW");
-        JButton saveBtn = buildBarButton("SAVE");
-        JButton loadBtn = buildBarButton("LOAD");
-
-        newBtn.addActionListener(e  -> saveLoadDialog.newGame(() -> {
-            mapView.reinitialize(gameState);
-            rewireCallbacks();
-            showMainView();
-            resetLogs();
-        }));
-        saveBtn.addActionListener(e -> saveLoadDialog.save());
-        loadBtn.addActionListener(e -> saveLoadDialog.load(() -> {
-            showMainView();
-            if (gameState.hasActiveSession()) showVoteSession();
-            updateEndTurnState();
-            resetLogs();
-            eventLogPanel.appendLine("Game loaded.");
-        }));
-
-        JPanel bar = new JPanel(new GridLayout(1, 4, 6, 0));
+private JPanel buildSaveLoadBar() {
+        // Save/load/new are now in the ☰ MENU dialog — this bar is removed
+        JPanel bar = new JPanel();
         bar.setBackground(UITheme.BG_DARK);
-        bar.setBorder(new EmptyBorder(0, 12, 4, 12));
-        bar.add(menuBtn);
-        bar.add(newBtn);
-        bar.add(saveBtn);
-        bar.add(loadBtn);
+        bar.setPreferredSize(new Dimension(0, 0));
+        bar.setMaximumSize(new Dimension(0, 0));
+        bar.setVisible(false);
         return bar;
     }
 
-    private JButton buildBarButton(String label) {
+private JButton buildBarButton(String label) {
         JButton btn = new JButton(label);
         btn.setFont(UITheme.FONT_BUTTON);
         btn.setForeground(UITheme.TEXT_SECONDARY);
@@ -375,7 +351,7 @@ private JButton makeMenuButton(String label) {
 private void showSettings() {
         JDialog settings = new JDialog(this, "Settings", true);
         settings.setUndecorated(true);
-        settings.setSize(360, 260);
+        settings.setSize(400, 220);
         settings.setLocationRelativeTo(this);
 
         JPanel root = new JPanel(new BorderLayout());
@@ -385,17 +361,17 @@ private void showSettings() {
         JLabel title = new JLabel("  SETTINGS");
         title.setFont(UITheme.FONT_TITLE);
         title.setForeground(UITheme.TEXT_GOLD);
-        title.setBorder(new javax.swing.border.EmptyBorder(12, 12, 12, 12));
+        title.setBorder(new javax.swing.border.EmptyBorder(12, 12, 10, 12));
         title.setBackground(UITheme.BG_PANEL_LIGHT);
         title.setOpaque(true);
 
         JPanel body = new JPanel(new GridBagLayout());
         body.setBackground(UITheme.BG_PANEL);
-        body.setBorder(new javax.swing.border.EmptyBorder(16, 24, 16, 24));
+        body.setBorder(new javax.swing.border.EmptyBorder(16, 24, 8, 24));
 
         GridBagConstraints gc = new GridBagConstraints();
-        gc.fill = GridBagConstraints.HORIZONTAL;
-        gc.insets = new java.awt.Insets(6, 0, 6, 8);
+        gc.fill    = GridBagConstraints.HORIZONTAL;
+        gc.insets  = new java.awt.Insets(4, 0, 4, 8);
         gc.weightx = 0;
 
         JLabel fontLabel = new JLabel("Font Size:");
@@ -404,7 +380,7 @@ private void showSettings() {
         gc.gridx = 0; gc.gridy = 0;
         body.add(fontLabel, gc);
 
-        int currentSize = UITheme.FONT_BODY.getSize();
+        int currentSize = UITheme.BASE_SIZE;
         JSlider fontSlider = new JSlider(9, 18, currentSize);
         fontSlider.setBackground(UITheme.BG_PANEL);
         fontSlider.setMajorTickSpacing(3);
@@ -421,25 +397,20 @@ private void showSettings() {
         gc.gridx = 2; gc.weightx = 0;
         body.add(sizeDisplay, gc);
 
-        fontSlider.addChangeListener(e -> {
-            int sz = fontSlider.getValue();
-            sizeDisplay.setText(sz + "px");
-        });
+        fontSlider.addChangeListener(e -> sizeDisplay.setText(fontSlider.getValue() + "px"));
 
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         btnRow.setBackground(UITheme.BG_PANEL);
-        btnRow.setBorder(new javax.swing.border.EmptyBorder(8, 16, 12, 16));
 
-        JButton applyBtn = new JButton("Apply");
+        JButton applyBtn = new JButton("Apply & Restart View");
         applyBtn.setFont(UITheme.FONT_BUTTON);
         applyBtn.setForeground(UITheme.TEXT_GOLD);
         applyBtn.setBackground(UITheme.BUTTON_BG);
         applyBtn.setBorderPainted(false);
         applyBtn.setFocusPainted(false);
         applyBtn.addActionListener(e -> {
-            int newSize = fontSlider.getValue();
-            UITheme.applyFontScale(newSize);
-            SwingUtilities.updateComponentTreeUI(this);
+            UITheme.applyFontScale(fontSlider.getValue());
+            FontPropagator.applyToWindow(this);
             settings.dispose();
         });
 

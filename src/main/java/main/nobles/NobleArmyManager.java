@@ -497,6 +497,15 @@ public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claim
         nextId = 1;
     }
 
+    /**
+     * Moves an army to a zone and immediately resolves any same-house merge.
+     * Returns the surviving army at that zone (may be a different object after merge).
+     */
+    public NobleArmy moveArmyAndGetResult(NobleArmy army, String zoneId) {
+        moveArmy(army, zoneId);
+        return getFirstIdleArmyInZone(army.getHouseId(), zoneId);
+    }
+
     // ─── Internal ───────────────────────────────────────────────────────────
 
     private void add(NobleArmy army) {

@@ -414,10 +414,21 @@ private JPanel buildCommanderCard(Commander c) {
 
 // ─── Create army ─────────────────────────────────────────────────────────
 
-    private void openCreateArmyDialog() {
-        String name = JOptionPane.showInputDialog(this,
+private void openCreateArmyDialog() {
+        java.util.List<String> existing = armyManager.getArmies().stream()
+                .map(main.army.Army::getDisplayName)
+                .collect(java.util.stream.Collectors.toList());
+        String suggested = main.army.ArmyNameGenerator.generateUnique(existing);
+
+        String name = (String) JOptionPane.showInputDialog(
+                this,
                 "Enter name for new army:",
-                "Create New Army", JOptionPane.PLAIN_MESSAGE);
+                "Create New Army",
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                null,
+                suggested);
+
         if (name == null || name.isBlank()) return;
         Army army = armyManager.createArmy(name.trim());
         Debug.log("military-ui", "create-army",
@@ -425,7 +436,7 @@ private JPanel buildCommanderCard(Commander c) {
         build();
     }
 
-    // ─── Disband army ─────────────────────────────────────────────────────────
+// ─── Disband army ─────────────────────────────────────────────────────────
 
     private void confirmDisband(Army army) {
         int soldiers = army.getSoldierCount();
@@ -690,12 +701,25 @@ private void openRecruitUI() {
                 SwingUtilities.getWindowAncestor(this),
                 "Commander Recruitment",
                 Dialog.ModalityType.APPLICATION_MODAL);
-        d.setContentPane(new CommanderRecruitUI(roster, pool, resources,
-                () -> {
-                    d.dispose();
-                    onResourcesChanged.run();
-                    build();
-                }));
+
+        // Both the close button and the window X button trigger the same cleanup
+        Runnable closeAction = () -> {
+            if (d.isVisible()) {
+                d.dispose();
+                onResourcesChanged.run();
+                build();
+            }
+        };
+
+        d.setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+        d.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                closeAction.run();
+            }
+        });
+
+        d.setContentPane(new CommanderRecruitUI(roster, pool, resources, closeAction));
         d.setSize(720, 500);
         d.setMinimumSize(new Dimension(580, 400));
         d.setLocationRelativeTo(this);
@@ -742,19 +766,23 @@ private void openRecruitUI() {
         return btn;
     }
 
-    private JButton makeStepButton(String label) {
+private JButton makeStepButton(String label) {
         JButton btn = new JButton(label);
-        btn.setFont(btn.getFont().deriveFont(Font.BOLD, 18f));
+        btn.setFont(new Font("Dialog", Font.BOLD, 20));
         btn.setForeground(UITheme.TEXT_GOLD);
         btn.setBackground(UITheme.BUTTON_BG);
-        btn.setBorderPainted(false);
+        btn.setBorderPainted(true);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(4, 10, 4, 10)));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension(38, 38));
+        btn.setPreferredSize(new Dimension(48, 40));
+        btn.setMinimumSize(new Dimension(48, 40));
         return btn;
     }
 
-    private void addInfoLabel(JPanel panel, String text, Font font, Color color) {
+private void addInfoLabel(JPanel panel, String text, Font font, Color color) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(font);
         lbl.setForeground(color);

@@ -25,7 +25,7 @@ public class UITheme {
     public static final Color LOG_BG         = new Color(12, 10, 18);
 
     // ─── Font base size (mutable for settings) ────────────────────────────────
-    private static int BASE_SIZE = 12;
+    public static int BASE_SIZE = 12;
 
     // ─── Fonts ────────────────────────────────────────────────────────────────
     public static Font FONT_TITLE   = new Font("Serif",      Font.BOLD,  BASE_SIZE + 8);
