@@ -107,9 +107,26 @@ public class MainWindow extends JFrame {
 
         centerPanel.add(actionsWrapper, BorderLayout.CENTER);
 
-        add(calendarPanel, BorderLayout.NORTH);
-        add(leftSidebar,   BorderLayout.WEST);
-        add(centerPanel,   BorderLayout.CENTER);
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setBackground(UITheme.BG_DARK);
+
+        JButton menuBtn = new JButton("☰");
+        menuBtn.setFont(UITheme.FONT_TITLE);
+        menuBtn.setForeground(UITheme.TEXT_GOLD);
+        menuBtn.setBackground(UITheme.BG_PANEL);
+        menuBtn.setBorderPainted(false);
+        menuBtn.setFocusPainted(false);
+        menuBtn.setPreferredSize(new Dimension(48, 48));
+        menuBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        menuBtn.setToolTipText("Game Menu");
+        menuBtn.addActionListener(e -> showGameMenu());
+
+        topBar.add(menuBtn,     BorderLayout.WEST);
+        topBar.add(calendarPanel, BorderLayout.CENTER);
+
+        add(topBar,      BorderLayout.NORTH);
+        add(leftSidebar, BorderLayout.WEST);
+        add(centerPanel, BorderLayout.CENTER);
 
         // Build bottom area: event log + status bar (version info)
         JPanel bottomArea = new JPanel(new BorderLayout());
@@ -145,85 +162,55 @@ private JButton buildBarButton(String label) {
         return btn;
     }
 
-    private JPanel buildBottomBar() {
-        partiesBtn = new JButton("PARTIES");
-        partiesBtn.setFont(UITheme.FONT_BUTTON);
-        partiesBtn.setForeground(UITheme.TEXT_SECONDARY);
-        partiesBtn.setBackground(UITheme.BUTTON_BG);
-        partiesBtn.setBorderPainted(false);
-        partiesBtn.setFocusPainted(false);
-        partiesBtn.setPreferredSize(new Dimension(90, 48));
-        partiesBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        partiesBtn.addActionListener(e -> showPartiesView());
+private JPanel buildBottomBar() {
+    partiesBtn = makeBottomBarButton("PARTIES");
+    partiesBtn.addActionListener(e -> showPartiesView());
 
-        JButton noblesBtn = new JButton("NOBLES");
-        noblesBtn.setFont(UITheme.FONT_BUTTON);
-        noblesBtn.setForeground(UITheme.TEXT_SECONDARY);
-        noblesBtn.setBackground(UITheme.BUTTON_BG);
-        noblesBtn.setBorderPainted(false);
-        noblesBtn.setFocusPainted(false);
-        noblesBtn.setPreferredSize(new Dimension(100, 48));
-        noblesBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        noblesBtn.addActionListener(e -> showNoblesView());
+    JButton noblesBtn = makeBottomBarButton("NOBLES");
+    noblesBtn.addActionListener(e -> showNoblesView());
 
-        JButton mapBtn = new JButton("MAP");
-        mapBtn.setFont(UITheme.FONT_BUTTON);
-        mapBtn.setForeground(UITheme.TEXT_SECONDARY);
-        mapBtn.setBackground(UITheme.BUTTON_BG);
-        mapBtn.setBorderPainted(false);
-        mapBtn.setFocusPainted(false);
-        mapBtn.setPreferredSize(new Dimension(60, 48));
-        mapBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        mapBtn.addActionListener(e -> showMapView());
+    JButton mapBtn = makeBottomBarButton("MAP");
+    mapBtn.addActionListener(e -> showMapView());
 
-        openVoteBtn = new JButton("⚑ OPEN VOTE");
-        openVoteBtn.setFont(UITheme.FONT_BUTTON);
-        openVoteBtn.setForeground(UITheme.TEXT_GOLD);
-        openVoteBtn.setBackground(new Color(60, 40, 20));
-        openVoteBtn.setBorderPainted(false);
-        openVoteBtn.setFocusPainted(false);
-        openVoteBtn.setPreferredSize(new Dimension(110, 48));
-        openVoteBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        openVoteBtn.setVisible(false);
-        openVoteBtn.addActionListener(e -> showVoteSession());
+    openVoteBtn = makeBottomBarButton("⚑ OPEN VOTE");
+    openVoteBtn.setForeground(UITheme.TEXT_GOLD);
+    openVoteBtn.setBackground(new Color(60, 40, 20));
+    openVoteBtn.setVisible(false);
+    openVoteBtn.addActionListener(e -> showVoteSession());
 
-        JButton ledgerBtn = new JButton("LEDGER");
-        ledgerBtn.setFont(UITheme.FONT_BUTTON);
-        ledgerBtn.setForeground(UITheme.TEXT_SECONDARY);
-        ledgerBtn.setBackground(UITheme.BUTTON_BG);
-        ledgerBtn.setBorderPainted(false);
-        ledgerBtn.setFocusPainted(false);
-        ledgerBtn.setPreferredSize(new Dimension(90, 48));
-        ledgerBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        ledgerBtn.addActionListener(e -> showLedger());
+    JButton ledgerBtn = makeBottomBarButton("LEDGER");
+    ledgerBtn.addActionListener(e -> showLedger());
 
-        JButton militaryBtn = new JButton("MILITARY");
-        militaryBtn.setFont(UITheme.FONT_BUTTON);
-        militaryBtn.setForeground(UITheme.TEXT_SECONDARY);
-        militaryBtn.setBackground(UITheme.BUTTON_BG);
-        militaryBtn.setBorderPainted(false);
-        militaryBtn.setFocusPainted(false);
-        militaryBtn.setPreferredSize(new Dimension(100, 48));
-        militaryBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        militaryBtn.addActionListener(e -> showMilitaryView());
-      
+    JButton militaryBtn = makeBottomBarButton("MILITARY");
+    militaryBtn.addActionListener(e -> showMilitaryView());
 
-        JPanel wrapper = new JPanel(new BorderLayout(6, 0));
-        wrapper.setBackground(UITheme.BG_DARK);
-        wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
+    JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+    leftBtns.setBackground(UITheme.BG_DARK);
+    leftBtns.add(partiesBtn);
+    leftBtns.add(noblesBtn);
+    leftBtns.add(mapBtn);
+    leftBtns.add(openVoteBtn);
+    leftBtns.add(ledgerBtn);
+    leftBtns.add(militaryBtn);
 
-        JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        leftBtns.setBackground(UITheme.BG_DARK);
-        leftBtns.add(partiesBtn);
-        leftBtns.add(noblesBtn);
-        leftBtns.add(mapBtn);
-        leftBtns.add(openVoteBtn);
-        leftBtns.add(ledgerBtn);
-        leftBtns.add(militaryBtn);
-  
-        wrapper.add(leftBtns, BorderLayout.WEST);
-        return wrapper;
-    }
+    JPanel wrapper = new JPanel(new BorderLayout(6, 0));
+    wrapper.setBackground(UITheme.BG_DARK);
+    wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
+    wrapper.add(leftBtns, BorderLayout.WEST);
+    return wrapper;
+}
+
+private JButton makeBottomBarButton(String label) {
+    JButton btn = new JButton(label);
+    btn.setFont(UITheme.FONT_BUTTON);
+    btn.setForeground(UITheme.TEXT_SECONDARY);
+    btn.setBackground(UITheme.BUTTON_BG);
+    btn.setBorderPainted(false);
+    btn.setFocusPainted(false);
+    btn.setMargin(new Insets(6, 10, 6, 10));
+    btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    return btn;
+}
 
 private void showLedger() {
         if (ledgerDialog == null) {
