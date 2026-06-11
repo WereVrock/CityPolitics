@@ -672,6 +672,35 @@ private String skillDescription(int skill) {
         clearArmy();
     }
 
+/**
+     * Re-applies UITheme map-panel fonts to every label/button in this panel.
+     * Called from MapView after the user changes the map-panel font size in Settings.
+     */
+    public void applyMapPanelFonts() {
+        zoneTitleLabel.setFont(UITheme.FONT_MAP_HEADER);
+        zoneTypeLabel.setFont(UITheme.FONT_MAP_SMALL);
+        ownerButton.setFont(UITheme.FONT_MAP_SMALL);
+        goldLabel.setFont(UITheme.FONT_MAP_BODY);
+        foodLabel.setFont(UITheme.FONT_MAP_BODY);
+        popsLabel.setFont(UITheme.FONT_MAP_BODY);
+        supplyLabel.setFont(UITheme.FONT_MAP_BODY);
+        damageLabel.setFont(UITheme.FONT_MAP_BODY);
+        adjacentArea.setFont(UITheme.FONT_MAP_SMALL);
+
+        armyTitleLabel.setFont(UITheme.FONT_MAP_HEADER);
+        armyZoneLabel.setFont(UITheme.FONT_MAP_BODY);
+        armyStatusLabel.setFont(UITheme.FONT_MAP_SMALL);
+        armySizeLabel.setFont(UITheme.FONT_MAP_BODY);
+        armyUpkeepLabel.setFont(UITheme.FONT_MAP_SMALL);
+        commanderButton.setFont(UITheme.FONT_MAP_BUTTON);
+        commanderSkillLabel.setFont(UITheme.FONT_MAP_SMALL);
+        barbPayOffBtn.setFont(UITheme.FONT_MAP_BUTTON);
+        barbDismissBtn.setFont(UITheme.FONT_MAP_BUTTON);
+
+        revalidate();
+        repaint();
+    }
+
 }
 
 

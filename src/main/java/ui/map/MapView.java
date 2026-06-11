@@ -143,4 +143,10 @@ public void reinitialize(GameState gameState) {
     refresh();
 }
 
+/** Re-applies map-panel fonts to the info and army-list panels. */
+    public void applyMapPanelFonts() {
+        infoPanel.applyMapPanelFonts();
+        armyListPanel.applyMapPanelFonts();
+    }
+
 }

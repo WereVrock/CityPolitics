@@ -34,7 +34,18 @@ public class UITheme {
     public static Font FONT_SMALL   = new Font("Monospaced", Font.PLAIN, BASE_SIZE - 1);
     public static Font FONT_BUTTON  = new Font("Serif",      Font.BOLD,  BASE_SIZE);
 
+    // ─── Map panel font size (mutable for settings) ───────────────────────────
+    public static int  MAP_PANEL_SIZE  = 12;
+
+    // ─── Map panel fonts ──────────────────────────────────────────────────────
+    public static Font FONT_MAP_BODY   = new Font("Monospaced", Font.PLAIN, MAP_PANEL_SIZE);
+    public static Font FONT_MAP_SMALL  = new Font("Monospaced", Font.PLAIN, MAP_PANEL_SIZE - 1);
+    public static Font FONT_MAP_HEADER = new Font("Serif",      Font.BOLD,  MAP_PANEL_SIZE + 2);
+    public static Font FONT_MAP_BUTTON = new Font("Serif",      Font.BOLD,  MAP_PANEL_SIZE);
+
     /** Apply a new base font size across all theme fonts. */
+
+/** Apply a new base font size across all theme fonts. */
     public static void applyFontScale(int baseSize) {
         BASE_SIZE  = baseSize;
         FONT_TITLE  = new Font("Serif",      Font.BOLD,  BASE_SIZE + 8);
@@ -44,5 +55,14 @@ public class UITheme {
         FONT_BUTTON = new Font("Serif",      Font.BOLD,  BASE_SIZE);
     }
 
-    private UITheme() {}
+    /** Apply a new map-panel font size across all map panel fonts. */
+    public static void applyMapPanelFontScale(int size) {
+        MAP_PANEL_SIZE   = size;
+        FONT_MAP_BODY    = new Font("Monospaced", Font.PLAIN, MAP_PANEL_SIZE);
+        FONT_MAP_SMALL   = new Font("Monospaced", Font.PLAIN, MAP_PANEL_SIZE - 1);
+        FONT_MAP_HEADER  = new Font("Serif",      Font.BOLD,  MAP_PANEL_SIZE + 2);
+        FONT_MAP_BUTTON  = new Font("Serif",      Font.BOLD,  MAP_PANEL_SIZE);
+    }
+
+private UITheme() {}
 }

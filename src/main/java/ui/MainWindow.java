@@ -338,7 +338,7 @@ private JButton makeMenuButton(String label) {
 private void showSettings() {
         JDialog settings = new JDialog(this, "Settings", true);
         settings.setUndecorated(true);
-        settings.setSize(400, 220);
+        settings.setSize(400, 300);
         settings.setLocationRelativeTo(this);
 
         JPanel root = new JPanel(new BorderLayout());
@@ -361,6 +361,7 @@ private void showSettings() {
         gc.insets  = new java.awt.Insets(4, 0, 4, 8);
         gc.weightx = 0;
 
+        // ── Global font size ──
         JLabel fontLabel = new JLabel("Font Size:");
         fontLabel.setFont(UITheme.FONT_BODY);
         fontLabel.setForeground(UITheme.TEXT_PRIMARY);
@@ -386,6 +387,32 @@ private void showSettings() {
 
         fontSlider.addChangeListener(e -> sizeDisplay.setText(fontSlider.getValue() + "px"));
 
+        // ── Map panel font size ──
+        JLabel mapFontLabel = new JLabel("Map Panel Size:");
+        mapFontLabel.setFont(UITheme.FONT_BODY);
+        mapFontLabel.setForeground(UITheme.TEXT_PRIMARY);
+        gc.gridx = 0; gc.gridy = 1; gc.weightx = 0;
+        body.add(mapFontLabel, gc);
+
+        int currentMapSize = UITheme.MAP_PANEL_SIZE;
+        JSlider mapFontSlider = new JSlider(8, 18, currentMapSize);
+        mapFontSlider.setBackground(UITheme.BG_PANEL);
+        mapFontSlider.setMajorTickSpacing(3);
+        mapFontSlider.setMinorTickSpacing(1);
+        mapFontSlider.setPaintTicks(true);
+        mapFontSlider.setPaintLabels(true);
+        mapFontSlider.setForeground(UITheme.TEXT_SECONDARY);
+        gc.gridx = 1; gc.weightx = 1.0;
+        body.add(mapFontSlider, gc);
+
+        JLabel mapSizeDisplay = new JLabel(currentMapSize + "px");
+        mapSizeDisplay.setFont(UITheme.FONT_SMALL);
+        mapSizeDisplay.setForeground(UITheme.TEXT_SECONDARY);
+        gc.gridx = 2; gc.weightx = 0;
+        body.add(mapSizeDisplay, gc);
+
+        mapFontSlider.addChangeListener(e -> mapSizeDisplay.setText(mapFontSlider.getValue() + "px"));
+
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         btnRow.setBackground(UITheme.BG_PANEL);
 
@@ -397,7 +424,9 @@ private void showSettings() {
         applyBtn.setFocusPainted(false);
         applyBtn.addActionListener(e -> {
             UITheme.applyFontScale(fontSlider.getValue());
+            UITheme.applyMapPanelFontScale(mapFontSlider.getValue());
             FontPropagator.applyToWindow(this);
+            mapView.applyMapPanelFonts();
             settings.dispose();
         });
 

@@ -63,7 +63,7 @@ public class ArmyListPanel extends JPanel {
     public void setOnDragDropCallback(DragDropCallback cb) { this.callback = cb; }
     public DragDropCallback getCallback()                   { return callback; }
 
-    public void refresh() {
+public void refresh() {
         listContainer.removeAll();
         for (Army army : armyManager.getCityArmies()) {
             listContainer.add(buildArmyCard(army));
@@ -71,15 +71,20 @@ public class ArmyListPanel extends JPanel {
         }
         if (armyManager.getCityArmies().isEmpty()) {
             JLabel empty = new JLabel("  No armies in city");
-            empty.setFont(UITheme.FONT_SMALL);
+            empty.setFont(UITheme.FONT_MAP_SMALL);
             empty.setForeground(UITheme.TEXT_SECONDARY);
             listContainer.add(empty);
+        }
+        // Re-apply font to header
+        Component north = ((BorderLayout) getLayout()).getLayoutComponent(BorderLayout.NORTH);
+        if (north instanceof JLabel header) {
+            header.setFont(UITheme.FONT_MAP_SMALL);
         }
         listContainer.revalidate();
         listContainer.repaint();
     }
 
-    private JPanel buildArmyCard(Army army) {
+private JPanel buildArmyCard(Army army) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(UITheme.BG_PANEL_LIGHT);
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -90,7 +95,7 @@ public class ArmyListPanel extends JPanel {
         card.setAlignmentX(LEFT_ALIGNMENT);
 
         JLabel name = new JLabel("⚔ " + army.getDisplayName());
-        name.setFont(UITheme.FONT_BUTTON);
+        name.setFont(UITheme.FONT_MAP_BUTTON);
         name.setForeground(UITheme.ACCENT_FROST);
 
         card.add(name, BorderLayout.WEST);
@@ -98,7 +103,7 @@ public class ArmyListPanel extends JPanel {
         DragSource ds = DragSource.getDefaultDragSource();
         ds.createDefaultDragGestureRecognizer(card, DnDConstants.ACTION_MOVE, dge -> {
             army.startDrag();
-            refresh(); // hide from list immediately
+            refresh();
             repaint();
 
             Transferable t = new Transferable() {
@@ -130,6 +135,15 @@ public class ArmyListPanel extends JPanel {
 
 public void reinitialize(ArmyManager newArmyManager) {
         this.armyManager = newArmyManager;
+        refresh();
+    }
+
+/**
+     * Re-applies UITheme map-panel fonts to this panel.
+     * Called from MapView after the user changes the map-panel font size in Settings.
+     */
+    public void applyMapPanelFonts() {
+        // The header label and army cards are rebuilt on refresh(), so just refresh.
         refresh();
     }
 
