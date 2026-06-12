@@ -1,4 +1,3 @@
-// SaveManager.java
 package main.save;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,7 +10,11 @@ import main.barbarians.*;
 import main.calendar.GameCalendar;
 import main.core.GameState;
 import main.effects.ActiveEffect;
+import main.legislation.LegislationManager;
+import main.legislation.LegislationType;
 import main.map.ZoneState;
+import main.mercenaries.MercenaryArmy;
+import main.mercenaries.MercenaryManager;
 import main.nobles.*;
 import main.pops.Pop;
 import main.pops.PopType;
@@ -31,7 +34,6 @@ import java.util.*;
 
 /**
  * Converts GameState to/from SaveData and handles file I/O.
- * Stateless — all methods are static.
  */
 public class SaveManager {
 
@@ -42,8 +44,6 @@ public class SaveManager {
     private static final String SAVE_FILE = "save.fv";
 
     private SaveManager() {}
-
-    // ─── Save folder resolution ───────────────────────────────────────────────
 
     public static Path getSaveDirectory() {
         String os = System.getProperty("os.name").toLowerCase();
@@ -76,8 +76,6 @@ public class SaveManager {
         return getSaveFile().exists();
     }
 
-    // ─── Public API ───────────────────────────────────────────────────────────
-
     public static void save(GameState gameState) throws IOException {
         ensureSaveDirectoryExists();
         MAPPER.writeValue(getSaveFile(), toSaveData(gameState));
@@ -96,52 +94,41 @@ public class SaveManager {
     private static SaveData toSaveData(GameState gs) {
         SaveData data = new SaveData();
 
-        // Calendar
         GameCalendar cal        = gs.getCalendar();
         data.year               = cal.getYear();
         data.period             = cal.getPeriod().name();
         data.totalTurnsElapsed  = cal.getTotalTurnsElapsed();
 
-        // Resources
         ResourcePool res = gs.getResources();
         data.food       = res.getFood();
         data.money      = res.getMoney();
         data.manpower   = res.getManpower();
         data.influence  = res.getInfluence();
 
-        // Stats
         data.corruption = gs.getStats().getCorruption();
         data.happiness  = gs.getStats().getHappiness();
 
-        // Pops
-        data.pops = serializePops(gs);
-
-        // Parties
-        data.parties = serializeParties(gs);
-
-        // Active effects
+        data.pops          = serializePops(gs);
+        data.parties       = serializeParties(gs);
         data.activeEffects = serializeEffects(gs);
 
-        // Vote session
         if (gs.hasActiveSession()) data.pendingVoteSession = serializeSession(gs.getActiveSession());
 
-        // Noble system
-        data.nobleHouses    = serializeNobleHouses(gs);
-        data.relationships  = serializeRelationships(gs);
-        data.claims         = serializeClaims(gs);
-        data.nobleArmies    = serializeNobleArmies(gs);
+        data.nobleHouses   = serializeNobleHouses(gs);
+        data.relationships = serializeRelationships(gs);
+        data.claims        = serializeClaims(gs);
+        data.nobleArmies   = serializeNobleArmies(gs);
 
-        // Player armies
-        data.playerArmies      = serializePlayerArmies(gs);
-        data.commanderRoster   = serializeCommanderRoster(gs);
+        data.playerArmies    = serializePlayerArmies(gs);
+        data.commanderRoster = serializeCommanderRoster(gs);
 
-        // Barbarian system
         data.barbInvasionState = serializeBarbState(gs);
         data.barbArmies        = serializeBarbArmies(gs);
         data.ravagedZones      = serializeRavagedZones(gs);
+        data.zoneStates        = serializeZoneStates(gs);
 
-        // Zone states
-        data.zoneStates = serializeZoneStates(gs);
+        data.legislation      = serializeLegislation(gs);
+        data.mercenaryArmies  = serializeMercenaries(gs);
 
         return data;
     }
@@ -186,7 +173,7 @@ public class SaveManager {
             e.playerOpinion       = h.getPlayerOpinion();
             e.prestige            = h.getPrestige();
             e.zoneIds             = new ArrayList<>(h.getZoneIds());
-            e.activeCharacterIndex = 0; // always 0 in current design
+            e.activeCharacterIndex = 0;
             e.fortifications      = serializePerZoneInt(h, "fortifications");
             e.garrisons           = serializePerZoneInt(h, "garrisons");
             e.garrisonMaxBonus    = serializePerZoneInt(h, "garrisonMaxBonus");
@@ -196,7 +183,6 @@ public class SaveManager {
         return list;
     }
 
-    /** Reads a private Map<String,Integer> field from NobleHouse via reflection. */
     @SuppressWarnings("unchecked")
     private static Map<String, Integer> serializePerZoneInt(NobleHouse h, String fieldName) {
         try {
@@ -258,7 +244,7 @@ public class SaveManager {
         return list;
     }
 
-private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs) {
+    private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs) {
         List<SaveData.PlayerArmyEntry> list = new ArrayList<>();
         for (Army a : gs.getArmyManager().getArmies()) {
             SaveData.PlayerArmyEntry e = new SaveData.PlayerArmyEntry();
@@ -280,29 +266,28 @@ private static List<SaveData.PlayerArmyEntry> serializePlayerArmies(GameState gs
         return list;
     }
 
-private static List<SaveData.CommanderRosterEntry> serializeCommanderRoster(GameState gs) {
-    List<SaveData.CommanderRosterEntry> list = new ArrayList<>();
-    main.army.commander.CommanderRoster roster = gs.getCommanderRoster();
-    // Collect commanders NOT assigned to any army to avoid double-saving
-    java.util.Set<main.army.commander.Commander> assignedCommanders = new java.util.HashSet<>();
-    for (Army a : gs.getArmyManager().getArmies()) {
-        if (a.getCommander() != null) assignedCommanders.add(a.getCommander());
+    private static List<SaveData.CommanderRosterEntry> serializeCommanderRoster(GameState gs) {
+        List<SaveData.CommanderRosterEntry> list = new ArrayList<>();
+        main.army.commander.CommanderRoster roster = gs.getCommanderRoster();
+        java.util.Set<main.army.commander.Commander> assignedCommanders = new java.util.HashSet<>();
+        for (Army a : gs.getArmyManager().getArmies()) {
+            if (a.getCommander() != null) assignedCommanders.add(a.getCommander());
+        }
+        for (main.army.commander.Commander c : roster.getAllCommanders()) {
+            if (assignedCommanders.contains(c)) continue;
+            SaveData.CommanderRosterEntry e = new SaveData.CommanderRosterEntry();
+            e.name      = c.getName();
+            e.race      = c.getRace();
+            e.partyName = c.getPartyName();
+            e.skill     = c.getCommandingSkill();
+            e.xp        = c.getXp();
+            e.alive     = c.isAlive();
+            list.add(e);
+        }
+        return list;
     }
-    for (main.army.commander.Commander c : roster.getAllCommanders()) {
-        if (assignedCommanders.contains(c)) continue; // already saved with army
-        SaveData.CommanderRosterEntry e = new SaveData.CommanderRosterEntry();
-        e.name      = c.getName();
-        e.race      = c.getRace();
-        e.partyName = c.getPartyName();
-        e.skill     = c.getCommandingSkill();
-        e.xp        = c.getXp();
-        e.alive     = c.isAlive();
-        list.add(e);
-    }
-    return list;
-}
 
-private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) {
+    private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) {
         BarbInvasionState s = gs.getBarbInvasionState();
         SaveData.BarbInvasionStateEntry e = new SaveData.BarbInvasionStateEntry();
         e.phase                   = s.getPhase().name();
@@ -370,7 +355,6 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
         for (main.map.Zone z : gs.getZoneManager().getZones()) {
             ZoneState state = gs.getZoneManager().getState(z.getId());
             if (state == null) continue;
-            // Only save non-default states to keep file small
             if (state.getDamage() == 0 && state.getSupplyLevel() == 100
                     && state.getRaidedTurns() == 0 && state.getConquestMalus() == 0
                     && state.getRebellionPower() == 0) continue;
@@ -400,6 +384,32 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
         return entry;
     }
 
+    private static SaveData.LegislationEntry serializeLegislation(GameState gs) {
+        LegislationManager lm = gs.getLegislationManager();
+        SaveData.LegislationEntry entry = new SaveData.LegislationEntry();
+        entry.passedLegislations = new ArrayList<>();
+        for (LegislationType type : lm.getPassedLegislations()) {
+            entry.passedLegislations.add(type.name());
+        }
+        entry.mercenaryHireActionsRemaining  = lm.getMercenaryHireActionsRemaining();
+        entry.wartimeTaxesCooldown           = lm.getWartimeTaxesCooldown();
+        entry.sendResourcesWindowRemaining   = lm.getSendResourcesWindowRemaining();
+        return entry;
+    }
+
+    private static List<SaveData.MercenaryArmyEntry> serializeMercenaries(GameState gs) {
+        List<SaveData.MercenaryArmyEntry> list = new ArrayList<>();
+        for (MercenaryArmy a : gs.getMercenaryManager().getArmies()) {
+            SaveData.MercenaryArmyEntry e = new SaveData.MercenaryArmyEntry();
+            e.id          = a.getId();
+            e.displayName = a.getDisplayName();
+            e.size        = a.getSize();
+            e.zoneId      = a.getZoneId();
+            list.add(e);
+        }
+        return list;
+    }
+
     // =========================================================================
     // SaveData → GameState
     // =========================================================================
@@ -422,9 +432,9 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
         applyBarbArmies(data, gs);
         applyRavagedZones(data, gs);
         applyZoneStates(data, gs);
+        applyLegislation(data, gs);
+        applyMercenaries(data, gs);
     }
-
-    // ─── Apply helpers ────────────────────────────────────────────────────────
 
     private static void applyCalendar(SaveData data, GameCalendar cal) {
         cal.setYear(data.year);
@@ -495,15 +505,12 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
         for (SaveData.NobleHouseEntry entry : data.nobleHouses) {
             NobleHouse h = gs.getNobleHouseManager().getHouseById(entry.id);
             if (h == null) continue;
-
             h.addGold(entry.gold - h.getGold());
             h.addFood(entry.food - h.getFood());
             h.addNobleManpower(entry.nobleManpower - h.getNobleManpower());
             h.addInfluence(entry.influence - h.getInfluence());
             h.setPlayerOpinion(entry.playerOpinion);
             h.addPrestige(entry.prestige - h.getPrestige());
-
-            // Sync zones: remove zones not in saved list, add zones that are
             List<String> currentZones = new ArrayList<>(h.getZoneIds());
             for (String z : currentZones) {
                 if (!entry.zoneIds.contains(z)) h.removeZone(z);
@@ -511,18 +518,13 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
             for (String z : entry.zoneIds) {
                 if (!h.getZoneIds().contains(z)) h.addZone(z);
             }
-
-            // Restore per-zone maps via reflection
             writePerZoneInt(h, "fortifications",   entry.fortifications);
             writePerZoneInt(h, "garrisons",        entry.garrisons);
             writePerZoneInt(h, "garrisonMaxBonus", entry.garrisonMaxBonus);
-
-            // Restore threats
             h.clearThreats();
             if (entry.threatenedBy != null) {
                 for (String threatId : entry.threatenedBy) h.addThreat(threatId);
             }
-
             h.recalculateCapital();
         }
     }
@@ -536,9 +538,7 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
             Map<String, Integer> map = (Map<String, Integer>) f.get(h);
             map.clear();
             map.putAll(data);
-        } catch (Exception ex) {
-            // silently skip — field may not exist in this build
-        }
+        } catch (Exception ex) {}
     }
 
     private static void applyRelationships(SaveData data, GameState gs) {
@@ -566,7 +566,6 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
         for (SaveData.NobleArmyEntry entry : data.nobleArmies) {
             NobleArmy army = new NobleArmy(entry.id, entry.houseId, entry.size, entry.zoneId);
             army.setSkipNextUpkeep(entry.skipNextUpkeep);
-
             NobleArmy.OrderType order = NobleArmy.OrderType.valueOf(entry.pendingOrder);
             if (order != NobleArmy.OrderType.NONE) {
                 if (entry.isCoalitionAttack && entry.coalitionMemberIds != null) {
@@ -581,42 +580,30 @@ private static SaveData.BarbInvasionStateEntry serializeBarbState(GameState gs) 
         }
     }
 
-private static void applyPlayerArmies(SaveData data, GameState gs) {
+    private static void applyPlayerArmies(SaveData data, GameState gs) {
         if (data.playerArmies == null) return;
         ArmyManager am = gs.getArmyManager();
         am.reset();
         for (SaveData.PlayerArmyEntry entry : data.playerArmies) {
             for (Army army : am.getArmies()) {
                 if (army.getDisplayName().equals(entry.displayName)) {
-                    // Directly set both fields to avoid sync issues
                     army.setSize(entry.size);
                     army.setSoldierCount(entry.size);
-                    // Restore commander BEFORE moveTo so the deployment guard passes
                     if (entry.commanderName != null) {
                         main.politics.PoliticalParty party = null;
                         if (entry.commanderPartyName != null) {
-                            for (main.politics.PoliticalParty p
-                                    : gs.getPartyManager().getParties()) {
-                                if (p.getName().equals(entry.commanderPartyName)) {
-                                    party = p;
-                                    break;
-                                }
+                            for (main.politics.PoliticalParty p : gs.getPartyManager().getParties()) {
+                                if (p.getName().equals(entry.commanderPartyName)) { party = p; break; }
                             }
                         }
                         main.army.commander.Commander cmd = new main.army.commander.Commander(
-                                entry.commanderName,
-                                entry.commanderRace,
-                                party,
-                                entry.commanderSkill);
+                                entry.commanderName, entry.commanderRace, party, entry.commanderSkill);
                         if (entry.commanderXp > 0) cmd.addXp(entry.commanderXp);
                         army.setCommander(cmd);
                     }
-                    // moveTo after commander set — guard will allow if commander present
                     if (Army.HEARTLAND_ID.equals(entry.zoneId)) {
                         army.recallToCity();
                     } else {
-                        // Bypass the guard for save restoration by setting field directly
-                        // via the internal-zone setter (no commander required on load)
                         army.restoreZone(entry.zoneId);
                     }
                     break;
@@ -625,36 +612,30 @@ private static void applyPlayerArmies(SaveData data, GameState gs) {
         }
     }
 
-private static void applyCommanderRoster(SaveData data, GameState gs) {
-    main.army.commander.CommanderRoster roster = gs.getCommanderRoster();
-    // Clear existing unassigned commanders (assigned ones are restored via applyPlayerArmies)
-    // We rebuild the full roster: assigned commanders come from armies, rest from saved list.
-    // Reset roster then re-add army commanders + saved roster entries.
-    roster.reset();
-
-    // Re-add commanders that were restored onto armies
-    for (Army a : gs.getArmyManager().getArmies()) {
-        main.army.commander.Commander cmd = a.getCommander();
-        if (cmd != null) roster.addRestoredCommander(cmd);
-    }
-
-    if (data.commanderRoster == null) return;
-    for (SaveData.CommanderRosterEntry entry : data.commanderRoster) {
-        main.politics.PoliticalParty party = null;
-        if (entry.partyName != null && !entry.partyName.equals("None")) {
-            for (main.politics.PoliticalParty p : gs.getPartyManager().getParties()) {
-                if (p.getName().equals(entry.partyName)) { party = p; break; }
-            }
+    private static void applyCommanderRoster(SaveData data, GameState gs) {
+        main.army.commander.CommanderRoster roster = gs.getCommanderRoster();
+        roster.reset();
+        for (Army a : gs.getArmyManager().getArmies()) {
+            main.army.commander.Commander cmd = a.getCommander();
+            if (cmd != null) roster.addRestoredCommander(cmd);
         }
-        main.army.commander.Commander cmd = new main.army.commander.Commander(
-                entry.name, entry.race, party, entry.skill);
-        if (entry.xp > 0) cmd.addXp(entry.xp);
-        if (!entry.alive) cmd.kill();
-        roster.addRestoredCommander(cmd);
+        if (data.commanderRoster == null) return;
+        for (SaveData.CommanderRosterEntry entry : data.commanderRoster) {
+            main.politics.PoliticalParty party = null;
+            if (entry.partyName != null && !entry.partyName.equals("None")) {
+                for (main.politics.PoliticalParty p : gs.getPartyManager().getParties()) {
+                    if (p.getName().equals(entry.partyName)) { party = p; break; }
+                }
+            }
+            main.army.commander.Commander cmd = new main.army.commander.Commander(
+                    entry.name, entry.race, party, entry.skill);
+            if (entry.xp > 0) cmd.addXp(entry.xp);
+            if (!entry.alive) cmd.kill();
+            roster.addRestoredCommander(cmd);
+        }
     }
-}
 
-private static void applyBarbState(SaveData data, GameState gs) {
+    private static void applyBarbState(SaveData data, GameState gs) {
         if (data.barbInvasionState == null) return;
         BarbInvasionState s = gs.getBarbInvasionState();
         SaveData.BarbInvasionStateEntry e = data.barbInvasionState;
@@ -663,15 +644,12 @@ private static void applyBarbState(SaveData data, GameState gs) {
 
     private static void writeBarbStateFields(BarbInvasionState s, SaveData.BarbInvasionStateEntry e) {
         try {
-            setField(s, BarbInvasionState.class, "phase",
-                    BarbInvasionState.Phase.valueOf(e.phase));
+            setField(s, BarbInvasionState.class, "phase", BarbInvasionState.Phase.valueOf(e.phase));
             setField(s, BarbInvasionState.class, "countdownTurns",        e.countdownTurns);
             setField(s, BarbInvasionState.class, "turnsSinceInvasionStart", e.turnsSinceInvasionStart);
             setField(s, BarbInvasionState.class, "nextWaveTurn",          e.nextWaveTurn);
             setField(s, BarbInvasionState.class, "waveHalfPending",       e.waveHalfPending);
-        } catch (Exception ex) {
-            // log and continue — invasion state may be slightly off but not fatal
-        }
+        } catch (Exception ex) {}
     }
 
     private static void applyBarbArmies(SaveData data, GameState gs) {
@@ -679,8 +657,7 @@ private static void applyBarbState(SaveData data, GameState gs) {
         BarbArmyManager am = gs.getBarbArmyManager();
         am.reset();
         for (SaveData.BarbArmyEntry entry : data.barbArmies) {
-            BarbArmy army = new BarbArmy(
-                    BarbArmy.Type.valueOf(entry.type), entry.size, entry.zoneId);
+            BarbArmy army = new BarbArmy(BarbArmy.Type.valueOf(entry.type), entry.size, entry.zoneId);
             restoreBarbArmyFields(army, entry);
             if (entry.isGarrison) {
                 am.addGarrison(army);
@@ -692,7 +669,6 @@ private static void applyBarbState(SaveData data, GameState gs) {
 
     private static void restoreBarbArmyFields(BarbArmy army, SaveData.BarbArmyEntry entry) {
         try {
-            // id is final — set via reflection
             setField(army, BarbArmy.class, "id", entry.id);
             army.setNextZoneId(entry.nextZoneId);
             if (entry.paidOff)   army.setPaidOff(true);
@@ -705,9 +681,7 @@ private static void applyBarbState(SaveData data, GameState gs) {
                 vs.clear();
                 vs.addAll(entry.visitedZones);
             }
-        } catch (Exception ex) {
-            // best-effort
-        }
+        } catch (Exception ex) {}
     }
 
     private static void applyRavagedZones(SaveData data, GameState gs) {
@@ -715,14 +689,12 @@ private static void applyBarbState(SaveData data, GameState gs) {
         RavagedZoneManager rzm = gs.getRavagedZoneManager();
         rzm.reset();
         for (SaveData.RavagedZoneEntry entry : data.ravagedZones) {
-            RavagedZoneManager.RavagedLevel level =
-                    RavagedZoneManager.RavagedLevel.valueOf(entry.level);
+            RavagedZoneManager.RavagedLevel level = RavagedZoneManager.RavagedLevel.valueOf(entry.level);
             if (level == RavagedZoneManager.RavagedLevel.HEAVILY_RAVAGED) {
                 rzm.markHeavilyRavaged(entry.zoneId);
             } else {
                 rzm.markRavaged(entry.zoneId);
             }
-            // Restore turnsRavaged
             writeRavagedTurns(rzm, entry.zoneId, entry.turnsRavaged);
         }
     }
@@ -738,7 +710,7 @@ private static void applyBarbState(SaveData data, GameState gs) {
             Field turnsField = entry.getClass().getDeclaredField("turnsRavaged");
             turnsField.setAccessible(true);
             turnsField.setInt(entry, turns);
-        } catch (Exception ex) { /* best-effort */ }
+        } catch (Exception ex) {}
     }
 
     private static void applyZoneStates(SaveData data, GameState gs) {
@@ -748,20 +720,52 @@ private static void applyBarbState(SaveData data, GameState gs) {
             if (state == null) continue;
             state.setDamage(entry.damage);
             state.setSupplyLevel(entry.supplyLevel);
-            writeZoneStateFields(state, entry);
+            state.setRecentlyRaidedTurns(entry.recentlyRaidedTurns);
+            state.setConquestMalusPercent(entry.conquestMalusPercent);
+            state.setRebellionPower(entry.rebellionPower);
         }
     }
 
-private static void writeZoneStateFields(ZoneState state, SaveData.ZoneStateEntry entry) {
-        state.setRecentlyRaidedTurns(entry.recentlyRaidedTurns);
-        state.setConquestMalusPercent(entry.conquestMalusPercent);
-        state.setRebellionPower(entry.rebellionPower);
+    private static void applyLegislation(SaveData data, GameState gs) {
+        if (data.legislation == null) return;
+        LegislationManager lm = gs.getLegislationManager();
+        lm.reset();
+        if (data.legislation.passedLegislations != null) {
+            Set<LegislationType> passed = new LinkedHashSet<>();
+            for (String name : data.legislation.passedLegislations) {
+                try { passed.add(LegislationType.valueOf(name)); } catch (Exception ignored) {}
+            }
+            lm.setPassedLegislations(passed);
+        }
+        lm.setMercenaryHireActionsRemaining(data.legislation.mercenaryHireActionsRemaining);
+        lm.setWartimeTaxesCooldown(data.legislation.wartimeTaxesCooldown);
+        lm.setSendResourcesWindowRemaining(data.legislation.sendResourcesWindowRemaining);
     }
 
-// ─── Shared utilities ─────────────────────────────────────────────────────
+    private static void applyMercenaries(SaveData data, GameState gs) {
+        if (data.mercenaryArmies == null) return;
+        MercenaryManager mm = gs.getMercenaryManager();
+        mm.reset();
+        for (SaveData.MercenaryArmyEntry entry : data.mercenaryArmies) {
+            MercenaryArmy army = new MercenaryArmy(entry.displayName, entry.size, entry.zoneId);
+            // Restore id via reflection
+            try {
+                Field f = MercenaryArmy.class.getDeclaredField("id");
+                f.setAccessible(true);
+                f.set(army, entry.id);
+            } catch (Exception ignored) {}
+            // Use internal add (bypass hire cost)
+            try {
+                Field f = MercenaryManager.class.getDeclaredField("armies");
+                f.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                List<MercenaryArmy> armies = (List<MercenaryArmy>) f.get(mm);
+                armies.add(army);
+            } catch (Exception ignored) {}
+        }
+    }
 
-    private static void setField(Object obj, Class<?> clazz, String name, Object value)
-            throws Exception {
+    private static void setField(Object obj, Class<?> clazz, String name, Object value) throws Exception {
         Field f = clazz.getDeclaredField(name);
         f.setAccessible(true);
         f.set(obj, value);

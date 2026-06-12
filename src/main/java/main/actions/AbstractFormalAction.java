@@ -27,27 +27,34 @@ this.votingEngine = new VotingEngine();
 
 @Override
 
-
-    public final ActionResult execute(ResourcePool resources, StatBlock stats) {
-        if (!isAvailable()) {
-            return ActionResult.fail(getName() + " already used this turn.");
-        }
-        int influenceCost = CostCalculator.apply(getInfluenceCost(), stats.getCorruption());
-        if (resources.getInfluence() < influenceCost) {
-            return ActionResult.fail("Not enough influence. Need " + influenceCost + ".");
-        }
-        getLedger().applyOneTime(main.resources.ResourceType.INFLUENCE, "action", getName(),
-                -influenceCost, resources);
-        VotingSession session = gameState.getVoteSessionManager().createSession(
-                this,
-                gameState.getPartyManager().getParties(),
-                resources,
-                stats
-        );
-        gameState.addSession(session);
-        recordUse();
-        return ActionResult.votePending(getName() + " sent to assembly. " + influenceCost + " influence spent.");
+public final ActionResult execute(ResourcePool resources, StatBlock stats) {
+    if (!isAvailable()) {
+        return ActionResult.fail(getName() + " already used this turn.");
     }
+    // Check shared formal/legislation slot
+    main.core.GameState gs = getGameState();
+    if (gs != null && gs.getActionRegistry().isFormalUsedThisTurn()) {
+        return ActionResult.fail("Only one formal action or legislation vote is allowed per turn.");
+    }
+    int influenceCost = CostCalculator.apply(getInfluenceCost(), stats.getCorruption());
+    if (resources.getInfluence() < influenceCost) {
+        return ActionResult.fail("Not enough influence. Need " + influenceCost + ".");
+    }
+    getLedger().applyOneTime(main.resources.ResourceType.INFLUENCE, "action", getName(),
+            -influenceCost, resources);
+    VotingSession session = gameState.getVoteSessionManager().createSession(
+            this,
+            gameState.getPartyManager().getParties(),
+            resources,
+            stats
+    );
+    gameState.addSession(session);
+    gameState.getActionRegistry().markFormalUsedThisTurn();
+    recordUse();
+    debug.Debug.log("formal-action", "execute", getName()
+            + " influence spent=" + influenceCost);
+    return ActionResult.votePending(getName() + " sent to assembly. " + influenceCost + " influence spent.");
+}
 
 /**
 * Called only when the vote passes. Apply the action's actual effect here.

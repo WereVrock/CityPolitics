@@ -3,7 +3,9 @@ package ui.politics;
 import main.core.GameState;
 import main.politics.DealOffer;
 import main.politics.PoliticalParty;
+import main.politics.SideLeader;
 import main.politics.VotingSession;
+import main.politics.VotingSession.SideDealResult;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -12,8 +14,8 @@ import main.politics.NegotiationDialogueGenerator;
 import ui.UITheme;
 
 /**
- * Shows the party leader portrait, in-character dialogue, and deal offer.
- * Opened from VoteSessionPanel when player clicks a party row.
+ * Shows the party leader portrait, in-character dialogue, deal offer,
+ * and side-deal option with the secondary leader.
  */
 public class PartyNegotiationPanel extends JPanel {
 
@@ -79,12 +81,9 @@ public class PartyNegotiationPanel extends JPanel {
                 g2.setColor(UITheme.BORDER_COLOR);
                 g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 12, 12);
                 int cx = getWidth() / 2;
-                // head
                 g2.setColor(UITheme.TEXT_SECONDARY);
                 g2.fillOval(cx - 30, 20, 60, 60);
-                // body
                 g2.fillRoundRect(cx - 40, 88, 80, 70, 10, 10);
-                // party initial
                 g2.setColor(UITheme.BG_PANEL);
                 g2.setFont(UITheme.FONT_TITLE);
                 String init = party.getName().substring(0, 1);
@@ -131,7 +130,7 @@ public class PartyNegotiationPanel extends JPanel {
         return panel;
     }
 
-private String buildDialogue() {
+    private String buildDialogue() {
         return NegotiationDialogueGenerator.generate(
             party,
             gameState.getActiveSession(),
@@ -141,8 +140,8 @@ private String buildDialogue() {
         );
     }
 
-private JPanel buildActionPanel() {
-        JPanel panel = new JPanel(new BorderLayout(0, 8));
+    private JPanel buildActionPanel() {
+        JPanel panel = new JPanel(new BorderLayout(0, 6));
         panel.setBackground(UITheme.BG_DARK);
 
         VotingSession session = gameState.getActiveSession();
@@ -150,18 +149,36 @@ private JPanel buildActionPanel() {
         boolean canDeal       = session.canDeal(party);
         boolean alreadyDealt  = session.hasDealt(party);
 
-        if (isOracles || !canDeal || alreadyDealt) {
-            return panel; // no deal controls needed
+        if (isOracles || alreadyDealt) {
+            if (alreadyDealt) {
+                JLabel done = new JLabel("Deal already struck with this party.");
+                done.setFont(UITheme.FONT_SMALL);
+                done.setForeground(UITheme.TEXT_GREEN);
+                panel.add(done, BorderLayout.NORTH);
+            }
+            return panel;
         }
 
-        DealOffer offer      = new DealOffer(party, session.getScore(party));
-        boolean   canAfford  = offer.canAfford(gameState.getResources(), gameState.getStats());
+        if (!canDeal) {
+            JLabel locked = new JLabel("This party's position is too firm to negotiate.");
+            locked.setFont(UITheme.FONT_SMALL);
+            locked.setForeground(UITheme.TEXT_SECONDARY);
+            panel.add(locked, BorderLayout.NORTH);
+            return panel;
+        }
 
-        JLabel costLabel = new JLabel(offer.getSummary());
+        // Main deal section
+        DealOffer offer     = new DealOffer(party, session.getScore(party));
+        boolean   canAfford = offer.canAfford(gameState.getResources(), gameState.getStats());
+
+        JPanel mainDealRow = new JPanel(new BorderLayout(8, 0));
+        mainDealRow.setBackground(UITheme.BG_DARK);
+
+        JLabel costLabel = new JLabel("Main deal — " + offer.getSummary());
         costLabel.setFont(UITheme.FONT_SMALL);
         costLabel.setForeground(canAfford ? UITheme.TEXT_SECONDARY : UITheme.TEXT_RED);
 
-        JButton acceptBtn = new JButton("STRIKE DEAL");
+        JButton acceptBtn = new JButton("STRIKE MAIN DEAL");
         acceptBtn.setFont(UITheme.FONT_BUTTON);
         acceptBtn.setForeground(UITheme.TEXT_GOLD);
         acceptBtn.setBackground(UITheme.BUTTON_BG);
@@ -176,12 +193,85 @@ private JPanel buildActionPanel() {
             onBack.run();
         });
 
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        btnRow.setBackground(UITheme.BG_DARK);
-        btnRow.add(acceptBtn);
+        mainDealRow.add(costLabel, BorderLayout.CENTER);
+        mainDealRow.add(acceptBtn, BorderLayout.EAST);
 
-        panel.add(costLabel, BorderLayout.CENTER);
-        panel.add(btnRow,    BorderLayout.EAST);
+        // Side deal section (not for oracles, only if party has side leaders)
+        JPanel sideDealRow = buildSideDealRow(session, offer);
+
+        panel.add(mainDealRow, BorderLayout.CENTER);
+        if (sideDealRow != null) panel.add(sideDealRow, BorderLayout.SOUTH);
         return panel;
+    }
+
+    private JPanel buildSideDealRow(VotingSession session, DealOffer mainOffer) {
+        if (party.getSideLeaders().isEmpty()) return null;
+        if (session.hasSideDealt(party)) {
+            int seats = session.getSideDealtSeats(party);
+            JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            row.setBackground(UITheme.BG_DARK);
+            JLabel lbl = new JLabel("Secondary leader convinced " + seats + " seat(s) to vote with you.");
+            lbl.setFont(UITheme.FONT_SMALL);
+            lbl.setForeground(UITheme.TEXT_GREEN);
+            row.add(lbl);
+            return row;
+        }
+
+        SideLeader sideLeader = party.getSideLeaders().get(0);
+        int halfGold      = mainOffer.getMoneyCost()      / 2;
+        int halfInfluence = mainOffer.getInfluenceCost()  / 2;
+
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setBackground(UITheme.BG_DARK);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                new EmptyBorder(6, 8, 6, 8)));
+
+        JPanel textCol = new JPanel();
+        textCol.setLayout(new BoxLayout(textCol, BoxLayout.Y_AXIS));
+        textCol.setBackground(UITheme.BG_DARK);
+
+        JLabel sideName = new JLabel("Side deal — " + sideLeader.getName());
+        sideName.setFont(UITheme.FONT_BUTTON);
+        sideName.setForeground(new Color(180, 200, 255));
+
+        JLabel sidePersonality = new JLabel("<html><i>" + sideLeader.getPersonality() + "</i></html>");
+        sidePersonality.setFont(UITheme.FONT_SMALL);
+        sidePersonality.setForeground(UITheme.TEXT_SECONDARY);
+
+        int maxPossible = Math.max(1, (int)(party.getSeats() * 0.75));
+        JLabel costLbl = new JLabel("Cost: ~" + halfGold + "g / " + halfInfluence
+                + " inf  |  Convinces 1–" + maxPossible + " seats (random)");
+        costLbl.setFont(UITheme.FONT_SMALL);
+        costLbl.setForeground(UITheme.TEXT_SECONDARY);
+
+        textCol.add(sideName);
+        textCol.add(sidePersonality);
+        textCol.add(costLbl);
+
+        boolean canAffordSide = gameState.getResources().getMoney()     >= halfGold
+                             && gameState.getResources().getInfluence() >= halfInfluence;
+
+        JButton sideBtn = new JButton("NEGOTIATE SIDE DEAL");
+        sideBtn.setFont(UITheme.FONT_SMALL);
+        sideBtn.setForeground(new Color(180, 200, 255));
+        sideBtn.setBackground(new Color(30, 35, 60));
+        sideBtn.setBorderPainted(false);
+        sideBtn.setFocusPainted(false);
+        sideBtn.setEnabled(canAffordSide);
+        sideBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        sideBtn.addActionListener(e -> {
+            SideDealResult result = session.applySideDeal(party,
+                    gameState.getResources(), gameState.getStats());
+            JOptionPane.showMessageDialog(this,
+                    sideLeader.getName() + ":\n\n\"" + result.message + "\"",
+                    "Side Deal Result", JOptionPane.INFORMATION_MESSAGE);
+            onSessionChanged.run();
+            onBack.run();
+        });
+
+        row.add(textCol, BorderLayout.CENTER);
+        row.add(sideBtn, BorderLayout.EAST);
+        return row;
     }
 }

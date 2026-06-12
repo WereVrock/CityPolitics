@@ -4,9 +4,11 @@ import main.actions.ActionRegistry;
 import main.army.ArmyManager;
 import main.barbarians.*;
 import main.calendar.GameCalendar;
+import main.legislation.LegislationManager;
 import main.map.ZoneManager;
 import main.map.ZoneDecorationRegistry;
 import main.map.WorldGeography;
+import main.mercenaries.MercenaryManager;
 import main.nobles.NobleHouseManager;
 import main.pops.PopManager;
 import main.politics.PartyManager;
@@ -21,7 +23,6 @@ import java.util.List;
 
 /**
  * Central hub — owns all subsystems.
- * No game logic lives here; logic lives in processors and managers.
  */
 public class GameState {
 
@@ -41,7 +42,6 @@ public class GameState {
     private TurnProcessor         turnProcessor;
     private main.ledger.Ledger    ledger;
 
-    // ── Barbarian invasion subsystem ─────────────────────────────────────────
     private BarbInvasionState     barbInvasionState;
     private BarbArmyManager       barbArmyManager;
     private RavagedZoneManager    ravagedZoneManager;
@@ -49,6 +49,11 @@ public class GameState {
     private main.army.PlayerCombatProcessor playerCombatProcessor;
     private main.army.commander.CommanderRoster       commanderRoster;
     private main.army.commander.CommanderRecruitPool  commanderRecruitPool;
+
+    // ── New subsystems ───────────────────────────────────────────────────────
+    private LegislationManager    legislationManager;
+    private MercenaryManager      mercenaryManager;
+    private WarStateChecker       warStateChecker;
 
     private final List<VotingSession> activeSessions = new ArrayList<>();
 
@@ -64,7 +69,8 @@ public class GameState {
         popManager         = new PopManager();
         partyManager       = new PartyManager(popManager);
         ledger             = new main.ledger.Ledger();
-        actionRegistry     = new ActionRegistry(this);
+        legislationManager = new LegislationManager();
+        mercenaryManager   = new MercenaryManager();
         effectManager      = new EffectManager();
         voteSessionManager = new VoteSessionManager();
         zoneManager        = new ZoneManager();
@@ -77,6 +83,7 @@ public class GameState {
         barbInvasionState     = new BarbInvasionState();
         barbArmyManager       = new BarbArmyManager(zoneManager);
         ravagedZoneManager    = new RavagedZoneManager();
+        warStateChecker       = new WarStateChecker(barbArmyManager);
         barbInvasionProcessor = new BarbInvasionProcessor(
                 barbInvasionState,
                 barbArmyManager,
@@ -90,21 +97,19 @@ public class GameState {
         playerCombatProcessor.setPartyManager(partyManager);
         commanderRoster      = new main.army.commander.CommanderRoster(resources, partyManager);
         commanderRecruitPool = new main.army.commander.CommanderRecruitPool(resources, partyManager);
-        // Note: zoneAwardCallback is re-wired by MainWindow after reset via
-        // rewireCallbacks(). Do not set it here.
+
+        // ActionRegistry depends on legislation+mercenary managers
+        actionRegistry = new ActionRegistry(this);
+
         bootstrapLedger();
     }
 
-    /**
-     * Recreates all subsystems for a new game, keeping the same GameState instance.
-     */
     public void reset() {
         activeSessions.clear();
         initState();
     }
 
-private void bootstrapLedger() {
-        // Pops
+    private void bootstrapLedger() {
         main.pops.PopManager pops = popManager;
         int moneyGained     = pops.getTotalMoneyGeneration();
         int influenceGained = pops.getTotalInfluenceGeneration()
@@ -114,15 +119,12 @@ private void bootstrapLedger() {
         ledger.setRecurring(main.resources.ResourceType.INFLUENCE,  "pops", "Pop Influence",   influenceGained);
         ledger.setRecurring(main.resources.ResourceType.FOOD,       "pops", "Pop Consumption", -foodConsumed);
 
-        // Nobles
         for (main.nobles.NobleHouse house : nobleHouseManager.getHouses()) {
             if (house.isEliminated()) continue;
             double share    = house.getPlayerOpinion() <= main.parameters.GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD
                             ? 0.0
                             : house.getPlayerOpinion() > 50 ? 0.50 : 0.35;
             int sentManpower = house.computeManpowerSentToPlayer();
-            // compute gold/food using zone data via NobleHouseManager exposed helpers
-            // we approximate here using the same formula as processEconomy
             int zoneCount = house.getZoneIds().size();
             int totalGold = 0;
             int totalFood = 0;
@@ -140,14 +142,10 @@ private void bootstrapLedger() {
         }
     }
 
-// ─── Vote session ─────────────────────────────────────────────────────────
-
     public boolean          hasActiveSession()  { return !activeSessions.isEmpty(); }
     public VotingSession    getActiveSession()  { return activeSessions.isEmpty() ? null : activeSessions.get(0); }
     public void             addSession(VotingSession s) { activeSessions.add(s); }
     public void             clearActiveSession(){ activeSessions.clear(); }
-
-    // ─── Accessors ───────────────────────────────────────────────────────────
 
     public GameCalendar          getCalendar()              { return calendar; }
     public ResourcePool          getResources()             { return resources; }
@@ -174,7 +172,10 @@ private void bootstrapLedger() {
     public main.army.commander.CommanderRoster       getCommanderRoster()       { return commanderRoster; }
     public main.army.commander.CommanderRecruitPool  getCommanderRecruitPool()  { return commanderRecruitPool; }
 
-    /** Resets barbarian subsystem for new game. */
+    public LegislationManager    getLegislationManager()    { return legislationManager; }
+    public MercenaryManager      getMercenaryManager()      { return mercenaryManager; }
+    public WarStateChecker       getWarStateChecker()       { return warStateChecker; }
+
     public void resetBarbarians() {
         barbArmyManager.reset();
         ravagedZoneManager.reset();

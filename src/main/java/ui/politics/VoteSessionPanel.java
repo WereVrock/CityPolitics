@@ -5,32 +5,36 @@ import main.politics.PoliticalParty;
 import main.politics.VoteResult;
 import main.politics.VotingSession;
 import main.politics.VotingSession.PartyVoteIntent;
+import main.politics.VoteSessionManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.util.List;
 import main.parameters.GameParameters;
 import ui.UITheme;
-// NegotiationDialogueGenerator is used only in PartyNegotiationPanel
 
 /**
- * Main vote session screen. Shows parties, their expected votes,
- * player vote selector, deal buttons, and finalize.
- * Swaps to PartyNegotiationPanel when a party row is clicked.
+ * Main vote session screen.
+ * Shows parties, side-deal rows, player vote selector, and finalize button.
+ * After finalize, displays the result clearly before returning.
  */
 public class VoteSessionPanel extends JPanel {
 
-    private final GameState                    gameState;
-    private final Runnable                     onFinalized;
-    private final java.util.function.Consumer<JPanel> onSwapPanel;
+    private final GameState                              gameState;
+    private final java.util.function.BiConsumer<VoteResult, List<String>> onFinalized;
+    private final java.util.function.Consumer<JPanel>   onSwapPanel;
 
     private final JPanel   partyRows;
     private final JLabel   outcomeLabel;
     private final JButton  finalizeBtn;
 
+    // Result display panel (shown after vote)
+    private JPanel resultPanel = null;
+
     public VoteSessionPanel(GameState gameState,
-                            Runnable onFinalized,
+                            java.util.function.BiConsumer<VoteResult, List<String>> onFinalized,
                             java.util.function.Consumer<JPanel> onSwapPanel) {
         this.gameState   = gameState;
         this.onFinalized = onFinalized;
@@ -77,7 +81,7 @@ public class VoteSessionPanel extends JPanel {
         backBtn.setBorderPainted(false);
         backBtn.setFocusPainted(false);
         backBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        backBtn.addActionListener(e -> onFinalized.run());
+        backBtn.addActionListener(e -> onFinalized.accept(null, null));
 
         JPanel btnRow = new JPanel(new BorderLayout(6, 0));
         btnRow.setBackground(UITheme.BG_DARK);
@@ -123,7 +127,7 @@ public class VoteSessionPanel extends JPanel {
         VotingSession session = gameState.getActiveSession();
         if (session == null) return;
 
-        // Player row first
+        // Player row
         partyRows.add(buildPlayerRow(session));
         partyRows.add(Box.createVerticalStrut(4));
 
@@ -133,7 +137,7 @@ public class VoteSessionPanel extends JPanel {
         partyRows.add(buildPartyRow(session, oracles));
         partyRows.add(Box.createVerticalStrut(4));
 
-        // Rest alphabetical, skip oracles
+        // Rest sorted
         List<PoliticalParty> parties = session.getParties().stream()
             .filter(p -> p != oracles)
             .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
@@ -141,12 +145,44 @@ public class VoteSessionPanel extends JPanel {
 
         for (PoliticalParty party : parties) {
             partyRows.add(buildPartyRow(session, party));
+            // Side deal row if struck
+            if (session.hasSideDealt(party)) {
+                partyRows.add(buildSideDealResultRow(session, party));
+            }
             partyRows.add(Box.createVerticalStrut(4));
         }
 
         partyRows.revalidate();
         partyRows.repaint();
         updateOutcomeLabel(session);
+    }
+
+    // ─── Side deal result row shown below main party row ─────────────────────
+
+    private JPanel buildSideDealResultRow(VotingSession session, PoliticalParty party) {
+        int seats      = session.getSideDealtSeats(party);
+        String leader  = party.getSideLeaders().isEmpty()
+                ? "Secondary Leader" : party.getSideLeaders().get(0).getName();
+
+        JPanel row = new JPanel(new BorderLayout(10, 0));
+        row.setBackground(new Color(20, 30, 50));
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, new Color(80, 120, 200)),
+                new EmptyBorder(5, 14, 5, 12)));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+
+        JLabel nameLabel = new JLabel("↳ " + leader + "  (side deal — " + seats + " seats)");
+        nameLabel.setFont(UITheme.FONT_SMALL);
+        nameLabel.setForeground(new Color(160, 190, 255));
+
+        JLabel intentLabel = new JLabel("YES");
+        intentLabel.setFont(UITheme.FONT_BUTTON);
+        intentLabel.setForeground(UITheme.TEXT_GREEN);
+
+        row.add(nameLabel,  BorderLayout.WEST);
+        row.add(intentLabel, BorderLayout.EAST);
+        return row;
     }
 
     private JPanel buildPlayerRow(VotingSession session) {
@@ -201,9 +237,10 @@ public class VoteSessionPanel extends JPanel {
     }
 
     private JPanel buildPartyRow(VotingSession session, PoliticalParty party) {
-        boolean isOracles   = party == gameState.getPartyManager().getOracles();
-        boolean canDeal     = session.canDeal(party);
-        boolean alreadyDealt= session.hasDealt(party);
+        boolean isOracles    = party == gameState.getPartyManager().getOracles();
+        boolean canDeal      = session.canDeal(party);
+        boolean alreadyDealt = session.hasDealt(party);
+        boolean hasSideDeal  = session.hasSideDealt(party);
         PartyVoteIntent intent = session.getIntent(party);
 
         JPanel row = new JPanel(new BorderLayout(10, 0));
@@ -230,6 +267,9 @@ public class VoteSessionPanel extends JPanel {
         JPanel left = new JPanel();
         left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
         left.setBackground(UITheme.BG_PANEL);
+        left.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) { openNegotiation(party); }
+        });
 
         JLabel nameLabel = new JLabel(party.getName() + "  (" + party.getSeats() + " seats)");
         nameLabel.setFont(UITheme.FONT_BUTTON);
@@ -244,17 +284,29 @@ public class VoteSessionPanel extends JPanel {
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         right.setBackground(UITheme.BG_PANEL);
+        right.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) { openNegotiation(party); }
+        });
 
-        if (alreadyDealt) {
+        if (alreadyDealt && !hasSideDeal) {
             JLabel dealt = new JLabel("DEAL STRUCK");
             dealt.setFont(UITheme.FONT_SMALL);
             dealt.setForeground(UITheme.TEXT_GREEN);
             right.add(dealt);
-        } else if (!isOracles && canDeal) {
+        } else if (!isOracles && canDeal && !alreadyDealt) {
             JLabel negotiate = new JLabel("click to negotiate");
             negotiate.setFont(UITheme.FONT_SMALL);
             negotiate.setForeground(UITheme.TEXT_SECONDARY);
             right.add(negotiate);
+        }
+
+        // Show seat count breakdown if side deal active
+        int sideSeats = session.getSideDealtSeats(party);
+        if (sideSeats > 0) {
+            JLabel sideLabel = new JLabel("+" + sideSeats + " side");
+            sideLabel.setFont(UITheme.FONT_SMALL);
+            sideLabel.setForeground(new Color(140, 170, 255));
+            right.add(sideLabel);
         }
 
         JLabel intentLabel = new JLabel(intentText(intent));
@@ -270,7 +322,7 @@ public class VoteSessionPanel extends JPanel {
     private void openNegotiation(PoliticalParty party) {
         PartyNegotiationPanel neg = new PartyNegotiationPanel(
             gameState, party,
-            () -> onSwapPanel.accept(this),   // back → return to this panel
+            () -> onSwapPanel.accept(this),
             () -> {
                 onSwapPanel.accept(this);
                 refresh();
@@ -284,7 +336,6 @@ public class VoteSessionPanel extends JPanel {
         int no      = 0;
         int unknown = 0;
 
-        // player seat
         switch (session.getPlayerIntent()) {
             case YES     -> yes++;
             case NO      -> no++;
@@ -294,10 +345,13 @@ public class VoteSessionPanel extends JPanel {
 
         for (PoliticalParty p : session.getParties()) {
             PartyVoteIntent intent = session.getIntent(p);
+            int sideSeats = session.getSideDealtSeats(p);
+            int mainSeats = p.getSeats() - sideSeats;
+            yes += sideSeats; // side seats always YES
             switch (intent) {
-                case YES     -> yes     += p.getSeats();
-                case NO      -> no      += p.getSeats();
-                case UNKNOWN -> unknown += p.getSeats();
+                case YES     -> yes     += mainSeats;
+                case NO      -> no      += mainSeats;
+                case UNKNOWN -> unknown += mainSeats;
                 case ABSTAIN -> {}
             }
         }
@@ -318,6 +372,7 @@ public class VoteSessionPanel extends JPanel {
         VoteResult result = gameState.getVoteSessionManager().finalize(
             session, gameState.getResources(), gameState.getStats()
         );
+        List<String> logLines = gameState.getVoteSessionManager().buildResultLog(session, result);
 
         if (result.isPassed()) {
             session.getAction().applyEffect(
@@ -326,7 +381,102 @@ public class VoteSessionPanel extends JPanel {
         }
 
         gameState.clearActiveSession();
-        onFinalized.run();
+        // Show result panel before returning
+        showResultPanel(result, session.getAction().getName(), logLines);
+    }
+
+    private void showResultPanel(VoteResult result, String actionName, List<String> logLines) {
+        JPanel panel = new JPanel(new BorderLayout(0, 12));
+        panel.setBackground(UITheme.BG_DARK);
+        panel.setBorder(new EmptyBorder(16, 20, 16, 20));
+
+        // Result header
+        boolean passed = result.isPassed();
+        JLabel outcomeHeader = new JLabel(
+                passed ? "✓  VOTE PASSED" : "✗  VOTE REJECTED");
+        outcomeHeader.setFont(new Font("Serif", Font.BOLD, 22));
+        outcomeHeader.setForeground(passed ? UITheme.TEXT_GREEN : UITheme.TEXT_RED);
+        outcomeHeader.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JLabel actionLabel = new JLabel(actionName, SwingConstants.CENTER);
+        actionLabel.setFont(UITheme.FONT_HEADER);
+        actionLabel.setForeground(UITheme.TEXT_GOLD);
+
+        JLabel totals = new JLabel(
+                "YES: " + result.getTotalYes()
+                + "   NO: " + result.getTotalNo()
+                + "   ABSTAIN: " + result.getTotalAbstain()
+                + "   (needed: " + result.getSeatsNeeded() + ")",
+                SwingConstants.CENTER);
+        totals.setFont(UITheme.FONT_BODY);
+        totals.setForeground(UITheme.TEXT_SECONDARY);
+
+        JPanel headerBlock = new JPanel();
+        headerBlock.setLayout(new BoxLayout(headerBlock, BoxLayout.Y_AXIS));
+        headerBlock.setBackground(UITheme.BG_PANEL);
+        headerBlock.setBorder(new EmptyBorder(12, 12, 12, 12));
+        outcomeHeader.setAlignmentX(CENTER_ALIGNMENT);
+        actionLabel.setAlignmentX(CENTER_ALIGNMENT);
+        totals.setAlignmentX(CENTER_ALIGNMENT);
+        headerBlock.add(outcomeHeader);
+        headerBlock.add(Box.createVerticalStrut(4));
+        headerBlock.add(actionLabel);
+        headerBlock.add(Box.createVerticalStrut(6));
+        headerBlock.add(totals);
+
+        // Party breakdown
+        JPanel breakdown = new JPanel();
+        breakdown.setLayout(new BoxLayout(breakdown, BoxLayout.Y_AXIS));
+        breakdown.setBackground(UITheme.BG_DARK);
+
+        for (main.politics.VoteScore vs : result.getPartyScores()) {
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setBackground(UITheme.BG_PANEL);
+            row.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, UITheme.BORDER_COLOR),
+                    new EmptyBorder(4, 10, 4, 10)));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+            row.setAlignmentX(LEFT_ALIGNMENT);
+
+            JLabel pName = new JLabel(vs.getParty().getName()
+                    + " (" + vs.getParty().getSeats() + ")");
+            pName.setFont(UITheme.FONT_SMALL);
+            pName.setForeground(UITheme.TEXT_PRIMARY);
+
+            JLabel pVotes = new JLabel("YES:" + vs.getYesSeats()
+                    + "  NO:" + vs.getNoSeats()
+                    + "  ABS:" + vs.getAbstainSeats());
+            pVotes.setFont(UITheme.FONT_SMALL);
+            Color rowColor = vs.getYesSeats() > vs.getNoSeats()
+                    ? UITheme.TEXT_GREEN : vs.getNoSeats() > vs.getYesSeats()
+                    ? UITheme.TEXT_RED : UITheme.TEXT_SECONDARY;
+            pVotes.setForeground(rowColor);
+
+            row.add(pName,  BorderLayout.WEST);
+            row.add(pVotes, BorderLayout.EAST);
+            breakdown.add(row);
+        }
+
+        JScrollPane scrollBreakdown = new JScrollPane(breakdown);
+        scrollBreakdown.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1));
+        scrollBreakdown.setBackground(UITheme.BG_DARK);
+        scrollBreakdown.getViewport().setBackground(UITheme.BG_DARK);
+
+        JButton continueBtn = new JButton("CONTINUE  ▶");
+        continueBtn.setFont(new Font("Serif", Font.BOLD, 14));
+        continueBtn.setForeground(UITheme.ACCENT_FROST);
+        continueBtn.setBackground(new Color(25, 45, 65));
+        continueBtn.setBorderPainted(false);
+        continueBtn.setFocusPainted(false);
+        continueBtn.setPreferredSize(new Dimension(0, 44));
+        continueBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        continueBtn.addActionListener(e -> onFinalized.accept(result, logLines));
+
+        panel.add(headerBlock,     BorderLayout.NORTH);
+        panel.add(scrollBreakdown, BorderLayout.CENTER);
+        panel.add(continueBtn,     BorderLayout.SOUTH);
+
+        onSwapPanel.accept(panel);
     }
 
     private String intentText(PartyVoteIntent intent) {
@@ -334,7 +484,7 @@ public class VoteSessionPanel extends JPanel {
             case YES     -> "YES";
             case NO      -> "NO";
             case ABSTAIN -> "ABSTAIN";
-            case UNKNOWN -> "UNKNOWN";
+            case UNKNOWN -> "?";
         };
     }
 

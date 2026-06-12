@@ -15,23 +15,29 @@ public class DealOffer {
     private final int favourCost;
 
 public DealOffer(PoliticalParty party, double score) {
-        double magnitude = Math.abs(score);
-        int    seats     = party.getSeats();
+    double magnitude = Math.abs(score);
+    // Ensure magnitude is never zero so cost is always at minimum
+    if (magnitude < 0.05) magnitude = 0.05;
+    int seats = party.getSeats();
+    double base = seats * magnitude;
 
-        double base = seats * magnitude;
+    int rawMoney      = (int)(base * GameParameters.DEAL_MONEY_FACTOR);
+    int rawInfluence  = (int)(base * GameParameters.DEAL_INFLUENCE_FACTOR);
+    int rawHappiness  = (int)(base * GameParameters.DEAL_HAPPINESS_FACTOR);
 
-        this.moneyCost      = (int) (base * GameParameters.DEAL_MONEY_FACTOR);
-        this.influenceCost  = (int) (base * GameParameters.DEAL_INFLUENCE_FACTOR);
-        this.happinessMalus = (int) (base * GameParameters.DEAL_HAPPINESS_FACTOR);
+    // Apply minimums so deals are never free
+    this.moneyCost      = Math.max(GameParameters.DEAL_MIN_MONEY,     rawMoney);
+    this.influenceCost  = Math.max(GameParameters.DEAL_MIN_INFLUENCE, rawInfluence);
+    this.happinessMalus = rawHappiness;
 
-        if (magnitude >= GameParameters.DEAL_FAVOUR_THRESHOLD_2) {
-            this.favourCost = 2;
-        } else if (magnitude >= GameParameters.DEAL_FAVOUR_THRESHOLD_1) {
-            this.favourCost = 1;
-        } else {
-            this.favourCost = 0;
-        }
+    if (magnitude >= GameParameters.DEAL_FAVOUR_THRESHOLD_2) {
+        this.favourCost = 2;
+    } else if (magnitude >= GameParameters.DEAL_FAVOUR_THRESHOLD_1) {
+        this.favourCost = 1;
+    } else {
+        this.favourCost = 0;
     }
+}
 
 public int getMoneyCost()      { return moneyCost; }
     public int getInfluenceCost()  { return influenceCost; }

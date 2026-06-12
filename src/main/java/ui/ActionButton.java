@@ -99,9 +99,29 @@ public ActionButton(GameState gameState, PlayerAction action, Consumer<ActionRes
 }
 
 public void refresh() {
-        boolean available = action.isAvailable();
-        button.setEnabled(available);
-        button.setBackground(available ? UITheme.BUTTON_BG : UITheme.BUTTON_DISABLED);
-        usesLabel.setText(action.getUsesThisTurn() + "/" + action.getMaxUsesPerTurn());
+    boolean available = action.isAvailable();
+    button.setEnabled(available);
+    button.setBackground(available ? UITheme.BUTTON_BG : UITheme.BUTTON_DISABLED);
+    usesLabel.setText(action.getUsesThisTurn() + "/" + action.getMaxUsesPerTurn());
+
+    // Show reason for disabled state if action supports it
+    if (!available) {
+        String reason = null;
+        if (action instanceof main.actions.WartimeTaxesAction wta) {
+            reason = wta.getUnavailableReason();
+        } else if (action instanceof main.actions.HireMercenariesAction) {
+            reason = "Mercenary hiring not authorised this turn.";
+        } else if (action instanceof main.actions.AllowMercenariesAction) {
+            reason = !gameState.getLegislationManager().isPassed(
+                    main.legislation.LegislationType.MERCENARY_ALLOWANCE_LAW)
+                    ? "Requires Mercenary Allowance Law to be passed."
+                    : action.getUsesThisTurn() >= action.getMaxUsesPerTurn()
+                    ? "Already used this turn." : null;
+        }
+        button.setToolTipText(reason != null ? reason : "Not available right now.");
+    } else {
+        button.setToolTipText(null);
     }
+}
+
 }

@@ -15,7 +15,7 @@ public final class GameParameters {
     // STARTING RESOURCES
     // =========================================================
     public static final int STARTING_FOOD                = 200;
-    public static final int STARTING_MONEY               = 150;
+    public static final int STARTING_MONEY               = 1000;
     public static final int STARTING_MANPOWER            = 80;
     public static final int STARTING_INFLUENCE           = 50;
 
@@ -128,6 +128,49 @@ public final class GameParameters {
     public static final int LEVY_HAPPINESS_COST             = 8;
 
     // =========================================================
+    // ACTION: WARTIME TAXES
+    // =========================================================
+    public static final int    WARTIME_TAXES_GOLD_PER_POP   = 10;
+    public static final int    WARTIME_TAXES_COOLDOWN_TURNS = 6;
+
+    // =========================================================
+    // ACTION: ALLOW MERCENARIES (voted formal action)
+    // =========================================================
+    public static final int ALLOW_MERCENARIES_INFLUENCE_COST = 10;
+
+    // =========================================================
+    // LEGISLATION
+    // =========================================================
+    public static final int PROPOSE_LEGISLATION_INFLUENCE_COST = 15;
+
+    // =========================================================
+    // DEAL MINIMUMS
+    // =========================================================
+    public static final int DEAL_MIN_MONEY     = 10;
+    public static final int DEAL_MIN_INFLUENCE = 5;
+
+    // =========================================================
+    // REALM ACTIONS
+    // =========================================================
+    public static final int ALLOW_SEND_RESOURCES_INFLUENCE_COST = 12;
+    public static final int SEND_RESOURCES_WINDOW_TURNS         = 3;
+    public static final int SEND_RESOURCES_OPINION_PER_GOLD     = 1;   // opinion per 10 gold
+    public static final int SEND_RESOURCES_OPINION_DIVISOR      = 10;
+    public static final int GRANT_CLAIM_OWNER_OPINION_MALUS     = -25;
+    public static final int GRANT_CLAIM_TARGET_OPINION_BONUS    = 20;
+    public static final int GRANT_CLAIM_OTHER_CLAIMANT_MALUS    = -5;
+
+    // =========================================================
+    // MERCENARIES
+    // =========================================================
+    /** Multiplier on normal soldier recruit AND upkeep cost for mercenaries. */
+    public static final double MERCENARY_COST_MULTIPLIER    = 3.0;
+    /** Ally force must be > this × merc size to suppress raiding. */
+    public static final double MERCENARY_RAID_ALLY_THRESHOLD = 1.5;
+    /** Chance per turn that an unsupervised mercenary army raids. */
+    public static final double MERCENARY_RAID_CHANCE        = 0.30;
+
+    // =========================================================
     // VOTING
     // =========================================================
     public static final double VOTE_INDECISIVE_THRESHOLD     = 0.3;
@@ -163,15 +206,15 @@ public final class GameParameters {
     // MAP — ZONE PRODUCTION & POPS
     // =========================================================
     public static final int ZONE_CAPITAL_GOLD    = 12;
-    public static final int ZONE_CAPITAL_FOOD    = 10;
+    public static final int ZONE_CAPITAL_FOOD    = 20;
     public static final int ZONE_CAPITAL_POPS    = 50;
 
     public static final int ZONE_TOWN_GOLD       = 10;
-    public static final int ZONE_TOWN_FOOD       = 4;
+    public static final int ZONE_TOWN_FOOD       = 8;
     public static final int ZONE_TOWN_POPS       = 20;
 
     public static final int ZONE_VILLAGE_GOLD    = 3;
-    public static final int ZONE_VILLAGE_FOOD    = 12;
+    public static final int ZONE_VILLAGE_FOOD    = 24;
     public static final int ZONE_VILLAGE_POPS    = 10;
 
     // =========================================================
@@ -466,112 +509,79 @@ public final class GameParameters {
     // =========================================================
     // COMMANDER RECRUITMENT
     // =========================================================
-    /** Number of candidates shown in the base recruitment pool. */
     public static final int    COMMANDER_POOL_BASE_SIZE              = 3;
-    /** Number of extra candidates revealed on a paid refresh. */
     public static final int    COMMANDER_POOL_REFRESH_SIZE           = 3;
-    /** Influence cost to reveal extra candidates. */
     public static final int    COMMANDER_POOL_REFRESH_COST           = 2;
-    /** Influence cost to recruit a commander. */
     public static final int    COMMANDER_RECRUIT_BASE_COST           = 3;
-    /** Party opinion gain when a commander of that affiliation is recruited. */
     public static final int    COMMANDER_RECRUIT_OPINION_GAIN        = 8;
-    /** Influence cost to dismiss a commander. */
     public static final int    COMMANDER_DISMISS_COST                = 2;
-    /** Party opinion loss when a commander of that affiliation is dismissed.
-     *  Intentionally larger than the recruit gain to discourage churn. */
     public static final int    COMMANDER_DISMISS_OPINION_LOSS        = 15;
 
     // =========================================================
-    // COMMANDER SKILL ROLL — cumulative thresholds out of 100
-    // Skill 0 = 25 %, Skill 1 = 55 %, Skill 2 = 15 %, Skill 3 = 5 %
+    // COMMANDER SKILL ROLL
     // =========================================================
-    public static final int    COMMANDER_SKILL_WEIGHT_0              = 25;   // 0–24  → skill 0
-    public static final int    COMMANDER_SKILL_WEIGHT_1              = 80;   // 25–79 → skill 1
-    public static final int    COMMANDER_SKILL_WEIGHT_2              = 95;   // 80–94 → skill 2
-    // 95–99 → skill 3 (remainder)
+    public static final int    COMMANDER_SKILL_WEIGHT_0              = 25;
+    public static final int    COMMANDER_SKILL_WEIGHT_1              = 80;
+    public static final int    COMMANDER_SKILL_WEIGHT_2              = 95;
 
     // =========================================================
     // COMMANDER CAP & OVERCAP COST
     // =========================================================
-    /** Commanders up to this count cost no extra influence. */
     public static final int    COMMANDER_FREE_CAP                    = 3;
-    /** Influence drained per extra commander per turn (fractional, ceiled). */
     public static final double COMMANDER_OVERCAP_INFLUENCE_COST      = 0.5;
 
     // =========================================================
-    // COMMANDER GOLD UPKEEP — by skill level (index = skill 0..3)
+    // COMMANDER GOLD UPKEEP — by skill level
     // =========================================================
     public static final double[] COMMANDER_UPKEEP_BY_SKILL           = { 0.8, 1.2, 1.5, 2.0 };
 
     // =========================================================
     // COMMANDER PARTY POWER
     // =========================================================
-    /** Power added to a party per living affiliated commander. */
     public static final int    COMMANDER_PARTY_POWER_PER_ALIVE       = 10;
 
     // =========================================================
-    // COMMANDER XP THRESHOLDS (skill level 1→2, 2→3, 3→4)
+    // COMMANDER XP THRESHOLDS
     // =========================================================
-    /** XP needed to advance from skill N to skill N+1 (index 0 = skill 0→1). */
     public static final int[]  COMMANDER_XP_THRESHOLDS               = { 100, 250, 500 };
 
     // =========================================================
     // COMMANDER DEATH IN BATTLE
     // =========================================================
-    /** Casualty fraction below which no death roll is made. */
     public static final double COMMANDER_DEATH_CASUALTY_LOWER        = 0.30;
-    /** Casualty fraction at or above which death chance equals full casualty %. */
     public static final double COMMANDER_DEATH_CASUALTY_UPPER        = 0.80;
-    /** Multiplier applied to death chance when the player's side won. */
     public static final double COMMANDER_DEATH_WIN_MODIFIER          = 0.70;
 
     // =========================================================
     // SOLDIER RECRUITMENT
     // =========================================================
-    /** Gold cost per soldier recruited. */
     public static final int    SOLDIER_RECRUIT_GOLD_COST             = 2;
-    /** Manpower cost per soldier recruited. */
     public static final int    SOLDIER_RECRUIT_MANPOWER_COST         = 1;
-    /** Gold upkeep per soldier per turn. */
     public static final double SOLDIER_UPKEEP_GOLD                   = 0.3;
 
     // =========================================================
     // SOLDIER DESERTION (when upkeep skipped)
     // =========================================================
-    /** Minimum fraction of soldiers that desert when upkeep is not paid. */
     public static final double SOLDIER_DESERTION_MIN_FRACTION        = 0.10;
-    /** Maximum fraction of soldiers that desert when upkeep is not paid. */
     public static final double SOLDIER_DESERTION_MAX_FRACTION        = 0.30;
 
     // =========================================================
     // PRESTIGE & XP FROM COMBAT
     // =========================================================
-    /** Victory multiplier applied to raw battle score. */
     public static final double COMBAT_WIN_PRESTIGE_MULTIPLIER        = 1.30;
-    /** Multiplier converting raw score to party prestige points. */
     public static final double PRESTIGE_COEFFICIENT                  = 1.0;
-    /** Multiplier converting raw score to commander XP points. */
     public static final double XP_COEFFICIENT                        = 10.0;
-    /** Min ratio cap used in raw score calculation (prevents extreme values). */
     public static final double COMBAT_SCORE_RATIO_MIN                = 0.5;
-    /** Max ratio cap used in raw score calculation. */
     public static final double COMBAT_SCORE_RATIO_MAX                = 2.0;
 
-public static final int LIBERATED_ZONE_OPINION_BONUS = 15;
+    public static final int LIBERATED_ZONE_OPINION_BONUS = 15;
 
     // =========================================================
     // NOBLE BARBARIAN INTERACTION
     // =========================================================
-    /** Prestige gained per barbarian soldier killed by a noble army. */
     public static final double NOBLE_BARB_PRESTIGE_PER_KILL      = 0.08;
-    /** Minimum prestige awarded for any barbarian engagement won. */
     public static final int    NOBLE_BARB_PRESTIGE_MIN_WIN        = 5;
-    /** Strength ratio required for a noble to consider hunting barbarians (noble/barb). */
     public static final double NOBLE_BARB_HUNT_STRENGTH_RATIO     = 1.8;
-    /** Strength ratio required for last-zone desperate defense. */
     public static final double NOBLE_BARB_DESPERATE_DEFENSE_RATIO = 0.5;
-    /** Fraction of all available manpower+gold spent on warboss defense army. */
     public static final double NOBLE_WARBOSS_DEFENSE_ARMY_FRACTION = 0.90;
-
 }

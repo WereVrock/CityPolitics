@@ -27,7 +27,7 @@ public class MainWindow extends JFrame {
     private final SaveLoadDialog         saveLoadDialog;
     private final PartiesOverviewPanel   partiesOverviewPanel;
     private final ui.nobles.NobleHousesPanel nobleHousesPanel;
-    private final VoteSessionPanel       voteSessionPanel;
+    private  VoteSessionPanel       voteSessionPanel;
     private final MapView                mapView;
 
     // version & build info
@@ -82,7 +82,7 @@ public class MainWindow extends JFrame {
         saveLoadDialog       = new SaveLoadDialog(this, gameState, eventLogPanel::appendLine);
         partiesOverviewPanel = new PartiesOverviewPanel(gameState, this::showMainView);
         nobleHousesPanel     = new ui.nobles.NobleHousesPanel(gameState, this::showMainView);
-        voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteFinalized, this::swapCenter);
+        voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
         mapView              = new MapView(gameState, this::showMainView);
 
         // Left sidebar
@@ -502,20 +502,28 @@ private void showMilitaryView() {
         swapCenter(militaryUI);
     }
 
-private void showVoteSession() {
+    private void showVoteSession() {
+        // Rebuild panel in case gameState changed
+        voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
         voteSessionPanel.refresh();
         swapCenter(voteSessionPanel);
     }
 
-    private void onVoteFinalized() {
-        if (gameState.hasActiveSession()) {
+    private void onVoteResult(main.politics.VoteResult result,
+                               java.util.List<String> logLines) {
+        if (result != null && logLines != null) {
+            eventLogPanel.appendLines(logLines);
+        } else if (gameState.hasActiveSession()) {
             eventLogPanel.appendLine("↩ Returned to main view. Vote session still pending.");
-        } else {
-            eventLogPanel.appendLine("✓ Vote finalized.");
         }
         showMainView();
         refreshAll();
         updateEndTurnState();
+    }
+
+    // Keep old no-arg version for back button
+    private void onVoteFinalized() {
+        onVoteResult(null, null);
     }
 
     private void updateEndTurnState() {
@@ -793,30 +801,64 @@ private main.nobles.NobleHouse showZoneAwardDialog(
      */
 
 private void rewireCallbacks() {
-        gameState.getPlayerCombatProcessor().setZoneAwardCallback(
-                (zoneId, claimants) -> showZoneAwardDialog(zoneId, claimants));
+    gameState.getPlayerCombatProcessor().setZoneAwardCallback(
+            (zoneId, claimants) -> showZoneAwardDialog(zoneId, claimants));
 
-        gameState.getTurnProcessor().setPayOffDialogSupplier(
-                (army, resources, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
-            java.awt.Window win = this;
-            final boolean[] result = {false};
-            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-                result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
-                        zoneId, owner, playerArmies, nobleArmies, nobleGarrison);
-            } else {
-                try {
-                    javax.swing.SwingUtilities.invokeAndWait(() ->
-                        result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
-                                zoneId, owner, playerArmies, nobleArmies, nobleGarrison));
-                } catch (Exception ignored) {}
-            }
-            return result[0];
-        });
-
-        if (ledgerPanel != null) {
-            gameState.getTurnProcessor().setOnSnapshotRequested(
-                    () -> ledgerPanel.captureSnapshot());
+    gameState.getTurnProcessor().setPayOffDialogSupplier(
+            (army, resources, zoneId, owner, playerArmies, nobleArmies, nobleGarrison) -> {
+        java.awt.Window win = this;
+        final boolean[] result = {false};
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                    zoneId, owner, playerArmies, nobleArmies, nobleGarrison);
+        } else {
+            try {
+                javax.swing.SwingUtilities.invokeAndWait(() ->
+                    result[0] = ui.barbarians.BarbPayOffDialog.show(army, resources, win,
+                            zoneId, owner, playerArmies, nobleArmies, nobleGarrison));
+            } catch (Exception ignored) {}
         }
+        return result[0];
+    });
+
+    if (ledgerPanel != null) {
+        gameState.getTurnProcessor().setOnSnapshotRequested(
+                () -> ledgerPanel.captureSnapshot());
     }
+
+    // Mercenary hire dialog
+    gameState.getActionRegistry().getHireMercenariesAction()
+            .setHireDialogCallback(() ->
+                ui.MercenaryHireDialog.show(
+                        this,
+                        gameState.getMercenaryManager(),
+                        gameState.getResources(),
+                        main.army.Army.HEARTLAND_ID,
+                        () -> { resourcePanel.refresh(); popPanel.refresh(); }));
+
+    // Send Resources to Nobles dialog
+    gameState.getActionRegistry().getSendResourcesToNoblesAction()
+            .setDialogCallback(() ->
+                ui.SendResourcesToNoblesDialog.show(
+                        this,
+                        gameState.getActionRegistry().getSendResourcesToNoblesAction(),
+                        gameState.getNobleHouseManager(),
+                        gameState.getResources(),
+                        gameState.getLedger(),
+                        () -> { resourcePanel.refresh(); actionsPanel.refresh(); }));
+
+    // Grant Zone Claim dialog
+    gameState.getActionRegistry().getGrantZoneClaimAction()
+            .setDialogCallback(() ->
+                ui.GrantZoneClaimDialog.show(
+                        this,
+                        gameState.getActionRegistry().getGrantZoneClaimAction(),
+                        gameState.getNobleHouseManager(),
+                        gameState.getZoneManager(),
+                        () -> actionsPanel.refresh()));
+
+    // Recreate vote session panel with new reference after reset
+    voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
+}
 
 }

@@ -1,12 +1,12 @@
-// SaveData.java
 package main.save;
+
+import main.legislation.LegislationType;
 
 import java.util.List;
 import java.util.Map;
 
 /**
  * Plain data transfer object for Jackson serialization.
- * No game logic — only primitives and simple value types.
  */
 public class SaveData {
 
@@ -27,23 +27,23 @@ public class SaveData {
     public List<ActiveEffectEntry> activeEffects;
     public VoteSessionEntry        pendingVoteSession;
 
-    // Noble system
     public List<NobleHouseEntry>   nobleHouses;
     public List<RelationshipEntry> relationships;
     public List<ClaimEntry>        claims;
     public List<NobleArmyEntry>    nobleArmies;
 
-    // Player armies
     public List<PlayerArmyEntry>      playerArmies;
     public List<CommanderRosterEntry> commanderRoster;
 
-    // Barbarian system
     public BarbInvasionStateEntry  barbInvasionState;
     public List<BarbArmyEntry>     barbArmies;
     public List<RavagedZoneEntry>  ravagedZones;
 
-    // Zone states
     public List<ZoneStateEntry>    zoneStates;
+
+    // ── New: legislation & mercenaries ───────────────────────────────────────
+    public LegislationEntry        legislation;
+    public List<MercenaryArmyEntry> mercenaryArmies;
 
     // ─── Inner classes ───────────────────────────────────────────────────────
 
@@ -99,8 +99,6 @@ public class SaveData {
         }
     }
 
-    // ─── Noble system ────────────────────────────────────────────────────────
-
     public static class NobleHouseEntry {
         public String              id;
         public int                 gold;
@@ -121,7 +119,7 @@ public class SaveData {
     public static class RelationshipEntry {
         public String houseIdA;
         public String houseIdB;
-        public String relationship;  // Relationship enum name
+        public String relationship;
         public RelationshipEntry() {}
         public RelationshipEntry(String a, String b, String rel) {
             this.houseIdA = a; this.houseIdB = b; this.relationship = rel;
@@ -142,7 +140,7 @@ public class SaveData {
         public String  houseId;
         public int     size;
         public String  zoneId;
-        public String  pendingOrder;         // OrderType enum name
+        public String  pendingOrder;
         public String  pendingTargetZoneId;
         public boolean orderReadyToResolve;
         public boolean skipNextUpkeep;
@@ -150,8 +148,6 @@ public class SaveData {
         public List<String> coalitionMemberIds;
         public NobleArmyEntry() {}
     }
-
-    // ─── Commander roster (unassigned commanders) ─────────────────────────────
 
     public static class CommanderRosterEntry {
         public String  name;
@@ -163,27 +159,22 @@ public class SaveData {
         public CommanderRosterEntry() {}
     }
 
-    // ─── Player armies ───────────────────────────────────────────────────────
-
     public static class PlayerArmyEntry {
         public String  id;
         public String  displayName;
         public String  zoneId;
         public int     size;
         public boolean dragging;
-        // Commander fields (nullable — armies without commanders use defaults)
         public String  commanderName;
         public String  commanderRace;
-        public String  commanderPartyName;   // PoliticalParty.getName()
+        public String  commanderPartyName;
         public int     commanderSkill;
         public int     commanderXp;
         public PlayerArmyEntry() {}
     }
 
-    // ─── Barbarian system ────────────────────────────────────────────────────
-
     public static class BarbInvasionStateEntry {
-        public String  phase;              // Phase enum name
+        public String  phase;
         public int     countdownTurns;
         public int     turnsSinceInvasionStart;
         public int     nextWaveTurn;
@@ -193,7 +184,7 @@ public class SaveData {
 
     public static class BarbArmyEntry {
         public String       id;
-        public String       type;           // BarbArmy.Type enum name
+        public String       type;
         public int          size;
         public String       zoneId;
         public String       nextZoneId;
@@ -206,15 +197,13 @@ public class SaveData {
 
     public static class RavagedZoneEntry {
         public String zoneId;
-        public String level;               // RavagedLevel enum name
+        public String level;
         public int    turnsRavaged;
         public RavagedZoneEntry() {}
         public RavagedZoneEntry(String zoneId, String level, int turnsRavaged) {
             this.zoneId = zoneId; this.level = level; this.turnsRavaged = turnsRavaged;
         }
     }
-
-    // ─── Zone states ─────────────────────────────────────────────────────────
 
     public static class ZoneStateEntry {
         public String  zoneId;
@@ -224,5 +213,23 @@ public class SaveData {
         public int     conquestMalusPercent;
         public int     rebellionPower;
         public ZoneStateEntry() {}
+    }
+
+    // ── Legislation ───────────────────────────────────────────────────────────
+    public static class LegislationEntry {
+        public List<String> passedLegislations;
+        public int          mercenaryHireActionsRemaining;
+        public int          wartimeTaxesCooldown;
+        public int          sendResourcesWindowRemaining;
+        public LegislationEntry() {}
+    }
+
+    // ── Mercenaries ───────────────────────────────────────────────────────────
+    public static class MercenaryArmyEntry {
+        public String id;
+        public String displayName;
+        public int    size;
+        public String zoneId;
+        public MercenaryArmyEntry() {}
     }
 }
