@@ -27,28 +27,39 @@ public class BarbArmyManager {
 
     // ─── Spawn ───────────────────────────────────────────────────────────────
 
-    public BarbArmy spawnWarboss(String zoneId, int turn) {
-        int size = GameParameters.BARB_WARBOSS_BASE_SIZE
-                 + turn * GameParameters.BARB_WARBOSS_SIZE_PER_TURN;
-        BarbArmy wb = new BarbArmy(BarbArmy.Type.WARBOSS, size, zoneId);
-        add(wb);
-        invasionVisited.add(zoneId);
-        return wb;
-    }
+public BarbArmy spawnWarboss(String zoneId, int turn) {
+    int size = GameParameters.BARB_WARBOSS_BASE_SIZE
+             + turn * GameParameters.BARB_WARBOSS_SIZE_PER_TURN;
+    BarbArmy wb = new BarbArmy(BarbArmy.Type.WARBOSS, size, zoneId);
+    wb.setDisplayName(BarbTribeNameGenerator.generateWarbossName());
+    add(wb);
+    invasionVisited.add(zoneId);
+    return wb;
+}
 
-    public BarbArmy spawnRaider(String zoneId, int size) {
-        BarbArmy r = new BarbArmy(BarbArmy.Type.RAIDER, size, zoneId);
-        add(r);
-        invasionVisited.add(zoneId);
-        return r;
-    }
+public BarbArmy spawnRaider(String zoneId, int size) {
+    return spawnRaider(zoneId, size, false);
+}
 
-    public BarbArmy spawnRavager(String zoneId, int size) {
-        BarbArmy r = new BarbArmy(BarbArmy.Type.RAVAGER, size, zoneId);
-        add(r);
-        invasionVisited.add(zoneId);
-        return r;
-    }
+public BarbArmy spawnRaider(String zoneId, int size, boolean earlyWave) {
+    BarbArmy r = new BarbArmy(BarbArmy.Type.RAIDER, size, zoneId);
+    r.setDisplayName(BarbTribeNameGenerator.generateRaiderName(earlyWave));
+    add(r);
+    invasionVisited.add(zoneId);
+    return r;
+}
+
+public BarbArmy spawnRavager(String zoneId, int size) {
+    return spawnRavager(zoneId, size, false);
+}
+
+public BarbArmy spawnRavager(String zoneId, int size, boolean earlyWave) {
+    BarbArmy r = new BarbArmy(BarbArmy.Type.RAVAGER, size, zoneId);
+    r.setDisplayName(BarbTribeNameGenerator.generateRavagerName(earlyWave));
+    add(r);
+    invasionVisited.add(zoneId);
+    return r;
+}
 
 /**
      * Directly inserts a pre-built mobile army (used by SaveManager on load).

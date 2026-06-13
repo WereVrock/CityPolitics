@@ -134,60 +134,83 @@ public class BarbInvasionProcessor {
     }
 
     // ─── Invasion start ──────────────────────────────────────────────────────
-    private List<String> startInvasion(int absoluteTurn, GameCalendar calendar) {
-        List<String> log = new ArrayList<>();
-        String spawnZone = pickSpawnZone();
-        if (spawnZone == null) {
-            log.add("⚠ Barbarian invasion delayed — no desolate spawn zone found.");
-            return log;
-        }
 
-        BarbArmy warboss = armyManager.spawnWarboss(spawnZone, calendar.getTotalTurnsElapsed());
-        log("invasion-start", "Warboss spawned at " + spawnZone + ", size=" + warboss.getSize());
-        state.startInvasion(absoluteTurn);
-        log.add("☠ THE BARBARIAN HORDE DESCENDS! The Warboss (" + warboss.getSize() + " warriors) emerges from " + spawnZone + "!");
-
-        // First wave: raiders + warboss (warboss IS the first wave's ravager slot)
-        log.addAll(spawnWaveHalf(true));
-        state.markFirstHalfSpawned();
-        log("invasion-start", "First wave spawned");
-
+private List<String> startInvasion(int absoluteTurn, GameCalendar calendar) {
+    List<String> log = new ArrayList<>();
+    String spawnZone = pickSpawnZone();
+    if (spawnZone == null) {
+        log.add("⚠ Barbarian invasion delayed — no desolate spawn zone found.");
         return log;
     }
 
-    private void log(String key, String msg) {
+    BarbArmy warboss = armyManager.spawnWarboss(spawnZone, calendar.getTotalTurnsElapsed());
+    log("invasion-start", "Warboss spawned at " + spawnZone + ", size=" + warboss.getSize()
+            + ", name=" + warboss.getDisplayName());
+    state.startInvasion(absoluteTurn);
+
+    log.add("☠ THE BARBARIAN HORDE DESCENDS FROM THE NORTH!");
+    log.add("  " + warboss.getDisplayName() + " (" + warboss.getSize()
+            + " warriors) — DRIVEN SOUTH BY THE FROST GIANTS!");
+    log.add("  The barbarians do not come to conquer. They come because something worse follows.");
+
+    // First wave: fleeing scouts
+    log.addAll(spawnWaveHalf(true));
+    state.markFirstHalfSpawned();
+    log("invasion-start", "First early wave spawned");
+
+    return log;
+}
+
+private void log(String key, String msg) {
         Debug.log("barbarians", key, msg);
     }
 
     // ─── Wave spawning ───────────────────────────────────────────────────────
-    private List<String> spawnWaveHalf(boolean firstHalf) {
-        List<String> log = new ArrayList<>();
-        int raidersToSpawn = GameParameters.BARB_WAVE_RAIDER_COUNT;
-        int ravagersToSpawn = GameParameters.BARB_WAVE_RAVAGER_COUNT;
 
-        // First half gets ceil, second gets floor
-        int rCount = firstHalf ? (raidersToSpawn + 1) / 2 : raidersToSpawn / 2;
-        int vCount = firstHalf ? (ravagersToSpawn + 1) / 2 : ravagersToSpawn / 2;
+private List<String> spawnWaveHalf(boolean firstHalf) {
+    List<String> log = new ArrayList<>();
+    int raidersToSpawn  = GameParameters.BARB_WAVE_RAIDER_COUNT;
+    int ravagersToSpawn = GameParameters.BARB_WAVE_RAVAGER_COUNT;
 
-        List<String> desolateZones = getDesolateZoneIds();
-        if (desolateZones.isEmpty()) return log;
+    int rCount = firstHalf ? (raidersToSpawn + 1) / 2 : raidersToSpawn / 2;
+    int vCount = firstHalf ? (ravagersToSpawn + 1) / 2 : ravagersToSpawn / 2;
 
-        for (int i = 0; i < rCount; i++) {
-            String z = desolateZones.get(rng.nextInt(desolateZones.size()));
-            BarbArmy raider = armyManager.spawnRaider(z, GameParameters.BARB_WAVE_RAIDER_SIZE);
-            log.add("☠ Barbarian raiders (" + raider.getSize() + ") emerge at " + z + ".");
+    boolean earlyWave = state.isEarlyWave();
+
+    // Early waves: flee south in desperation — smaller and faster
+    double sizeFraction = earlyWave
+            ? GameParameters.BARB_EARLY_WAVE_SIZE_FRACTION : 1.0;
+
+    List<String> desolateZones = getDesolateZoneIds();
+    if (desolateZones.isEmpty()) return log;
+
+    String waveType = earlyWave ? "Fleeing tribe" : "Warband";
+
+    for (int i = 0; i < rCount; i++) {
+        String z    = desolateZones.get(rng.nextInt(desolateZones.size()));
+        int    size = (int)(GameParameters.BARB_WAVE_RAIDER_SIZE * sizeFraction);
+        size = Math.max(5, size);
+        BarbArmy raider = armyManager.spawnRaider(z, size, earlyWave);
+        log.add("☠ " + waveType + " — " + raider.getDisplayName()
+                + " (" + raider.getSize() + " warriors) emerge at " + z + ".");
+        if (earlyWave) {
+            log.add("  (Driven south by the Frost Giants, these survivors travel fast and light.)");
         }
-
-        for (int i = 0; i < vCount; i++) {
-            String z = desolateZones.get(rng.nextInt(desolateZones.size()));
-            BarbArmy ravager = armyManager.spawnRavager(z, GameParameters.BARB_WAVE_RAVAGER_SIZE);
-            log.add("☠ Barbarian ravagers (" + ravager.getSize() + ") emerge at " + z + ".");
-        }
-
-        return log;
     }
 
-    // ─── Raider splitting ────────────────────────────────────────────────────
+    for (int i = 0; i < vCount; i++) {
+        String z    = desolateZones.get(rng.nextInt(desolateZones.size()));
+        int    size = (int)(GameParameters.BARB_WAVE_RAVAGER_SIZE * sizeFraction);
+        size = Math.max(10, size);
+        BarbArmy ravager = armyManager.spawnRavager(z, size, earlyWave);
+        log.add("☠ " + waveType + " — " + ravager.getDisplayName()
+                + " (" + ravager.getSize() + " warriors) emerge at " + z + ".");
+    }
+
+    return log;
+}
+
+// ─── Raider splitting ────────────────────────────────────────────────────
 
 private List<String> splitRaiderFromWarboss(int absoluteTurn) {
         List<String> log = new ArrayList<>();
@@ -211,50 +234,50 @@ private List<String> splitRaiderFromWarboss(int absoluteTurn) {
     }
 
 // ─── Movement ────────────────────────────────────────────────────────────
-    private List<String> moveArmies() {
-        List<String> log = new ArrayList<>();
 
-        BarbArmy wb = armyManager.getWarboss();
-        if (wb != null && wb.canMoveThisTurn()) {
-            String next = wb.getNextZoneId();
-            if (next != null) {
-                String oldZone = wb.getZoneId();
-                armyManager.moveArmy(wb, next);
-                if (!next.equals(oldZone)) {
-                    log.add("☠ The Warboss advances to " + next + ".");
-                    log("warboss-move", "Warboss moved from " + oldZone + " to " + next);
-                }
-            } else {
-                log("warboss-move", "Warboss has no next zone, staying in " + wb.getZoneId());
-            }
+private List<String> moveArmies() {
+    List<String> log = new ArrayList<>();
 
-            // Pre-calculate next move for display
-            String upcoming = pickWarbossNextZone(wb);
-            wb.setNextZoneId(upcoming);
-            log("warboss-next", "Next destination set to " + upcoming);
-        }
-
-        // Raiders and ravagers move randomly, prefer unvisited
-        for (BarbArmy army : new ArrayList<>(armyManager.getMobileArmies())) {
-            if (army.isWarboss() || army.isPaidOff()) continue;
-
-            List<String> candidates = armyManager.getAdjacentMoveable(army.getZoneId());
-            if (candidates.isEmpty()) continue;
-
-            String dest = armyManager.pickPreferredZone(army, candidates);
-            if (dest != null) {
-                String oldZone = army.getZoneId();
-                armyManager.moveArmy(army, dest);
-                if (!dest.equals(oldZone)) {
-                    log("barb-move", army.getType() + " " + army.getId() + " moved from " + oldZone + " to " + dest);
-                }
+    BarbArmy wb = armyManager.getWarboss();
+    if (wb != null) {
+        // Warboss moves EVERY turn (no cooldown — driven by terror)
+        String next = wb.getNextZoneId();
+        if (next != null) {
+            String oldZone = wb.getZoneId();
+            armyManager.moveArmy(wb, next);
+            if (!next.equals(oldZone)) {
+                log.add("☠ " + wb.getDisplayName() + " advances to " + next + ".");
+                log("warboss-move", "Warboss moved from " + oldZone + " to " + next);
             }
         }
-
-        return log;
+        // Pre-calculate next move
+        String upcoming = pickWarbossNextZone(wb);
+        wb.setNextZoneId(upcoming);
+        log("warboss-next", "Next destination set to " + upcoming);
     }
 
-    private String pickWarbossNextZone(BarbArmy wb) {
+    // Early-wave raiders move faster (every turn)
+    // Standard raiders/ravagers move normally
+    for (BarbArmy army : new ArrayList<>(armyManager.getMobileArmies())) {
+        if (army.isWarboss() || army.isPaidOff()) continue;
+
+        List<String> candidates = armyManager.getAdjacentMoveable(army.getZoneId());
+        if (candidates.isEmpty()) continue;
+
+        String dest = armyManager.pickPreferredZone(army, candidates);
+        if (dest != null) {
+            String oldZone = army.getZoneId();
+            armyManager.moveArmy(army, dest);
+            if (!dest.equals(oldZone)) {
+                log("barb-move", army.getDisplayName() + " moved from " + oldZone + " to " + dest);
+            }
+        }
+    }
+
+    return log;
+}
+
+private String pickWarbossNextZone(BarbArmy wb) {
         List<String> candidates = armyManager.getAdjacentMoveable(wb.getZoneId());
         log("warboss-next-choices", "Candidates from " + wb.getZoneId() + ": " + candidates);
         if (candidates.isEmpty()) return null;

@@ -13,10 +13,8 @@ import java.util.List;
  *
  * Categories:
  *   AUTHORIZED  — free actions (no council needed)
- *   FORMAL      — require council vote each use
+ *   FORMAL      — require council vote each use (share 1-use-per-turn slot with legislation)
  *   REALM       — realm-level actions (may require legislation window)
- *
- * Shared vote counter: only 1 formal action OR legislation per turn.
  */
 public class ActionRegistry {
 
@@ -41,10 +39,10 @@ public class ActionRegistry {
         this.legislationManager = gameState.getLegislationManager();
 
         // ── Authorized (free) actions ──────────────────────────────────────
-        ImportFoodAction importFood         = new ImportFoodAction();
-        AcceptBribesAction acceptBribes     = new AcceptBribesAction();
-        BribeAction bribe                   = new BribeAction();
-        DistributeResourcesAction distribute = new DistributeResourcesAction();
+        ImportFoodAction importFood           = new ImportFoodAction();
+        AcceptBribesAction acceptBribes       = new AcceptBribesAction();
+        BribeAction bribe                     = new BribeAction();
+        DistributeResourcesAction distribute  = new DistributeResourcesAction();
         FightCorruptionAction fightCorruption = new FightCorruptionAction();
 
         authorizedActions.add(importFood);
@@ -53,32 +51,32 @@ public class ActionRegistry {
         authorizedActions.add(distribute);
         authorizedActions.add(fightCorruption);
 
-        wartimeTaxesAction = new WartimeTaxesAction(
-                gameState.getLegislationManager(),
-                gameState.getPopManager(),
-                gameState.getWarStateChecker());
         hireMercenariesAction = new HireMercenariesAction(
                 gameState.getLegislationManager(),
                 gameState.getMercenaryManager(),
                 gameState.getZoneManager());
-
-        authorizedActions.add(wartimeTaxesAction);
         authorizedActions.add(hireMercenariesAction);
 
         // ── Formal (voted) actions ─────────────────────────────────────────
-        OrganizeFestivalAction festival     = new OrganizeFestivalAction(gameState);
-        CrackdownCorruptionAction crackdown = new CrackdownCorruptionAction(gameState);
-        RoyalLevyAction levy                = new RoyalLevyAction(gameState);
-        allowMercenariesAction              = new AllowMercenariesAction(
+        OrganizeFestivalAction festival       = new OrganizeFestivalAction(gameState);
+        CrackdownCorruptionAction crackdown   = new CrackdownCorruptionAction(gameState);
+        RoyalLevyAction levy                  = new RoyalLevyAction(gameState);
+        allowMercenariesAction                = new AllowMercenariesAction(
                 gameState, gameState.getLegislationManager());
-        allowSendResourcesAction            = new AllowSendResourcesAction(
+        allowSendResourcesAction              = new AllowSendResourcesAction(
                 gameState, gameState.getLegislationManager());
+        wartimeTaxesAction                    = new WartimeTaxesAction(
+                gameState,
+                gameState.getLegislationManager(),
+                gameState.getPopManager(),
+                gameState.getWarStateChecker());
 
         formalActions.add(festival);
         formalActions.add(crackdown);
         formalActions.add(levy);
         formalActions.add(allowMercenariesAction);
         formalActions.add(allowSendResourcesAction);
+        formalActions.add(wartimeTaxesAction);
 
         // ── Realm actions ──────────────────────────────────────────────────
         sendResourcesToNoblesAction = new SendResourcesToNoblesAction(
@@ -96,7 +94,6 @@ public class ActionRegistry {
         allActions.addAll(formalActions);
         allActions.addAll(realmActions);
 
-        // Wire ledger
         main.ledger.Ledger ledger = gameState.getLedger();
         for (PlayerAction action : allActions) {
             if (action instanceof AbstractAction aa) {
@@ -107,12 +104,12 @@ public class ActionRegistry {
 
     // ─── Shared vote counter ──────────────────────────────────────────────────
 
-    public boolean isFormalUsedThisTurn()    { return formalUsedThisTurn; }
-    public void    markFormalUsedThisTurn()  {
+    public boolean isFormalUsedThisTurn()   { return formalUsedThisTurn; }
+    public void    markFormalUsedThisTurn() {
         formalUsedThisTurn = true;
         debug.Debug.log("action-registry", "formal-used", "Formal/legislation slot consumed this turn");
     }
-    public void    resetFormalUsed()         { formalUsedThisTurn = false; }
+    public void    resetFormalUsed()        { formalUsedThisTurn = false; }
 
     public List<PlayerAction> getActions()            { return Collections.unmodifiableList(allActions); }
     public List<PlayerAction> getAuthorizedActions()  { return Collections.unmodifiableList(authorizedActions); }

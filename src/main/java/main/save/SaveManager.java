@@ -320,6 +320,7 @@ public class SaveManager {
             e.paidOff      = a.isPaidOff();
             e.dismissed    = a.isDismissed();
             e.visitedZones = new ArrayList<>(a.getVisitedZones());
+            e.displayName  = a.getDisplayName();
             list.add(e);
         }
         return list;
@@ -671,6 +672,7 @@ public class SaveManager {
         try {
             setField(army, BarbArmy.class, "id", entry.id);
             army.setNextZoneId(entry.nextZoneId);
+            if (entry.displayName != null) army.setDisplayName(entry.displayName);
             if (entry.paidOff)   army.setPaidOff(true);
             if (entry.dismissed) army.dismiss();
             if (entry.visitedZones != null) {

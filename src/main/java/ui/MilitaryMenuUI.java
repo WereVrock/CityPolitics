@@ -28,11 +28,12 @@ import ui.UITheme;
  */
 public class MilitaryMenuUI extends JPanel {
 
-    private final ArmyManager          armyManager;
-    private final CommanderRoster      roster;
-    private final CommanderRecruitPool pool;
-    private final ResourcePool         resources;
-    private final PartyManager         partyManager;
+    private final ArmyManager                   armyManager;
+    private final CommanderRoster               roster;
+    private final CommanderRecruitPool          pool;
+    private final ResourcePool                  resources;
+    private final PartyManager                  partyManager;
+    private final main.mercenaries.MercenaryManager mercenaryManager;
     private final Runnable             onBack;
     private final Runnable             onResourcesChanged;
 
@@ -47,25 +48,37 @@ public MilitaryMenuUI(ArmyManager armyManager,
         this(armyManager, roster, pool, resources, partyManager, onBack, () -> {});
     }
 
-    public MilitaryMenuUI(ArmyManager armyManager,
-                          CommanderRoster roster,
-                          CommanderRecruitPool pool,
-                          ResourcePool resources,
-                          PartyManager partyManager,
-                          Runnable onBack,
-                          Runnable onResourcesChanged) {
-        this.armyManager         = armyManager;
-        this.roster              = roster;
-        this.pool                = pool;
-        this.resources           = resources;
-        this.partyManager        = partyManager;
-        this.onBack              = onBack;
-        this.onResourcesChanged  = onResourcesChanged;
-        setLayout(new BorderLayout(8, 8));
-        setBorder(new EmptyBorder(10, 10, 10, 10));
-        setBackground(UITheme.BG_DARK);
-        build();
-    }
+public MilitaryMenuUI(ArmyManager armyManager,
+                      CommanderRoster roster,
+                      CommanderRecruitPool pool,
+                      ResourcePool resources,
+                      PartyManager partyManager,
+                      Runnable onBack,
+                      Runnable onResourcesChanged) {
+    this(armyManager, roster, pool, resources, partyManager, null, onBack, onResourcesChanged);
+}
+
+public MilitaryMenuUI(ArmyManager armyManager,
+                      CommanderRoster roster,
+                      CommanderRecruitPool pool,
+                      ResourcePool resources,
+                      PartyManager partyManager,
+                      main.mercenaries.MercenaryManager mercenaryManager,
+                      Runnable onBack,
+                      Runnable onResourcesChanged) {
+    this.armyManager         = armyManager;
+    this.roster              = roster;
+    this.pool                = pool;
+    this.resources           = resources;
+    this.partyManager        = partyManager;
+    this.mercenaryManager    = mercenaryManager;
+    this.onBack              = onBack;
+    this.onResourcesChanged  = onResourcesChanged;
+    setLayout(new BorderLayout(8, 8));
+    setBorder(new EmptyBorder(10, 10, 10, 10));
+    setBackground(UITheme.BG_DARK);
+    build();
+}
 
 // ─── Build ───────────────────────────────────────────────────────────────
 
@@ -104,15 +117,19 @@ public MilitaryMenuUI(ArmyManager armyManager,
         return bar;
     }
 
-    private JPanel buildCentre() {
-        JPanel centre = new JPanel(new GridLayout(1, 2, 12, 0));
-        centre.setBackground(UITheme.BG_DARK);
-        centre.add(buildArmyScrollPane());
-        centre.add(buildRosterScrollPane());
-        return centre;
+private JPanel buildCentre() {
+    int cols = (mercenaryManager != null) ? 3 : 2;
+    JPanel centre = new JPanel(new GridLayout(1, cols, 12, 0));
+    centre.setBackground(UITheme.BG_DARK);
+    centre.add(buildArmyScrollPane());
+    centre.add(buildRosterScrollPane());
+    if (mercenaryManager != null) {
+        centre.add(buildMercenaryScrollPane());
     }
+    return centre;
+}
 
-    private JScrollPane buildArmyScrollPane() {
+private JScrollPane buildArmyScrollPane() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(UITheme.BG_DARK);
@@ -164,7 +181,90 @@ public MilitaryMenuUI(ArmyManager armyManager,
         return sp;
     }
 
-    private JPanel buildBottomBar() {
+private JScrollPane buildMercenaryScrollPane() {
+    JPanel panel = new JPanel();
+    panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+    panel.setBackground(UITheme.BG_DARK);
+    panel.setBorder(BorderFactory.createTitledBorder(
+            BorderFactory.createLineBorder(UITheme.BORDER_COLOR),
+            "Mercenaries", 0, 0,
+            UITheme.FONT_BUTTON, new Color(200, 150, 60)));
+
+    List<main.mercenaries.MercenaryArmy> mercs = mercenaryManager.getArmies();
+    if (mercs.isEmpty()) {
+        JLabel empty = new JLabel("  No mercenary companies hired.");
+        empty.setFont(UITheme.FONT_SMALL);
+        empty.setForeground(UITheme.TEXT_SECONDARY);
+        panel.add(empty);
+    } else {
+        for (main.mercenaries.MercenaryArmy merc : mercs) {
+            panel.add(buildMercenaryCard(merc));
+            panel.add(Box.createVerticalStrut(6));
+        }
+    }
+
+    double totalUpkeep = mercenaryManager.getTotalUpkeepPerTurn();
+    if (totalUpkeep > 0) {
+        JLabel upkeepLabel = new JLabel(String.format("  Total upkeep: %.1f gold/turn", totalUpkeep));
+        upkeepLabel.setFont(UITheme.FONT_SMALL);
+        upkeepLabel.setForeground(UITheme.TEXT_RED);
+        panel.add(Box.createVerticalStrut(4));
+        panel.add(upkeepLabel);
+    }
+
+    JScrollPane sp = new JScrollPane(panel);
+    sp.setBorder(null);
+    sp.getViewport().setBackground(UITheme.BG_DARK);
+    return sp;
+}
+
+private JPanel buildMercenaryCard(main.mercenaries.MercenaryArmy merc) {
+    JPanel card = new JPanel(new BorderLayout(8, 4));
+    card.setBackground(new Color(45, 32, 15));
+    card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(140, 100, 40), 1),
+            new EmptyBorder(8, 10, 8, 10)));
+    card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
+
+    JPanel info = new JPanel();
+    info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+    info.setBackground(new Color(45, 32, 15));
+
+    addInfoLabel(info, "⚔ " + merc.getDisplayName(),
+            UITheme.FONT_BUTTON, new Color(200, 165, 80));
+    addInfoLabel(info, "Size: " + merc.getSize(),
+            UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
+    double upkeep = merc.getSize()
+            * main.parameters.GameParameters.SOLDIER_UPKEEP_GOLD
+            * main.parameters.GameParameters.MERCENARY_COST_MULTIPLIER;
+    addInfoLabel(info, String.format("Upkeep: %.1f gold/turn", upkeep),
+            UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
+    addInfoLabel(info, "Location: " + merc.getZoneId(),
+            UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
+
+    card.add(info, BorderLayout.CENTER);
+
+    JButton disbandBtn = makeCardButton("Disband");
+    disbandBtn.setForeground(new Color(200, 80, 80));
+    disbandBtn.addActionListener(e -> {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Disband " + merc.getDisplayName() + "?",
+                "Confirm", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            mercenaryManager.remove(merc);
+            build();
+        }
+    });
+
+    JPanel btns = new JPanel();
+    btns.setLayout(new BoxLayout(btns, BoxLayout.Y_AXIS));
+    btns.setBackground(new Color(45, 32, 15));
+    btns.add(disbandBtn);
+    card.add(btns, BorderLayout.EAST);
+    return card;
+}
+
+private JPanel buildBottomBar() {
         JPanel bar = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 6));
         bar.setBackground(UITheme.BG_PANEL);
         JButton btn = new JButton("Open Commander Recruitment");

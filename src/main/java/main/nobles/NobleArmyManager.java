@@ -20,6 +20,8 @@ public class NobleArmyManager {
     private final ZoneManager         zoneManager;
     private final RelationshipManager relationships;
     private       CoalitionManager    coalitionManager;
+    private       main.army.PlayerBattleInterventionProcessor interventionProcessor;
+    private       main.army.ArmyManager playerArmyManager;
 
     public NobleArmyManager(ZoneManager zoneManager, RelationshipManager relationships) {
         this.zoneManager   = zoneManager;
@@ -28,6 +30,13 @@ public class NobleArmyManager {
 
     public void setCoalitionManager(CoalitionManager coalitionManager) {
         this.coalitionManager = coalitionManager;
+    }
+
+    public void setInterventionProcessor(
+            main.army.PlayerBattleInterventionProcessor proc,
+            main.army.ArmyManager armyMgr) {
+        this.interventionProcessor = proc;
+        this.playerArmyManager     = armyMgr;
     }
 
     // ─── Recruitment ─────────────────────────────────────────────────────────
@@ -215,6 +224,8 @@ public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claim
                     + " held by " + defender.getName() + ".");
         }
 
+        // (Player intervention check happens after forces are built — see below)
+
         List<NobleArmy> attackerArmies = new ArrayList<>();
         attackerArmies.add(attArmy);
         List<NobleHouse> attackerParticipants = new ArrayList<>();
@@ -286,6 +297,30 @@ public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claim
             NobleHouse h = findHouse(a.getHouseId(), allHouses);
             int mil = militarySkill(h);
             defenderForces.add(new ArmyForce(a.getHouseId(), a.getSize(), defFort, mil));
+        }
+
+        // ── Player intervention ────────────────────────────────────────────────
+        if (interventionProcessor != null && playerArmyManager != null) {
+            int totalAtkSz = attackerForces.stream().mapToInt(ArmyForce::getRawSize).sum();
+            main.army.PlayerBattleInterventionProcessor.PlayerChoice choice =
+                    interventionProcessor.checkIntervention(
+                            attacker, defender, zoneId, totalAtkSz, playerArmyManager);
+            switch (choice) {
+                case STOP_FIGHT -> {
+                    log.add("⚔ Player intervenes and stops the battle at " + zoneId + ".");
+                    attArmy.clearOrder();
+                    return log;
+                }
+                case JOIN_ATTACKER -> {
+                    log.add("⚔ Player army joins the attack on " + defender.getName() + " at " + zoneId + ".");
+                    addPlayerForcesToAttack(attackerForces, zoneId, null, log);
+                }
+                case JOIN_DEFENDER -> {
+                    log.add("⚔ Player army joins the defense of " + defender.getName() + " at " + zoneId + ".");
+                    addPlayerForcesToDefense(defenderForces, zoneId, defFort, defMilitary(defender), log);
+                }
+                case IGNORE -> {}
+            }
         }
 
         CombatResult result = CombatResolver.resolveMultiSideBattle(
@@ -375,7 +410,38 @@ public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claim
         return log;
     }
 
-    // ─── Raid resolution ─────────────────────────────────────────────────────
+private void addPlayerForcesToAttack(List<ArmyForce> attackerForces,
+                                      String zoneId,
+                                      List<NobleHouse> allHouses,
+                                      List<String> log) {
+    if (playerArmyManager == null) return;
+    for (main.army.Army a : playerArmyManager.getDeployedArmies()) {
+        if (zoneId.equals(a.getZoneId()) && a.isAlive() && a.getSize() > 0) {
+            attackerForces.add(new ArmyForce("player_" + a.getId(),
+                    a.getSize(), 0, a.getCommandingSkill()));
+        }
+    }
+}
+
+private void addPlayerForcesToDefense(List<ArmyForce> defenderForces,
+                                       String zoneId,
+                                       int defFort, int defMilitary,
+                                       List<String> log) {
+    if (playerArmyManager == null) return;
+    for (main.army.Army a : playerArmyManager.getDeployedArmies()) {
+        if (zoneId.equals(a.getZoneId()) && a.isAlive() && a.getSize() > 0) {
+            defenderForces.add(new ArmyForce("player_" + a.getId(),
+                    a.getSize(), defFort, a.getCommandingSkill()));
+        }
+    }
+}
+
+private int defMilitary(NobleHouse house) {
+    NobleCharacter c = house.getActiveCharacter();
+    return c != null ? c.getMilitary() : 0;
+}
+
+// ─── Raid resolution ─────────────────────────────────────────────────────
 
     private List<String> resolveRaid(NobleArmy attArmy, List<NobleHouse> allHouses) {
         List<String> log = new ArrayList<>();

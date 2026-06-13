@@ -6,15 +6,20 @@ import main.map.ZoneManager;
 import main.nobles.NobleHouse;
 import main.nobles.NobleHouseManager;
 import main.parameters.GameParameters;
+import main.resources.ResourcePool;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
  * Dialog for granting a zone claim to a noble house.
+ * Sorts zones and houses alphabetically. Strips "House " prefix from names.
+ * Costs GRANT_CLAIM_INFLUENCE_COST influence.
+ * Can be pre-seeded with a zone when opened from the map info panel.
  */
 public class GrantZoneClaimDialog {
 
@@ -24,29 +29,34 @@ public class GrantZoneClaimDialog {
                             GrantZoneClaimAction action,
                             NobleHouseManager nobleHouseManager,
                             ZoneManager zoneManager,
+                            ResourcePool resources,
+                            main.ledger.Ledger ledger,
+                            String preselectZoneId,
                             Runnable onGranted) {
-        // Collect all owned zones (by nobles) as claimable targets
+        // Collect all non-desolate zones sorted alphabetically
         List<Zone> ownedZones = new ArrayList<>();
         for (Zone z : zoneManager.getZones()) {
             if (z.isDesolate()) continue;
-            if (nobleHouseManager.getOwnerOfZone(z.getId()) != null) {
-                ownedZones.add(z);
-            }
+            ownedZones.add(z);
         }
+        ownedZones.sort(Comparator.comparing(Zone::getDisplayName));
+
         if (ownedZones.isEmpty()) {
-            JOptionPane.showMessageDialog(parent, "No noble-owned zones available.");
+            JOptionPane.showMessageDialog(parent, "No zones available.");
             return;
         }
 
+        // Houses sorted alphabetically, "House " stripped
         List<NobleHouse> houses = new ArrayList<>();
         for (NobleHouse h : nobleHouseManager.getHouses()) {
             if (!h.isEliminated()) houses.add(h);
         }
+        houses.sort(Comparator.comparing(h -> stripHousePrefix(h.getName())));
 
         JDialog dialog = new JDialog(
                 parent instanceof Frame ? (Frame) parent : null,
                 "Grant Zone Claim", true);
-        dialog.setSize(500, 440);
+        dialog.setSize(520, 460);
         dialog.setLocationRelativeTo(parent);
         dialog.setResizable(false);
         dialog.getContentPane().setBackground(UITheme.BG_PANEL);
@@ -67,7 +77,8 @@ public class GrantZoneClaimDialog {
 
         gc.gridy = 1;
         JLabel info = new JLabel("<html>"
-                + "Grant a claim on a zone to a noble house.<br>"
+                + "Grant a claim on a zone to a noble house. Costs "
+                + GameParameters.GRANT_CLAIM_INFLUENCE_COST + " influence.<br>"
                 + "Owner: " + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion.  "
                 + "Target: +" + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS + " opinion.  "
                 + "Other claimants: " + GameParameters.GRANT_CLAIM_OTHER_CLAIMANT_MALUS + " opinion."
@@ -77,32 +88,49 @@ public class GrantZoneClaimDialog {
         content.add(info, gc);
 
         gc.gridy = 2;
+        JLabel influenceLabel = new JLabel("Influence available: " + resources.getInfluence()
+                + "  (need " + GameParameters.GRANT_CLAIM_INFLUENCE_COST + ")");
+        influenceLabel.setFont(UITheme.FONT_SMALL);
+        influenceLabel.setForeground(resources.getInfluence() >= GameParameters.GRANT_CLAIM_INFLUENCE_COST
+                ? UITheme.TEXT_GREEN : UITheme.TEXT_RED);
+        content.add(influenceLabel, gc);
+
+        gc.gridy = 3;
         JLabel zoneLabel = new JLabel("Zone:");
         zoneLabel.setFont(UITheme.FONT_BODY);
         zoneLabel.setForeground(UITheme.TEXT_PRIMARY);
         content.add(zoneLabel, gc);
 
-        gc.gridy = 3;
+        gc.gridy = 4;
         String[] zoneNames = ownedZones.stream().map(z -> {
             NobleHouse owner = nobleHouseManager.getOwnerOfZone(z.getId());
-            return z.getDisplayName() + " (owned by "
-                    + (owner != null ? owner.getName() : "none") + ")";
+            return z.getDisplayName() + (owner != null
+                    ? " (owned by " + stripHousePrefix(owner.getName()) + ")" : " (unowned)");
         }).toArray(String[]::new);
         JComboBox<String> zoneBox = new JComboBox<>(zoneNames);
         zoneBox.setFont(UITheme.FONT_BODY);
         zoneBox.setBackground(UITheme.BG_PANEL_LIGHT);
         zoneBox.setForeground(UITheme.TEXT_PRIMARY);
+        // Pre-select if zone id provided
+        if (preselectZoneId != null) {
+            for (int i = 0; i < ownedZones.size(); i++) {
+                if (ownedZones.get(i).getId().equals(preselectZoneId)) {
+                    zoneBox.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
         content.add(zoneBox, gc);
 
-        gc.gridy = 4;
+        gc.gridy = 5;
         JLabel houseLabel = new JLabel("Grant claim to:");
         houseLabel.setFont(UITheme.FONT_BODY);
         houseLabel.setForeground(UITheme.TEXT_PRIMARY);
         content.add(houseLabel, gc);
 
-        gc.gridy = 5;
+        gc.gridy = 6;
         String[] houseNames = houses.stream().map(h ->
-                h.getName() + "  (opinion: " + h.getPlayerOpinion() + ")")
+                stripHousePrefix(h.getName()) + "  (opinion: " + h.getPlayerOpinion() + ")")
                 .toArray(String[]::new);
         JComboBox<String> houseBox = new JComboBox<>(houseNames);
         houseBox.setFont(UITheme.FONT_BODY);
@@ -110,20 +138,23 @@ public class GrantZoneClaimDialog {
         houseBox.setForeground(UITheme.TEXT_PRIMARY);
         content.add(houseBox, gc);
 
-        // Preview label
-        gc.gridy = 6;
-        JLabel preview = buildPreviewLabel(ownedZones, houses, zoneBox, houseBox,
-                nobleHouseManager, zoneManager);
+        gc.gridy = 7;
+        JLabel preview = new JLabel();
+        preview.setFont(UITheme.FONT_SMALL);
+        preview.setForeground(UITheme.TEXT_SECONDARY);
+        updatePreview(preview, ownedZones, houses, zoneBox, houseBox, nobleHouseManager);
         content.add(preview, gc);
 
-        // Update preview on change
-        zoneBox.addActionListener(e -> updatePreview(preview, ownedZones, houses,
-                zoneBox, houseBox, nobleHouseManager));
-        houseBox.addActionListener(e -> updatePreview(preview, ownedZones, houses,
-                zoneBox, houseBox, nobleHouseManager));
+        zoneBox.addActionListener(e ->
+                updatePreview(preview, ownedZones, houses, zoneBox, houseBox, nobleHouseManager));
+        houseBox.addActionListener(e ->
+                updatePreview(preview, ownedZones, houses, zoneBox, houseBox, nobleHouseManager));
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         btnRow.setBackground(UITheme.BG_PANEL);
+
+        boolean canAffordInfluence = resources.getInfluence()
+                >= GameParameters.GRANT_CLAIM_INFLUENCE_COST;
 
         JButton grantBtn = new JButton("GRANT CLAIM");
         grantBtn.setFont(UITheme.FONT_BUTTON);
@@ -131,20 +162,33 @@ public class GrantZoneClaimDialog {
         grantBtn.setBackground(UITheme.BUTTON_BG);
         grantBtn.setBorderPainted(false);
         grantBtn.setFocusPainted(false);
+        grantBtn.setEnabled(canAffordInfluence);
+        if (!canAffordInfluence)
+            grantBtn.setToolTipText("Not enough influence.");
+
+        final boolean[] granted = {false};
         grantBtn.addActionListener(e -> {
-            Zone selectedZone  = ownedZones.get(zoneBox.getSelectedIndex());
-            NobleHouse target  = houses.get(houseBox.getSelectedIndex());
-            NobleHouse owner   = nobleHouseManager.getOwnerOfZone(selectedZone.getId());
+            Zone       selectedZone = ownedZones.get(zoneBox.getSelectedIndex());
+            NobleHouse target       = houses.get(houseBox.getSelectedIndex());
+            NobleHouse owner        = nobleHouseManager.getOwnerOfZone(selectedZone.getId());
             if (owner == target) {
                 JOptionPane.showMessageDialog(dialog,
-                        target.getName() + " already owns this zone. Choose a different house or zone.");
+                        stripHousePrefix(target.getName())
+                        + " already owns this zone. Choose a different house or zone.");
                 return;
             }
-            main.actions.ActionResult result = action.grantClaim(selectedZone.getId(), target);
-            JOptionPane.showMessageDialog(dialog, result.getMessage(),
-                    "Claim Granted", JOptionPane.INFORMATION_MESSAGE);
-            onGranted.run();
-            dialog.dispose();
+            main.actions.ActionResult result =
+                    action.grantClaim(selectedZone.getId(), target, resources, ledger);
+            if (result.isSuccess()) {
+                granted[0] = true;
+                JOptionPane.showMessageDialog(dialog, result.getMessage(),
+                        "Claim Granted", JOptionPane.INFORMATION_MESSAGE);
+                onGranted.run();
+                dialog.dispose();
+            } else {
+                JOptionPane.showMessageDialog(dialog, result.getMessage(),
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
         });
 
         JButton cancelBtn = new JButton("CANCEL");
@@ -164,16 +208,10 @@ public class GrantZoneClaimDialog {
         dialog.setVisible(true);
     }
 
-    private static JLabel buildPreviewLabel(List<Zone> zones, List<NobleHouse> houses,
-                                             JComboBox<String> zoneBox,
-                                             JComboBox<String> houseBox,
-                                             NobleHouseManager nhm,
-                                             ZoneManager zm) {
-        JLabel lbl = new JLabel();
-        lbl.setFont(UITheme.FONT_SMALL);
-        lbl.setForeground(UITheme.TEXT_SECONDARY);
-        updatePreview(lbl, zones, houses, zoneBox, houseBox, nhm);
-        return lbl;
+    public static String stripHousePrefix(String name) {
+        if (name == null) return "";
+        if (name.startsWith("House ")) return name.substring(6);
+        return name;
     }
 
     private static void updatePreview(JLabel preview, List<Zone> zones, List<NobleHouse> houses,
@@ -183,13 +221,15 @@ public class GrantZoneClaimDialog {
         int zi = Math.max(0, zoneBox.getSelectedIndex());
         int hi = Math.max(0, houseBox.getSelectedIndex());
         if (zi >= zones.size() || hi >= houses.size()) return;
-        Zone z = zones.get(zi);
+        Zone       z      = zones.get(zi);
         NobleHouse target = houses.get(hi);
         NobleHouse owner  = nhm.getOwnerOfZone(z.getId());
-        String ownerText = owner != null ? owner.getName() + " ("
-                + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion)" : "none";
+        String ownerText = owner != null
+                ? stripHousePrefix(owner.getName()) + " ("
+                  + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion)"
+                : "none";
         preview.setText("<html>Owner: " + ownerText
-                + "  →  " + target.getName()
+                + "  →  " + stripHousePrefix(target.getName())
                 + " (+" + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS + " opinion)</html>");
     }
 }

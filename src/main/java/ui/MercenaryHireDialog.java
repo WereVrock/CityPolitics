@@ -1,35 +1,42 @@
 package ui;
 
+import main.army.Army;
+import main.army.ArmyManager;
 import main.mercenaries.MercenaryArmy;
 import main.mercenaries.MercenaryManager;
+import main.mercenaries.MercenaryRecruitmentHandler;
 import main.parameters.GameParameters;
 import main.resources.ResourcePool;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.List;
 
 /**
- * Dialog for hiring mercenary companies.
- * Opens when player clicks Hire Mercenaries.
+ * Dialog for hiring an existing player army as mercenaries.
+ * Player picks from eligible armies (in heartland, have commander, have soldiers).
  */
 public class MercenaryHireDialog {
 
     private MercenaryHireDialog() {}
 
-    public static void show(Window parent, MercenaryManager manager,
-                            ResourcePool resources, String heartlandId,
+    public static void show(Window parent, ArmyManager armyManager,
+                            MercenaryManager mercenaryManager,
+                            ResourcePool resources,
                             Runnable onHired) {
+        List<Army> eligible = MercenaryRecruitmentHandler.getEligibleArmies(armyManager);
+
         JDialog dialog = new JDialog(
                 parent instanceof Frame ? (Frame) parent : null,
                 "Hire Mercenaries", true);
-        dialog.setSize(460, 380);
+        dialog.setSize(500, 420);
         dialog.setLocationRelativeTo(parent);
         dialog.setResizable(false);
-        dialog.getContentPane().setBackground(ui.UITheme.BG_PANEL);
+        dialog.getContentPane().setBackground(UITheme.BG_PANEL);
 
         JPanel content = new JPanel(new GridBagLayout());
-        content.setBackground(ui.UITheme.BG_PANEL);
+        content.setBackground(UITheme.BG_PANEL);
         content.setBorder(new EmptyBorder(16, 16, 8, 16));
 
         GridBagConstraints gc = new GridBagConstraints();
@@ -37,94 +44,145 @@ public class MercenaryHireDialog {
         gc.insets = new Insets(4, 0, 4, 0);
 
         gc.gridy = 0;
-        JLabel title = new JLabel("Hire Mercenaries");
-        title.setFont(ui.UITheme.FONT_TITLE);
-        title.setForeground(ui.UITheme.TEXT_GOLD);
+        JLabel title = new JLabel("Hire an Army as Mercenaries");
+        title.setFont(UITheme.FONT_TITLE);
+        title.setForeground(UITheme.TEXT_GOLD);
         content.add(title, gc);
 
         gc.gridy = 1;
-        double costMultiplier = GameParameters.MERCENARY_COST_MULTIPLIER;
-        int goldPerSoldier = (int)(GameParameters.SOLDIER_RECRUIT_GOLD_COST * costMultiplier);
-        int manPerSoldier  = GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
-        double upkeepPerSoldier = GameParameters.SOLDIER_UPKEEP_GOLD * costMultiplier;
-        JLabel infoLabel = new JLabel("<html>Cost: " + goldPerSoldier
-                + " gold + " + manPerSoldier + " manpower per soldier.<br>"
-                + "Upkeep: " + String.format("%.1f", upkeepPerSoldier) + " gold/turn per soldier.<br>"
-                + "Warning: unsupervised mercenaries may raid zones (30% chance).</html>");
-        infoLabel.setFont(ui.UITheme.FONT_SMALL);
-        infoLabel.setForeground(ui.UITheme.TEXT_SECONDARY);
+        double mult = GameParameters.MERCENARY_COST_MULTIPLIER;
+        double upkeepMult = mult;
+        JLabel infoLabel = new JLabel("<html>"
+                + "Select one of your armies to hire out as mercenaries.<br>"
+                + "Cost: ~" + (int)(GameParameters.SOLDIER_RECRUIT_GOLD_COST * mult)
+                + "× per soldier (±15% variance).<br>"
+                + "Upkeep: " + String.format("%.1f", GameParameters.SOLDIER_UPKEEP_GOLD * upkeepMult)
+                + " gold/turn per soldier.<br>"
+                + "<font color='#C84646'>Warning: unsupervised mercenaries may raid (30% chance).</font>"
+                + "</html>");
+        infoLabel.setFont(UITheme.FONT_SMALL);
+        infoLabel.setForeground(UITheme.TEXT_SECONDARY);
         content.add(infoLabel, gc);
 
+        if (eligible.isEmpty()) {
+            gc.gridy = 2;
+            JLabel noArmies = new JLabel("No eligible armies. Need: in city, living commander, soldiers > 0.");
+            noArmies.setFont(UITheme.FONT_BODY);
+            noArmies.setForeground(UITheme.TEXT_RED);
+            content.add(noArmies, gc);
+
+            JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            btnRow.setBackground(UITheme.BG_PANEL);
+            JButton closeBtn = new JButton("CLOSE");
+            closeBtn.setFont(UITheme.FONT_BUTTON);
+            closeBtn.setForeground(UITheme.TEXT_SECONDARY);
+            closeBtn.setBackground(UITheme.BUTTON_BG);
+            closeBtn.setBorderPainted(false);
+            closeBtn.setFocusPainted(false);
+            closeBtn.addActionListener(e -> dialog.dispose());
+            btnRow.add(closeBtn);
+            dialog.setLayout(new BorderLayout());
+            dialog.add(content, BorderLayout.CENTER);
+            dialog.add(btnRow,  BorderLayout.SOUTH);
+            dialog.setVisible(true);
+            return;
+        }
+
         gc.gridy = 2;
-        JLabel nameLabel = new JLabel("Company Name:");
-        nameLabel.setFont(ui.UITheme.FONT_BODY);
-        nameLabel.setForeground(ui.UITheme.TEXT_PRIMARY);
-        content.add(nameLabel, gc);
+        JLabel pickLabel = new JLabel("Choose an army:");
+        pickLabel.setFont(UITheme.FONT_BODY);
+        pickLabel.setForeground(UITheme.TEXT_PRIMARY);
+        content.add(pickLabel, gc);
 
+        // Army list panel
         gc.gridy = 3;
-        JTextField nameField = new JTextField(generateMercName());
-        nameField.setFont(ui.UITheme.FONT_BODY);
-        nameField.setBackground(ui.UITheme.BG_PANEL_LIGHT);
-        nameField.setForeground(ui.UITheme.TEXT_PRIMARY);
-        nameField.setCaretColor(ui.UITheme.TEXT_PRIMARY);
-        content.add(nameField, gc);
+        gc.weighty = 1.0;
+        gc.fill = GridBagConstraints.BOTH;
+        ButtonGroup group = new ButtonGroup();
+        JPanel listPanel = new JPanel();
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        listPanel.setBackground(UITheme.BG_DARK);
 
-        gc.gridy = 4;
-        JLabel sizeLabel = new JLabel("Size (soldiers):");
-        sizeLabel.setFont(ui.UITheme.FONT_BODY);
-        sizeLabel.setForeground(ui.UITheme.TEXT_PRIMARY);
-        content.add(sizeLabel, gc);
+        final Army[] selected = {eligible.get(0)};
+        JLabel costDisplay = new JLabel();
+        costDisplay.setFont(UITheme.FONT_BODY);
+        costDisplay.setForeground(UITheme.TEXT_GOLD);
 
-        int maxByGold     = resources.getMoney()    / goldPerSoldier;
-        int maxByManpower = resources.getManpower() / manPerSoldier;
-        int maxSize       = Math.max(0, Math.min(maxByGold, maxByManpower));
+        for (Army army : eligible) {
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setBackground(UITheme.BG_PANEL_LIGHT);
+            row.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                    new EmptyBorder(6, 8, 6, 8)));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
 
-        final int[] amount = {Math.min(50, maxSize)};
+            JRadioButton rb = new JRadioButton();
+            rb.setBackground(UITheme.BG_PANEL_LIGHT);
+            group.add(rb);
+            if (army == selected[0]) rb.setSelected(true);
 
-        JLabel amountDisplay = new JLabel(String.valueOf(amount[0]));
-        amountDisplay.setFont(amountDisplay.getFont().deriveFont(Font.BOLD, 22f));
-        amountDisplay.setForeground(ui.UITheme.TEXT_GOLD);
+            JPanel info = new JPanel();
+            info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+            info.setBackground(UITheme.BG_PANEL_LIGHT);
 
-        JLabel costDisplay = new JLabel(buildCostString(amount[0], goldPerSoldier, manPerSoldier, upkeepPerSoldier));
-        costDisplay.setFont(ui.UITheme.FONT_SMALL);
-        costDisplay.setForeground(ui.UITheme.TEXT_SECONDARY);
+            String cmdName = army.hasLivingCommander()
+                    ? army.getCommander().getName() + "  [Skill "
+                      + army.getCommandingSkill() + "]" : "—";
+            JLabel nameL = new JLabel(army.getDisplayName());
+            nameL.setFont(UITheme.FONT_BUTTON);
+            nameL.setForeground(UITheme.TEXT_PRIMARY);
 
-        JSlider slider = new JSlider(0, Math.max(1, maxSize), amount[0]);
-        slider.setBackground(ui.UITheme.BG_PANEL);
-        slider.setForeground(ui.UITheme.TEXT_SECONDARY);
+            JLabel detailL = new JLabel("Size: " + army.getSize()
+                    + "   Commander: " + cmdName
+                    + "   Est. cost: ~" + MercenaryRecruitmentHandler.computeHireCostPreview(army) + "g");
+            detailL.setFont(UITheme.FONT_SMALL);
+            detailL.setForeground(UITheme.TEXT_SECONDARY);
 
-        slider.addChangeListener(e -> {
-            amount[0] = slider.getValue();
-            amountDisplay.setText(String.valueOf(amount[0]));
-            costDisplay.setText(buildCostString(amount[0], goldPerSoldier, manPerSoldier, upkeepPerSoldier));
-        });
+            info.add(nameL);
+            info.add(detailL);
 
-        gc.gridy = 5;
-        content.add(amountDisplay, gc);
-        gc.gridy = 6;
-        content.add(slider, gc);
-        gc.gridy = 7;
+            row.add(rb,   BorderLayout.WEST);
+            row.add(info, BorderLayout.CENTER);
+
+            row.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                    rb.setSelected(true);
+                    selected[0] = army;
+                    updateCostDisplay(costDisplay, army, resources);
+                }
+            });
+            listPanel.add(row);
+            listPanel.add(Box.createVerticalStrut(4));
+        }
+
+        JScrollPane scroll = new JScrollPane(listPanel);
+        scroll.setBorder(null);
+        scroll.setBackground(UITheme.BG_DARK);
+        scroll.getViewport().setBackground(UITheme.BG_DARK);
+        content.add(scroll, gc);
+
+        gc.gridy = 4; gc.weighty = 0; gc.fill = GridBagConstraints.HORIZONTAL;
+        updateCostDisplay(costDisplay, selected[0], resources);
         content.add(costDisplay, gc);
 
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
-        btnRow.setBackground(ui.UITheme.BG_PANEL);
+        btnRow.setBackground(UITheme.BG_PANEL);
 
         JButton hireBtn = new JButton("HIRE");
-        hireBtn.setFont(ui.UITheme.FONT_BUTTON);
-        hireBtn.setForeground(ui.UITheme.TEXT_GOLD);
-        hireBtn.setBackground(ui.UITheme.BUTTON_BG);
+        hireBtn.setFont(UITheme.FONT_BUTTON);
+        hireBtn.setForeground(UITheme.TEXT_GOLD);
+        hireBtn.setBackground(UITheme.BUTTON_BG);
         hireBtn.setBorderPainted(false);
         hireBtn.setFocusPainted(false);
         hireBtn.addActionListener(e -> {
-            if (amount[0] <= 0) {
-                JOptionPane.showMessageDialog(dialog, "Must hire at least 1 soldier.");
-                return;
-            }
-            String name = nameField.getText().trim();
-            if (name.isEmpty()) name = generateMercName();
-            MercenaryArmy hired = manager.hire(name, amount[0], heartlandId, resources);
-            if (hired == null) {
-                JOptionPane.showMessageDialog(dialog, "Cannot afford. Check gold and manpower.");
+            if (selected[0] == null) return;
+            MercenaryArmy merc = MercenaryRecruitmentHandler.hire(
+                    selected[0], resources, mercenaryManager);
+            if (merc == null) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Cannot afford. Cost: ~"
+                        + MercenaryRecruitmentHandler.computeHireCostPreview(selected[0])
+                        + " gold. Available: " + resources.getMoney());
             } else {
                 onHired.run();
                 dialog.dispose();
@@ -132,9 +190,9 @@ public class MercenaryHireDialog {
         });
 
         JButton cancelBtn = new JButton("CANCEL");
-        cancelBtn.setFont(ui.UITheme.FONT_BUTTON);
-        cancelBtn.setForeground(ui.UITheme.TEXT_SECONDARY);
-        cancelBtn.setBackground(ui.UITheme.BUTTON_BG);
+        cancelBtn.setFont(UITheme.FONT_BUTTON);
+        cancelBtn.setForeground(UITheme.TEXT_SECONDARY);
+        cancelBtn.setBackground(UITheme.BUTTON_BG);
         cancelBtn.setBorderPainted(false);
         cancelBtn.setFocusPainted(false);
         cancelBtn.addActionListener(e -> dialog.dispose());
@@ -148,21 +206,16 @@ public class MercenaryHireDialog {
         dialog.setVisible(true);
     }
 
-    private static String buildCostString(int n, int goldPer, int manPer, double upkeepPer) {
-        return "Recruitment: " + (n * goldPer) + " gold + " + (n * manPer)
-                + " manpower  |  Upkeep: " + String.format("%.1f", n * upkeepPer) + " gold/turn";
-    }
-
-    private static final String[] MERC_ADJECTIVES = {
-        "Iron", "Silver", "Bloody", "Steel", "Black", "Golden", "Shadow", "Cursed"
-    };
-    private static final String[] MERC_NOUNS = {
-        "Fang", "Claw", "Sword", "Shield", "Band", "Company", "Dogs", "Ravens"
-    };
-
-    private static String generateMercName() {
-        String adj  = MERC_ADJECTIVES[(int)(Math.random() * MERC_ADJECTIVES.length)];
-        String noun = MERC_NOUNS[(int)(Math.random() * MERC_NOUNS.length)];
-        return "The " + adj + " " + noun;
+    private static void updateCostDisplay(JLabel label, Army army, ResourcePool resources) {
+        int preview = MercenaryRecruitmentHandler.computeHireCostPreview(army);
+        int minCost = (int)(preview * (1 - GameParameters.MERCENARY_RECRUIT_COST_VARIANCE));
+        int maxCost = (int)(preview * (1 + GameParameters.MERCENARY_RECRUIT_COST_VARIANCE));
+        boolean canAfford = resources.getMoney() >= minCost;
+        label.setText("Estimated cost: " + minCost + "–" + maxCost
+                + " gold  |  Available: " + resources.getMoney()
+                + "  |  Upkeep: " + String.format("%.1f",
+                        army.getSize() * GameParameters.SOLDIER_UPKEEP_GOLD
+                        * GameParameters.MERCENARY_COST_MULTIPLIER) + "/turn");
+        label.setForeground(canAfford ? UITheme.TEXT_GOLD : UITheme.TEXT_RED);
     }
 }

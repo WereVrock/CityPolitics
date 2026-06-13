@@ -5,7 +5,7 @@ import main.politics.DealOffer;
 import main.politics.PoliticalParty;
 import main.politics.SideLeader;
 import main.politics.VotingSession;
-import main.politics.VotingSession.SideDealResult;
+import main.politics.SideDealResult;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

@@ -12,8 +12,7 @@ import java.util.List;
 
 /**
  * Realm action — Grant Zone Claim to a Noble.
- * Player picks a zone and a noble to receive the claim.
- * Owner gets large opinion malus, target gets bonus, other claimants get minor malus.
+ * Costs 5 influence. Opens dialog. Use is only consumed when a claim is actually granted.
  */
 public class GrantZoneClaimAction extends AbstractAction {
 
@@ -21,7 +20,8 @@ public class GrantZoneClaimAction extends AbstractAction {
     private final ClaimManager      claimManager;
 
     public interface GrantClaimDialogCallback {
-        void openDialog();
+        /** Return true if a grant was actually made (consumes use), false if cancelled. */
+        boolean openDialog();
     }
 
     private GrantClaimDialogCallback dialogCallback;
@@ -41,8 +41,9 @@ public class GrantZoneClaimAction extends AbstractAction {
 
     @Override
     public String getDescription() {
-        return "Grant a claim on a zone to a noble house. "
-                + "Owner suffers opinion loss; target gains opinion.";
+        return "Grant a claim on a zone to a noble house. Costs "
+                + GameParameters.GRANT_CLAIM_INFLUENCE_COST
+                + " influence. Owner suffers opinion loss; target gains opinion.";
     }
 
     @Override
@@ -54,7 +55,14 @@ public class GrantZoneClaimAction extends AbstractAction {
             return ActionResult.fail("Grant Zone Claim already used this turn.");
         }
         if (dialogCallback != null) {
-            dialogCallback.openDialog();
+            boolean granted = dialogCallback.openDialog();
+            if (granted) {
+                recordUse();
+                return ActionResult.ok("Claim granted successfully.");
+            } else {
+                // Cancelled — do NOT consume use
+                return ActionResult.ok("Grant Zone Claim cancelled.");
+            }
         }
         recordUse();
         return ActionResult.ok("Grant Zone Claim dialog opened.");
@@ -62,42 +70,42 @@ public class GrantZoneClaimAction extends AbstractAction {
 
     /**
      * Called by dialog when player confirms grant.
+     * Deducts influence cost, applies opinion changes, adds claim.
      */
-    public ActionResult grantClaim(String zoneId, NobleHouse target) {
+    public ActionResult grantClaim(String zoneId, NobleHouse target,
+                                    ResourcePool resources, main.ledger.Ledger ledger) {
+        if (resources.getInfluence() < GameParameters.GRANT_CLAIM_INFLUENCE_COST) {
+            return ActionResult.fail("Not enough influence. Need "
+                    + GameParameters.GRANT_CLAIM_INFLUENCE_COST + ".");
+        }
         if (claimManager.hasClaim(target.getId(), zoneId)) {
             return ActionResult.fail(target.getName() + " already has a claim on this zone.");
         }
+        ledger.applyOneTime(main.resources.ResourceType.INFLUENCE, "realm", getName(),
+                -GameParameters.GRANT_CLAIM_INFLUENCE_COST, resources);
 
         claimManager.addClaim(target.getId(), zoneId);
 
-        // Opinion effects
         NobleHouse owner = nobleHouseManager.getOwnerOfZone(zoneId);
         if (owner != null && owner != target) {
             owner.adjustPlayerOpinion(GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS);
-            debug.Debug.log("realm-action", "grant-claim",
-                    "Owner " + owner.getName() + " opinion " + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS);
         }
-
         target.adjustPlayerOpinion(GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS);
-        debug.Debug.log("realm-action", "grant-claim",
-                "Target " + target.getName() + " opinion +" + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS);
 
-        // Other claimants get minor malus
         for (NobleHouse house : nobleHouseManager.getHouses()) {
             if (house == target || house.isEliminated()) continue;
             if (claimManager.hasClaim(house.getId(), zoneId)) {
                 house.adjustPlayerOpinion(GameParameters.GRANT_CLAIM_OTHER_CLAIMANT_MALUS);
-                debug.Debug.log("realm-action", "grant-claim",
-                        "Other claimant " + house.getName()
-                        + " opinion " + GameParameters.GRANT_CLAIM_OTHER_CLAIMANT_MALUS);
             }
         }
 
         String ownerMsg = owner != null
                 ? " " + owner.getName() + " is displeased ("
                   + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion)." : "";
-        return ActionResult.ok("Granted claim on " + zoneId + " to " + target.getName()
-                + ". Opinion +" + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS + "."
-                + ownerMsg);
+        debug.Debug.log("realm-action", "grant-claim",
+                zoneId + " → " + target.getName());
+        return ActionResult.ok("Granted claim on " + zoneId + " to "
+                + target.getName() + ". Opinion +"
+                + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS + "." + ownerMsg);
     }
 }

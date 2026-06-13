@@ -1,16 +1,14 @@
 // MapInfoPanel.java
 package ui.map;
 
-import main.army.Army;
 import main.map.Zone;
 import main.map.ZoneManager;
 import main.map.ZoneState;
+import ui.GrantZoneClaimDialog;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import ui.UITheme;
 
 public class MapInfoPanel extends JPanel {
@@ -44,6 +42,10 @@ private final JLabel   popsLabel;
 private final JLabel   supplyLabel;
 private final JLabel   damageLabel;
 private final JTextArea adjacentArea;
+
+// Zone claims
+private final JPanel   claimsPanel;
+private       java.util.function.BiConsumer<String, main.nobles.NobleHouseManager> grantClaimFromMapCallback;
 
 // Army
 private final JLabel   armyTitleLabel;
@@ -103,6 +105,10 @@ adjacentArea.setFont(UITheme.FONT_SMALL);
 adjacentArea.setLineWrap(true);
 adjacentArea.setWrapStyleWord(true);
 
+claimsPanel = new JPanel();
+claimsPanel.setLayout(new BoxLayout(claimsPanel, BoxLayout.Y_AXIS));
+claimsPanel.setBackground(UITheme.BG_PANEL);
+
 JPanel zoneCard = new JPanel(new GridBagLayout());
 zoneCard.setBackground(UITheme.BG_PANEL);
 
@@ -123,8 +129,11 @@ zc.gridy = 7;  zoneCard.add(sep(),          zc);
 zc.gridy = 8;  zoneCard.add(supplyLabel,    zc);
 zc.gridy = 9;  zoneCard.add(damageLabel,    zc);
 zc.gridy = 10; zoneCard.add(sep(),          zc);
-zc.gridy = 11; zoneCard.add(makeLabel("Adjacent:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
-zc.gridy   = 12;
+zc.gridy = 11; zoneCard.add(makeLabel("Claims:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
+zc.gridy = 12; zoneCard.add(claimsPanel,    zc);
+zc.gridy = 13; zoneCard.add(sep(),          zc);
+zc.gridy = 14; zoneCard.add(makeLabel("Adjacent:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
+zc.gridy   = 15;
 zc.weighty = 1.0;
 zc.fill    = GridBagConstraints.BOTH;
 zoneCard.add(adjacentArea, zc);
@@ -212,7 +221,9 @@ public void showZone(Zone zone) {
 
     main.nobles.NobleHouse owner = nobleHouseManager.getOwnerOfZone(zone.getId());
     if (owner != null) {
-        ownerButton.setText("<html><body>⚑ " + owner.getName() + "</body></html>");
+        ownerButton.setText("<html><body>⚑ "
+                + GrantZoneClaimDialog.stripHousePrefix(owner.getName())
+                + "</body></html>");
         ownerButton.setForeground(new Color(220, 190, 130));
         ownerButton.addActionListener(e -> showHouseDialog(owner));
     } else {
@@ -244,7 +255,6 @@ public void showZone(Zone zone) {
             + "   Garrison: " + garrison + "/" + maxGarr);
     }
 
-    // Ravaged status
     if (ravagedZoneManager != null) {
         main.barbarians.RavagedZoneManager.RavagedLevel lvl =
                 ravagedZoneManager.getLevel(zone.getId());
@@ -258,6 +268,9 @@ public void showZone(Zone zone) {
             damageLabel.setForeground(UITheme.TEXT_RED);
         }
     }
+
+    // Claims panel
+    updateClaimsPanel(zone.getId());
 
     StringBuilder sb = new StringBuilder();
     for (String adjId : zone.getAdjacentIds()) {
@@ -385,9 +398,9 @@ public void showBarbArmy(main.barbarians.BarbArmy army,
     if (army == null) { clearArmy(); return; }
 
     String typeLabel = switch (army.getType()) {
-        case WARBOSS -> "☠ THE WARBOSS";
-        case RAIDER  -> "☠ Raiders";
-        case RAVAGER -> "☠ Ravagers";
+        case WARBOSS -> "☠ " + army.getDisplayName();
+        case RAIDER  -> "☠ " + army.getDisplayName();
+        case RAVAGER -> "☠ " + army.getDisplayName();
     };
     armyTitleLabel.setForeground(new java.awt.Color(220, 60, 40));
     armyTitleLabel.setText(typeLabel);
@@ -396,11 +409,15 @@ public void showBarbArmy(main.barbarians.BarbArmy army,
     armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
     armySizeLabel.setText("Warriors: " + army.getSize());
 
-    String flavour = switch (army.getType()) {
-        case WARBOSS -> "The Warboss leads the horde. Destroy him to end the invasion.";
-        case RAIDER  -> "Fast-moving raiders. They prefer undefended lands.";
-        case RAVAGER -> "Heavy ravagers. They leave ruin in their wake.";
-    };
+        String flavour = switch (army.getType()) {
+            case WARBOSS -> "The great horde — driven from their homeland by the Frost Giants. "
+                    + "Destroy the Warboss to end the invasion. They do not come to conquer. "
+                    + "They come because something worse follows.";
+            case RAIDER  -> "Fleeing survivors. Desperate, fast-moving, and dangerous. "
+                    + "They raid to survive the march south.";
+            case RAVAGER -> "Heavy warbands. The last to flee — and the most organized. "
+                    + "They leave ruin wherever they pass.";
+        };
     armyStatusLabel.setText("<html><body style='width:160px'>" + flavour + "</body></html>");
     armyUpkeepLabel.setText("");
 
@@ -700,6 +717,56 @@ private String skillDescription(int skill) {
         revalidate();
         repaint();
     }
+
+private void updateClaimsPanel(String zoneId) {
+    claimsPanel.removeAll();
+    java.util.List<main.nobles.NobleHouse> claimants = new java.util.ArrayList<>();
+    for (main.nobles.NobleHouse h : nobleHouseManager.getHouses()) {
+        if (nobleHouseManager.getClaimManager().hasClaim(h.getId(), zoneId)) {
+            claimants.add(h);
+        }
+    }
+    claimants.sort(java.util.Comparator.comparing(
+            h -> GrantZoneClaimDialog.stripHousePrefix(h.getName())));
+
+    if (claimants.isEmpty()) {
+        JLabel none = makeLabel("  No claims.", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL);
+        claimsPanel.add(none);
+    } else {
+        for (main.nobles.NobleHouse h : claimants) {
+            JLabel lbl = makeLabel("  ⚑ " + GrantZoneClaimDialog.stripHousePrefix(h.getName()),
+                    new Color(200, 180, 100), UITheme.FONT_SMALL);
+            claimsPanel.add(lbl);
+        }
+    }
+
+    // Grant claim quick button
+    JButton grantBtn = new JButton("+ Grant Claim Here");
+    grantBtn.setFont(UITheme.FONT_SMALL);
+    grantBtn.setForeground(UITheme.TEXT_GOLD);
+    grantBtn.setBackground(UITheme.BG_PANEL_LIGHT);
+    grantBtn.setBorderPainted(true);
+    grantBtn.setFocusPainted(false);
+    grantBtn.setAlignmentX(LEFT_ALIGNMENT);
+    grantBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+    grantBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    grantBtn.setMargin(new Insets(2, 6, 2, 6));
+    grantBtn.addActionListener(e -> {
+        if (grantClaimFromMapCallback != null) {
+            grantClaimFromMapCallback.accept(zoneId, nobleHouseManager);
+        }
+    });
+    claimsPanel.add(Box.createVerticalStrut(3));
+    claimsPanel.add(grantBtn);
+
+    claimsPanel.revalidate();
+    claimsPanel.repaint();
+}
+
+public void setGrantClaimFromMapCallback(
+        java.util.function.BiConsumer<String, main.nobles.NobleHouseManager> cb) {
+    this.grantClaimFromMapCallback = cb;
+}
 
 }
 

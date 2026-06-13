@@ -95,12 +95,22 @@ public SideDealResult applySideDeal(PoliticalParty party,
         debug.Debug.log("voting", "side-deal-blocked", party.getName() + " already side-dealt");
         return new SideDealResult(0, "Already negotiated with secondary leader.");
     }
-    DealOffer mainOffer  = new DealOffer(party, scores.getOrDefault(party, 0.0));
-    // Half of main deal, but never below minimums
-    int goldCost      = Math.max(GameParameters.DEAL_MIN_MONEY / 2 + 1,
+
+    // Side deals ALWAYS cost resources, never favour.
+    // Use half of main offer's resource costs, but apply minimums independently.
+    DealOffer mainOffer = new DealOffer(party, scores.getOrDefault(party, 0.0));
+    int goldCost;
+    int influenceCost;
+    if (mainOffer.isFavourOnly()) {
+        // When main deal is favour-only, side deal costs minimums
+        goldCost      = GameParameters.DEAL_MIN_MONEY;
+        influenceCost = GameParameters.DEAL_MIN_INFLUENCE;
+    } else {
+        goldCost      = Math.max(GameParameters.DEAL_MIN_MONEY / 2 + 1,
                                   mainOffer.getMoneyCost() / 2);
-    int influenceCost = Math.max(GameParameters.DEAL_MIN_INFLUENCE / 2 + 1,
+        influenceCost = Math.max(GameParameters.DEAL_MIN_INFLUENCE / 2 + 1,
                                   mainOffer.getInfluenceCost() / 2);
+    }
 
     debug.Debug.log("voting", "side-deal-attempt", party.getName()
             + " goldCost=" + goldCost + " influenceCost=" + influenceCost
@@ -128,7 +138,7 @@ public SideDealResult applySideDeal(PoliticalParty party,
 
     return new SideDealResult(seatsWon,
             "The secondary leader convinced " + seatsWon + " of "
-            + party.getSeats() + " seats to vote with you.");
+            + party.getSeats() + " seats.");
 }
 
 public boolean hasSideDealt(PoliticalParty party) {
@@ -163,14 +173,4 @@ public boolean hasSideDealt(PoliticalParty party) {
     public void                    setPlayerIntent(PartyVoteIntent i) { playerIntent = i; }
     public int                     getFavourOwed(PoliticalParty p)    { return favour.getOrDefault(p, 0); }
 
-    // ─── Side deal result record ──────────────────────────────────────────────
-
-    public static class SideDealResult {
-        public final int    seatsWon;
-        public final String message;
-        public SideDealResult(int seatsWon, String message) {
-            this.seatsWon = seatsWon;
-            this.message  = message;
-        }
-    }
 }

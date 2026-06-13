@@ -102,21 +102,32 @@ public void refresh() {
     boolean available = action.isAvailable();
     button.setEnabled(available);
     button.setBackground(available ? UITheme.BUTTON_BG : UITheme.BUTTON_DISABLED);
-    usesLabel.setText(action.getUsesThisTurn() + "/" + action.getMaxUsesPerTurn());
 
-    // Show reason for disabled state if action supports it
+    // Formal actions and legislation-gated actions don't show per-action use counter
+    // (the shared vote counter in ActionsPanel header handles that)
+    boolean isFormal   = action instanceof main.actions.AbstractFormalAction;
+    boolean isLegGated = action instanceof main.actions.WartimeTaxesAction
+            || action instanceof main.actions.HireMercenariesAction
+            || action instanceof main.actions.SendResourcesToNoblesAction
+            || action instanceof main.actions.GrantZoneClaimAction;
+    if (isFormal || isLegGated) {
+        usesLabel.setText("");
+    } else {
+        usesLabel.setText(action.getUsesThisTurn() + "/" + action.getMaxUsesPerTurn());
+    }
+
     if (!available) {
         String reason = null;
         if (action instanceof main.actions.WartimeTaxesAction wta) {
             reason = wta.getUnavailableReason();
         } else if (action instanceof main.actions.HireMercenariesAction) {
-            reason = "Mercenary hiring not authorised this turn.";
-        } else if (action instanceof main.actions.AllowMercenariesAction) {
-            reason = !gameState.getLegislationManager().isPassed(
-                    main.legislation.LegislationType.MERCENARY_ALLOWANCE_LAW)
-                    ? "Requires Mercenary Allowance Law to be passed."
-                    : action.getUsesThisTurn() >= action.getMaxUsesPerTurn()
-                    ? "Already used this turn." : null;
+            reason = "Mercenary hiring not currently authorised.";
+        } else if (action instanceof main.actions.AbstractFormalAction) {
+            if (gameState.getActionRegistry().isFormalUsedThisTurn()) {
+                reason = "Formal/legislation vote already used this turn.";
+            } else if (gameState.hasActiveSession()) {
+                reason = "A vote session is already pending.";
+            }
         }
         button.setToolTipText(reason != null ? reason : "Not available right now.");
     } else {

@@ -21,29 +21,12 @@ public class MercenaryManager {
     // ─── Recruitment ─────────────────────────────────────────────────────────
 
     /**
-     * Hire a mercenary company. Returns null if resources insufficient.
-     * Cost = SOLDIER_RECRUIT_GOLD_COST * MERCENARY_COST_MULTIPLIER per soldier.
+     * Adds a pre-built mercenary army (from MercenaryRecruitmentHandler).
      */
-    public MercenaryArmy hire(String displayName, int size,
-                              String zoneId, ResourcePool resources) {
-        int cost = (int)(size
-                * GameParameters.SOLDIER_RECRUIT_GOLD_COST
-                * GameParameters.MERCENARY_COST_MULTIPLIER);
-        int manpowerCost = size * GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
-        if (resources.getMoney() < cost) {
-            Debug.log("mercenaries", "hire-fail", "Not enough gold. Need " + cost);
-            return null;
-        }
-        if (resources.getManpower() < manpowerCost) {
-            Debug.log("mercenaries", "hire-fail", "Not enough manpower. Need " + manpowerCost);
-            return null;
-        }
-        resources.spendMoney(cost);
-        resources.spendManpower(manpowerCost);
-        MercenaryArmy army = new MercenaryArmy(displayName, size, zoneId);
+    public void addFromArmy(MercenaryArmy army) {
         armies.add(army);
-        Debug.log("mercenaries", "hired", army.getId() + " size=" + size + " cost=" + cost);
-        return army;
+        Debug.log("mercenaries", "add", army.getId() + " " + army.getDisplayName()
+                + " size=" + army.getSize());
     }
 
     // ─── Per-turn upkeep ─────────────────────────────────────────────────────

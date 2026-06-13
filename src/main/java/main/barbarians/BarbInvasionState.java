@@ -17,7 +17,7 @@ public class BarbInvasionState {
     private int    turnsSinceInvasionStart; // used for warboss size scaling
     private int    nextWaveTurn;            // absolute turn number of next wave
     private int    waveHalfPending;         // 0 = none, 1 = second half pending next turn
-    private int    totalTurnsElapsed;       // injected from calendar each turn
+    private int    wavesSpawned;            // incremented each time a full wave completes
 
     private final Random rng = new Random();
 
@@ -35,11 +35,13 @@ public class BarbInvasionState {
         phase                  = Phase.COUNTDOWN;
         turnsSinceInvasionStart = 0;
         waveHalfPending         = 0;
+        wavesSpawned            = 0;
     }
 
     public void startInvasion(int absoluteTurn) {
         phase                   = Phase.ACTIVE;
         turnsSinceInvasionStart = 0;
+        wavesSpawned            = 0;
         scheduleNextWave(absoluteTurn);
     }
 
@@ -81,7 +83,10 @@ public class BarbInvasionState {
     }
 
     public void markFirstHalfSpawned()  { waveHalfPending = 1; }
-    public void markSecondHalfSpawned() { waveHalfPending = 0; }
+    public void markSecondHalfSpawned() {
+        waveHalfPending = 0;
+        wavesSpawned++;
+    }
 
     // ─── Accessors ───────────────────────────────────────────────────────────
 
@@ -91,4 +96,12 @@ public class BarbInvasionState {
     public int     getCountdownTurns()         { return countdownTurns; }
     public int     getTurnsSinceInvasionStart(){ return turnsSinceInvasionStart; }
     public int     getNextWaveTurn()           { return nextWaveTurn; }
+
+/** Returns true for the first N waves — early waves spawn smaller, faster fleeing tribes. */
+public boolean isEarlyWave() {
+    return wavesSpawned < GameParameters.BARB_EARLY_WAVE_COUNT;
+}
+
+public int getWavesSpawned() { return wavesSpawned; }
+
 }

@@ -6,6 +6,7 @@ import ui.politics.VoteSessionPanel;
 import main.actions.ActionResult;
 import main.core.GameState;
 import main.Main;
+import ui.GrantZoneClaimDialog;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -486,23 +487,24 @@ private void swapCenter(JPanel panel) {
     }
 
 private void showMilitaryView() {
-        main.army.commander.CommanderRoster      roster = gameState.getCommanderRoster();
-        main.army.commander.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
-        ui.MilitaryMenuUI militaryUI = new ui.MilitaryMenuUI(
-                gameState.getArmyManager(),
-                roster,
-                pool,
-                gameState.getResources(),
-                gameState.getPartyManager(),
-                this::showMainView,
-                () -> {
-                    resourcePanel.refresh();
-                    popPanel.refresh();
-                });
-        swapCenter(militaryUI);
-    }
+    main.army.commander.CommanderRoster      roster = gameState.getCommanderRoster();
+    main.army.commander.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
+    ui.MilitaryMenuUI militaryUI = new ui.MilitaryMenuUI(
+            gameState.getArmyManager(),
+            roster,
+            pool,
+            gameState.getResources(),
+            gameState.getPartyManager(),
+            gameState.getMercenaryManager(),
+            this::showMainView,
+            () -> {
+                resourcePanel.refresh();
+                popPanel.refresh();
+            });
+    swapCenter(militaryUI);
+}
 
-    private void showVoteSession() {
+private void showVoteSession() {
         // Rebuild panel in case gameState changed
         voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
         voteSessionPanel.refresh();
@@ -831,9 +833,9 @@ private void rewireCallbacks() {
             .setHireDialogCallback(() ->
                 ui.MercenaryHireDialog.show(
                         this,
+                        gameState.getArmyManager(),
                         gameState.getMercenaryManager(),
                         gameState.getResources(),
-                        main.army.Army.HEARTLAND_ID,
                         () -> { resourcePanel.refresh(); popPanel.refresh(); }));
 
     // Send Resources to Nobles dialog
@@ -849,13 +851,18 @@ private void rewireCallbacks() {
 
     // Grant Zone Claim dialog
     gameState.getActionRegistry().getGrantZoneClaimAction()
-            .setDialogCallback(() ->
+            .setDialogCallback(() -> {
                 ui.GrantZoneClaimDialog.show(
                         this,
                         gameState.getActionRegistry().getGrantZoneClaimAction(),
                         gameState.getNobleHouseManager(),
                         gameState.getZoneManager(),
-                        () -> actionsPanel.refresh()));
+                        gameState.getResources(),
+                        gameState.getLedger(),
+                        null,
+                        () -> actionsPanel.refresh());
+                return false;
+            });
 
     // Recreate vote session panel with new reference after reset
     voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);

@@ -197,8 +197,10 @@ private void drawGarrisons(Graphics2D g2) {
             g2.setStroke(new BasicStroke(1f));
         }
 
-        // Size label
-        String lbl = String.valueOf(army.getSize());
+        // Size label with tribe name
+        String lbl = army.getDisplayName().length() > 12
+                ? army.getSize() + ""
+                : army.getDisplayName().split(" ")[0] + " " + army.getSize();
         g2.setFont(FONT_LABEL);
         FontMetrics fm = g2.getFontMetrics();
         int lx = cx - fm.stringWidth(lbl) / 2;

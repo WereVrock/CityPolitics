@@ -47,6 +47,7 @@ public class GameState {
     private RavagedZoneManager    ravagedZoneManager;
     private BarbInvasionProcessor barbInvasionProcessor;
     private main.army.PlayerCombatProcessor playerCombatProcessor;
+    private main.army.PlayerBattleInterventionProcessor battleInterventionProcessor;
     private main.army.commander.CommanderRoster       commanderRoster;
     private main.army.commander.CommanderRecruitPool  commanderRecruitPool;
 
@@ -93,8 +94,9 @@ public class GameState {
                 armyManager);
         nobleHouseManager.setRavagedZoneManager(ravagedZoneManager);
         nobleHouseManager.setBarbArmyManager(barbArmyManager);
-        playerCombatProcessor = new main.army.PlayerCombatProcessor();
+        playerCombatProcessor        = new main.army.PlayerCombatProcessor();
         playerCombatProcessor.setPartyManager(partyManager);
+        battleInterventionProcessor  = new main.army.PlayerBattleInterventionProcessor();
         commanderRoster      = new main.army.commander.CommanderRoster(resources, partyManager);
         commanderRecruitPool = new main.army.commander.CommanderRecruitPool(resources, partyManager);
 
@@ -169,6 +171,9 @@ public class GameState {
     public BarbInvasionProcessor       getBarbInvasionProcessor()  { return barbInvasionProcessor; }
     public main.ledger.Ledger          getLedger()                 { return ledger; }
     public main.army.PlayerCombatProcessor getPlayerCombatProcessor() { return playerCombatProcessor; }
+    public main.army.PlayerBattleInterventionProcessor getBattleInterventionProcessor() {
+        return battleInterventionProcessor;
+    }
     public main.army.commander.CommanderRoster       getCommanderRoster()       { return commanderRoster; }
     public main.army.commander.CommanderRecruitPool  getCommanderRecruitPool()  { return commanderRecruitPool; }
 

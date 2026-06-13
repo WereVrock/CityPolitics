@@ -130,8 +130,23 @@ public final class GameParameters {
     // =========================================================
     // ACTION: WARTIME TAXES
     // =========================================================
-    public static final int    WARTIME_TAXES_GOLD_PER_POP   = 10;
-    public static final int    WARTIME_TAXES_COOLDOWN_TURNS = 6;
+    public static final int    WARTIME_TAXES_GOLD_PER_POP      = 10;
+    public static final int    WARTIME_TAXES_COOLDOWN_TURNS     = 6;
+    public static final int    WARTIME_TAXES_INFLUENCE_COST     = 10;
+    public static final int    WARTIME_TAXES_HAPPINESS_COST     = 8;
+
+    // =========================================================
+    // GRANT ZONE CLAIM
+    // =========================================================
+    public static final int    GRANT_CLAIM_INFLUENCE_COST       = 5;
+
+    // =========================================================
+    // BARBARIAN TRIBES — first 2 waves (early/fleeing)
+    // =========================================================
+    /** Fraction of normal wave size for early fleeing waves. */
+    public static final double BARB_EARLY_WAVE_SIZE_FRACTION    = 0.40;
+    /** Number of fast early waves before normal waves begin. */
+    public static final int    BARB_EARLY_WAVE_COUNT            = 2;
 
     // =========================================================
     // ACTION: ALLOW MERCENARIES (voted formal action)
@@ -169,6 +184,8 @@ public final class GameParameters {
     public static final double MERCENARY_RAID_ALLY_THRESHOLD = 1.5;
     /** Chance per turn that an unsupervised mercenary army raids. */
     public static final double MERCENARY_RAID_CHANCE        = 0.30;
+    /** Cost variance for mercenary recruitment (±fraction). */
+    public static final double MERCENARY_RECRUIT_COST_VARIANCE = 0.15;
 
     // =========================================================
     // VOTING

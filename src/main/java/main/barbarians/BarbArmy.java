@@ -18,6 +18,7 @@ public class BarbArmy {
     private final Type   type;
     private       int    size;
     private       String zoneId;
+    private       String displayName;
 
     // Movement
     private String nextZoneId;        // pre-calculated next move (visible to player for warboss)
@@ -42,8 +43,10 @@ public class BarbArmy {
 
     // ─── Identity ────────────────────────────────────────────────────────────
 
-    public String getId()      { return id; }
-    public Type   getType()    { return type; }
+    public String getId()          { return id; }
+    public Type   getType()        { return type; }
+    public String getDisplayName() { return displayName != null ? displayName : type.name(); }
+    public void   setDisplayName(String n) { this.displayName = n; }
     public boolean isWarboss() { return type == Type.WARBOSS; }
     public boolean isRaider()  { return type == Type.RAIDER; }
     public boolean isRavager() { return type == Type.RAVAGER; }

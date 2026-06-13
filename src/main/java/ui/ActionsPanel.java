@@ -42,6 +42,7 @@ public class ActionsPanel extends JPanel {
     private JButton tabLeg;
     private JButton tabRealm;
     private JLabel  sharedVoteLabel;
+    private String  currentTab = TAB_AUTH;
 
     public ActionsPanel(GameState gameState, Consumer<ActionResult> onResult) {
         this.gameState  = gameState;
@@ -123,22 +124,23 @@ public class ActionsPanel extends JPanel {
         return btn;
     }
 
-    private void showTab(String tab) {
-        cardLayout.show(cardPanel, tab);
-        Color active   = UITheme.TEXT_GOLD;
-        Color inactive = UITheme.TEXT_SECONDARY;
-        Color bgActive = new Color(35, 28, 52);
-        tabAuth.setForeground(TAB_AUTH.equals(tab)   ? active : inactive);
-        tabFormal.setForeground(TAB_FORMAL.equals(tab)? active : inactive);
-        tabLeg.setForeground(TAB_LEG.equals(tab)     ? active : inactive);
-        tabRealm.setForeground(TAB_REALM.equals(tab) ? active : inactive);
-        tabAuth.setBackground(TAB_AUTH.equals(tab)   ? bgActive : UITheme.BUTTON_BG);
-        tabFormal.setBackground(TAB_FORMAL.equals(tab)? bgActive : UITheme.BUTTON_BG);
-        tabLeg.setBackground(TAB_LEG.equals(tab)     ? bgActive : UITheme.BUTTON_BG);
-        tabRealm.setBackground(TAB_REALM.equals(tab) ? bgActive : UITheme.BUTTON_BG);
-    }
+private void showTab(String tab) {
+    currentTab = tab;
+    cardLayout.show(cardPanel, tab);
+    Color active   = UITheme.TEXT_GOLD;
+    Color inactive = UITheme.TEXT_SECONDARY;
+    Color bgActive = new Color(35, 28, 52);
+    tabAuth.setForeground(TAB_AUTH.equals(tab)   ? active : inactive);
+    tabFormal.setForeground(TAB_FORMAL.equals(tab)? active : inactive);
+    tabLeg.setForeground(TAB_LEG.equals(tab)     ? active : inactive);
+    tabRealm.setForeground(TAB_REALM.equals(tab) ? active : inactive);
+    tabAuth.setBackground(TAB_AUTH.equals(tab)   ? bgActive : UITheme.BUTTON_BG);
+    tabFormal.setBackground(TAB_FORMAL.equals(tab)? bgActive : UITheme.BUTTON_BG);
+    tabLeg.setBackground(TAB_LEG.equals(tab)     ? bgActive : UITheme.BUTTON_BG);
+    tabRealm.setBackground(TAB_REALM.equals(tab) ? bgActive : UITheme.BUTTON_BG);
+}
 
-    // ─── Cards ───────────────────────────────────────────────────────────────
+// ─── Cards ───────────────────────────────────────────────────────────────
 
     private void buildCards() {
         cardPanel.removeAll();
@@ -398,4 +400,12 @@ public class ActionsPanel extends JPanel {
         revalidate();
         repaint();
     }
+
+public String getCurrentTab() { return currentTab; }
+
+public void showTabByName(String tab) {
+    if (tab == null) return;
+    showTab(tab);
+}
+
 }

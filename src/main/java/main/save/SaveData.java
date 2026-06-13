@@ -192,6 +192,7 @@ public class SaveData {
         public boolean      paidOff;
         public boolean      dismissed;
         public List<String> visitedZones;
+        public String       displayName;
         public BarbArmyEntry() {}
     }
 

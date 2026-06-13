@@ -53,6 +53,9 @@ public MapView(GameState gameState, Runnable onBack) {
             gameState.getNobleHouseManager()
         );
 
+        // Grant claim from map — set after construction so MainWindow can wire it
+        // (accessed via getInfoPanel)
+
         armyListPanel.setOnDragDropCallback(new ArmyListPanel.DragDropCallback() {
             @Override
             public void onDrop(Army army, String zoneId) {
@@ -148,5 +151,7 @@ public void reinitialize(GameState gameState) {
         infoPanel.applyMapPanelFonts();
         armyListPanel.applyMapPanelFonts();
     }
+
+public MapInfoPanel getInfoPanel() { return infoPanel; }
 
 }
