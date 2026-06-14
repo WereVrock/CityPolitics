@@ -75,6 +75,7 @@ public class MapRenderer {
     private       ArmyRenderer             armyRenderer;
     private       NobleArmyRenderer        nobleArmyRenderer;
     private       BarbArmyRenderer         barbArmyRenderer;
+    private       City.ui.map.MercenaryArmyRenderer mercenaryArmyRenderer;
     private       City.main.barbarians.BarbArmyManager barbArmyManagerRef;
     private       NobleArmy                selectedNobleArmy = null;
     private MapViewMode viewMode = MapViewMode.SETTLEMENT;
@@ -95,6 +96,10 @@ public class MapRenderer {
 
     public void setArmyRenderer(ArmyRenderer armyRenderer) {
         this.armyRenderer = armyRenderer;
+    }
+
+    public void setMercenaryArmyRenderer(City.ui.map.MercenaryArmyRenderer r) {
+        this.mercenaryArmyRenderer = r;
     }
 
     public void setNobleArmyRenderer(NobleArmyRenderer nobleArmyRenderer) {
@@ -172,6 +177,11 @@ public class MapRenderer {
         // Layer 10 — barbarian armies
         if (barbArmyRenderer != null) {
             barbArmyRenderer.render(g2);
+        }
+
+        // Layer 11 — mercenary armies
+        if (mercenaryArmyRenderer != null) {
+            mercenaryArmyRenderer.render(g2);
         }
     }
 

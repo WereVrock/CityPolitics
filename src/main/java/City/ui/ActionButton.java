@@ -30,7 +30,7 @@ public ActionButton(GameState gameState, PlayerAction action, Consumer<ActionRes
 
     setLayout(new BorderLayout(8, 0));
     setBackground(UITheme.BG_PANEL_LIGHT);
-    setMaximumSize(new Dimension(Integer.MAX_VALUE, 56));
+    // No fixed max height — let content determine size naturally
     setBorder(BorderFactory.createCompoundBorder(
         BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
         BorderFactory.createEmptyBorder(4, 8, 4, 8)

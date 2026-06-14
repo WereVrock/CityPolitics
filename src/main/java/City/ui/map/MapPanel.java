@@ -86,6 +86,10 @@ public class MapPanel extends JPanel
         this.renderer.setBarbArmyManager(gameState.getBarbArmyManager());
         this.renderer.setRavagedZoneManager(gameState.getRavagedZoneManager());
 
+        City.ui.map.MercenaryArmyRenderer mercArmyRenderer =
+                new City.ui.map.MercenaryArmyRenderer(gameState.getMercenaryManager(), zoneManager);
+        this.renderer.setMercenaryArmyRenderer(mercArmyRenderer);
+
         setBackground(MapRenderer.COLOR_BG);
         setPreferredSize(new Dimension(
                 City.main.parameters.GameParameters.MAP_CANVAS_WIDTH,
@@ -367,6 +371,10 @@ public class MapPanel extends JPanel
         BarbArmyRenderer newBarbRenderer = new BarbArmyRenderer(
                 gs.getBarbArmyManager(), gs.getZoneManager());
         renderer.setBarbArmyRenderer(newBarbRenderer);
+
+        City.ui.map.MercenaryArmyRenderer newMercRenderer =
+                new City.ui.map.MercenaryArmyRenderer(gs.getMercenaryManager(), gs.getZoneManager());
+        renderer.setMercenaryArmyRenderer(newMercRenderer);
 
         // Update the armyRenderer reference used for hit-testing in this class
         Field armyRendererField;

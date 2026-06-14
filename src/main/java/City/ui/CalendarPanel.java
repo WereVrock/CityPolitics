@@ -100,15 +100,15 @@ public void refresh() {
         countdownLabel.setForeground(turns <= 4 ? UITheme.TEXT_RED : UITheme.TEXT_SECONDARY);
     }
 
-    // Election countdown
+    // Election countdown — always recompute from manager
     if (electionManager != null) {
         int elTurns = electionManager.getTurnsUntilElection();
         if (elTurns == 0) {
             electionLabel.setText("⚑ ELECTION THIS TURN");
             electionLabel.setForeground(new Color(220, 190, 80));
-        } else if (elTurns <= 2) {
-            electionLabel.setText("⚑ Election in " + elTurns + " turn(s)");
-            electionLabel.setForeground(new Color(200, 170, 80));
+        } else if (elTurns <= City.main.parameters.GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS) {
+            electionLabel.setText("⚑ CAMPAIGN — Election in " + elTurns + " turn(s)");
+            electionLabel.setForeground(new Color(240, 200, 60));
         } else {
             electionLabel.setText("⚑ Election in " + elTurns + " turn(s)");
             electionLabel.setForeground(new Color(140, 120, 180));

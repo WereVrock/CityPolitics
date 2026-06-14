@@ -76,7 +76,8 @@ public class PlayerBattleInterventionProcessor {
     /**
      * Full version: called with known attacker size for the minimum-size check.
      */
-    public PlayerChoice checkIntervention(
+
+public PlayerChoice checkIntervention(
             NobleHouse attacker, NobleHouse defender, String zoneId,
             int totalAttackerSize, ArmyManager playerArmyManager) {
 
@@ -91,7 +92,12 @@ public class PlayerBattleInterventionProcessor {
         // Must be at least as large as attacker
         if (playerSize < totalAttackerSize) return PlayerChoice.IGNORE;
 
-        return callback.ask(attacker.getName(), defender.getName(),
+        PlayerChoice choice = callback.ask(attacker.getName(), defender.getName(),
                 zoneId, playerSize, totalAttackerSize);
+        Debug.log("player-battle", "intervention", attacker.getName()
+                + " vs " + defender.getName() + " at " + zoneId
+                + " — player=" + playerSize + " choice=" + choice);
+        return choice;
     }
+
 }

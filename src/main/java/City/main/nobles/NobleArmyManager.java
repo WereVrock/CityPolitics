@@ -311,16 +311,20 @@ public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claim
             switch (choice) {
                 case STOP_FIGHT -> {
                     log.add("⚔ Player intervenes and stops the battle at " + zoneId + ".");
+                    // Opinions: attacker -half, defender +half
+                    applyInterventionOpinions(choice, attacker, defender, allHouses, relationships, log);
                     attArmy.clearOrder();
                     return log;
                 }
                 case JOIN_ATTACKER -> {
                     log.add("⚔ Player army joins the attack on " + defender.getName() + " at " + zoneId + ".");
                     addPlayerForcesToAttack(attackerForces, zoneId, null, log);
+                    applyInterventionOpinions(choice, attacker, defender, allHouses, relationships, log);
                 }
                 case JOIN_DEFENDER -> {
                     log.add("⚔ Player army joins the defense of " + defender.getName() + " at " + zoneId + ".");
                     addPlayerForcesToDefense(defenderForces, zoneId, defFort, defMilitary(defender), log);
+                    applyInterventionOpinions(choice, attacker, defender, allHouses, relationships, log);
                 }
                 case IGNORE -> {}
             }
@@ -436,6 +440,41 @@ private void addPlayerForcesToDefense(List<ArmyForce> defenderForces,
             defenderForces.add(new ArmyForce("player_" + a.getId(),
                     a.getSize(), defFort, a.getCommandingSkill()));
         }
+    }
+}
+
+private void applyInterventionOpinions(
+        City.main.army.PlayerBattleInterventionProcessor.PlayerChoice choice,
+        NobleHouse attacker, NobleHouse defender,
+        List<NobleHouse> allHouses,
+        RelationshipManager relationships,
+        List<String> log) {
+
+    int joinBonus   = City.main.parameters.GameParameters.INTERVENTION_JOIN_ATTACKER_SELF_OPINION;
+    int joinPenalty = City.main.parameters.GameParameters.INTERVENTION_JOIN_ATTACKER_VICTIM_OPINION;
+    int stopPenalty = City.main.parameters.GameParameters.INTERVENTION_STOP_ATTACKER_OPINION;
+    int stopBonus   = City.main.parameters.GameParameters.INTERVENTION_STOP_DEFENDER_OPINION;
+
+    switch (choice) {
+        case JOIN_ATTACKER -> {
+            attacker.adjustPlayerOpinion(joinBonus);
+            defender.adjustPlayerOpinion(joinPenalty);
+            log.add("  Opinion: " + attacker.getName() + " +" + joinBonus
+                    + ", " + defender.getName() + " " + joinPenalty);
+        }
+        case JOIN_DEFENDER -> {
+            defender.adjustPlayerOpinion(joinBonus);
+            attacker.adjustPlayerOpinion(joinPenalty);
+            log.add("  Opinion: " + defender.getName() + " +" + joinBonus
+                    + ", " + attacker.getName() + " " + joinPenalty);
+        }
+        case STOP_FIGHT -> {
+            attacker.adjustPlayerOpinion(stopPenalty);
+            defender.adjustPlayerOpinion(stopBonus / 2);
+            log.add("  Opinion: " + attacker.getName() + " " + stopPenalty
+                    + ", " + defender.getName() + " +" + (stopBonus / 2));
+        }
+        default -> {}
     }
 }
 

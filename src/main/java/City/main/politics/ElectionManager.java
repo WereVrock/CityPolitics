@@ -23,7 +23,7 @@ public class ElectionManager {
 
     // ─── Turn tick ────────────────────────────────────────────────────────────
 
-    public List<String> tick(List<PoliticalParty> parties,
+public List<String> tick(List<PoliticalParty> parties,
                               PopManager popManager,
                               PropagandaManager propagandaManager,
                               int corruption) {
@@ -36,17 +36,91 @@ public class ElectionManager {
         return log;
     }
 
-    public boolean isElectionImminent() {
+public boolean isElectionImminent() {
         return turnsSinceLastElection >= GameParameters.ELECTION_PERIOD_TURNS - 1;
     }
 
-    public int getTurnsUntilElection() {
+public int getTurnsUntilElection() {
         return Math.max(0, GameParameters.ELECTION_PERIOD_TURNS - turnsSinceLastElection);
     }
 
-    public ElectionRecord getLastRecord() { return lastRecord; }
+public ElectionRecord getLastRecord() { return lastRecord; }
 
-    // ─── Power drift ─────────────────────────────────────────────────────────
+/** True when the election campaign period has started (2 turns before). */
+    public boolean isCampaignPeriod() {
+        return getTurnsUntilElection() <= GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS
+                && getTurnsUntilElection() > 0;
+    }
+
+    /** True exactly when campaign just started this tick. */
+    public boolean justEnteredCampaign() {
+        return getTurnsUntilElection() == GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS;
+    }
+
+    // ─── Election support (player backs a party) ─────────────────────────────
+
+    private String  supportedPartyName    = null;
+    private int     supportedSeatsBefore  = 0;
+    private boolean supportUsedThisElection = false;
+
+    public boolean canSupportParty() {
+        return isCampaignPeriod() && !supportUsedThisElection;
+    }
+
+    /** Player declares support for a party. Returns false if already used. */
+    public boolean declareSupport(PoliticalParty party, int playerPrestige) {
+        if (!canSupportParty()) return false;
+        supportedPartyName       = party.getName();
+        supportedSeatsBefore     = party.getSeats();
+        supportUsedThisElection  = true;
+        // Bonus: party gets half player prestige as propaganda-like boost
+        int bonus = (int)(playerPrestige * GameParameters.ELECTION_SUPPORT_PRESTIGE_FACTOR);
+        party.addPrestige(bonus);
+        City.debug.Debug.log("election", "support",
+                party.getName() + " supported. prestige bonus=" + bonus);
+        return true;
+    }
+
+    public String  getSupportedPartyName()  { return supportedPartyName; }
+
+    /** Called after election to check prestige penalty. Returns log lines. */
+    public List<String> resolveSupportOutcome(List<PoliticalParty> parties,
+                                               City.main.nobles.PlayerPrestige playerPrestige) {
+        List<String> log = new ArrayList<>();
+        if (supportedPartyName == null) return log;
+        for (PoliticalParty party : parties) {
+            if (party.getName().equals(supportedPartyName)) {
+                int seatDelta = party.getSeats() - supportedSeatsBefore;
+                if (seatDelta <= -GameParameters.ELECTION_SUPPORT_SEAT_LOSS_THRESHOLD) {
+                    playerPrestige.addPrestige(GameParameters.ELECTION_SUPPORT_PRESTIGE_PENALTY);
+                    log.add("⚠ Your supported party (" + party.getName()
+                            + ") lost " + Math.abs(seatDelta) + " seats — prestige "
+                            + GameParameters.ELECTION_SUPPORT_PRESTIGE_PENALTY + ".");
+                } else {
+                    log.add("✓ Your supported party (" + party.getName()
+                            + ") held or gained seats.");
+                }
+                break;
+            }
+        }
+        supportedPartyName      = null;
+        supportedSeatsBefore    = 0;
+        supportUsedThisElection = false;
+        return log;
+    }
+
+    // ─── Save/load ───────────────────────────────────────────────────────────
+
+    public String  getSupportedPartyNameSave()   { return supportedPartyName; }
+    public int     getSupportedSeatsBeforeSave()  { return supportedSeatsBefore; }
+    public boolean isSupportUsedSave()            { return supportUsedThisElection; }
+    public void    restoreSupport(String name, int seats, boolean used) {
+        supportedPartyName      = name;
+        supportedSeatsBefore    = seats;
+        supportUsedThisElection = used;
+    }
+
+// ─── Power drift ─────────────────────────────────────────────────────────
 
     public void applyPowerDrift(List<PoliticalParty> parties) {
         for (PoliticalParty party : parties) {
@@ -259,6 +333,9 @@ public class ElectionManager {
         for (PoliticalParty p : electable) {
             propagandaManager.consumeElectionPropaganda(p);
         }
+
+        // Reset support tracking for next election
+        supportUsedThisElection = false;
 
         // Build and store record
         lastRecord = new ElectionRecord(

@@ -132,11 +132,20 @@ public class LegislationManager {
     public void setMercenaryHireActionsRemaining(int v) { mercenaryHireActionsRemaining = v; }
     public void setWartimeTaxesCooldown(int v)          { wartimeTaxesCooldown = v; }
 
+    // ─── Council event limiting ───────────────────────────────────────────────
+
+    private boolean councilEventUsedThisTurn = false;
+
+    public boolean isCouncilEventUsedThisTurn()   { return councilEventUsedThisTurn; }
+    public void    markCouncilEventUsedThisTurn()  { councilEventUsedThisTurn = true; }
+    public void    resetCouncilEventUsed()         { councilEventUsedThisTurn = false; }
+
     public void reset() {
         passedLegislations.clear();
         proposedThisTurn.clear();
         mercenaryHireActionsRemaining  = 0;
         wartimeTaxesCooldown           = 0;
         sendResourcesWindowRemaining   = 0;
+        councilEventUsedThisTurn       = false;
     }
 }

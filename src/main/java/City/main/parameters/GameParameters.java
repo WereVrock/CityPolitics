@@ -230,6 +230,33 @@ public final class GameParameters {
     public static final int    MERCENARY_POOL_MIN_SIZE          = 100;
     /** Maximum size of a mercenary army in the hire pool. */
     public static final int    MERCENARY_POOL_MAX_SIZE          = 500;
+    /** Election campaign warning turns before election (shows popup + campaign button). */
+    public static final int    ELECTION_CAMPAIGN_WARNING_TURNS  = 2;
+    /** Prestige loss if player-supported party loses more than this many seats. */
+    public static final int    ELECTION_SUPPORT_SEAT_LOSS_THRESHOLD = 2;
+    /** Prestige penalty when supported party loses too many seats. */
+    public static final int    ELECTION_SUPPORT_PRESTIGE_PENALTY   = -20;
+    /** Prestige bonus multiplier from player prestige for election party support. */
+    public static final double ELECTION_SUPPORT_PRESTIGE_FACTOR    = 0.5;
+    /** Favour threshold for single-favour deal demand. */
+    
+    /** Trust starting value (range 0-10). */
+    public static final int    PLAYER_TRUST_START            = 5;
+    /** Trust max value. */
+    public static final int    PLAYER_TRUST_MAX              = 10;
+    /** Trust addition to realm council power per (trust-5)*100. */
+    public static final int    PLAYER_TRUST_COUNCIL_MULTIPLIER = 100;
+    /** Opinion change when player joins attacker side. */
+    public static final int    INTERVENTION_JOIN_ATTACKER_SELF_OPINION   = 10;
+    public static final int    INTERVENTION_JOIN_ATTACKER_VICTIM_OPINION = -15;
+    /** Opinion change when player joins defender. */
+    public static final int    INTERVENTION_JOIN_DEFENDER_SELF_OPINION   = 10;
+    public static final int    INTERVENTION_JOIN_DEFENDER_ATTACKER_OPINION = -10;
+    /** Opinion change when player stops fight (half of join values). */
+    public static final int    INTERVENTION_STOP_ATTACKER_OPINION = -5;
+    public static final int    INTERVENTION_STOP_DEFENDER_OPINION = 5;
+    /** Opinion loss to uninvolved neutral parties when joining unjustified attack. */
+    public static final int    INTERVENTION_UNJUSTIFIED_BYSTANDER_OPINION = -5;
 
     // =========================================================
     // VOTING

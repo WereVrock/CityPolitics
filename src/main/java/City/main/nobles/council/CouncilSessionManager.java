@@ -223,65 +223,69 @@ public class CouncilSessionManager {
         return log;
     }
 
-    private List<String> applyUnlawfulAcquisition(String zoneId,
-                                                   NobleHouseManager houseManager,
-                                                   ArmyManager playerArmyManager,
-                                                   City.main.nobles.PlayerPrestige playerPrestige) {
-        List<String> log = new ArrayList<>();
-        NobleHouse owner = houseManager.getOwnerOfZone(zoneId);
-        if (owner == null) {
-            log.add("No owner found for zone " + zoneId + ".");
-            return log;
-        }
-
-        // Check owner's army vs player
-        int ownerArmy  = owner.getTotalGarrisonSize() + owner.getNobleManpower();
-        int playerArmy = 0;
-        for (City.main.army.Army a : playerArmyManager.getArmies()) playerArmy += a.getSize();
-        playerArmy += 0; // can add manpower if desired
-
-        double ratio = playerArmy > 0 ? (double) ownerArmy / playerArmy : 0;
-        if (ratio >= GameParameters.COUNCIL_UNLAWFUL_REFUSE_THRESHOLD) {
-            log.add("⚑ " + owner.getName()
-                    + " refuses to cede " + zoneId.replace("_", " ")
-                    + " — their forces are strong enough to resist.");
-            pendingUnlawfulZoneId  = zoneId;
-            pendingUnlawfulOwnerId = owner.getId();
-            pendingUnlawfulTurns   = UNLAWFUL_RETURN_TURNS;
-            log.add("  Player prestige will suffer each turn until the zone is returned.");
-            return log;
-        }
-
-        // Transfer to a random claimant
-        List<NobleHouse> claimants = new ArrayList<>();
-        for (NobleHouse h : houseManager.getHouses()) {
-            if (h == owner || h.isEliminated()) continue;
-            if (houseManager.getClaimManager().hasClaim(h.getId(), zoneId)) claimants.add(h);
-        }
-
-        NobleHouse recipient = claimants.isEmpty()
-                ? null
-                : claimants.get(rng.nextInt(claimants.size()));
-
-        owner.removeZone(zoneId);
-        if (recipient != null) {
-            recipient.addZone(zoneId);
-            recipient.adjustPlayerOpinion(GameParameters.COUNCIL_UNLAWFUL_RECIPIENT_OPINION);
-            log.add("⚑ Unlawful Acquisition declared. "
-                    + zoneId.replace("_", " ") + " ceded from "
-                    + owner.getName() + " to " + recipient.getName() + ".");
-        } else {
-            log.add("⚑ Unlawful Acquisition declared. "
-                    + zoneId.replace("_", " ") + " stripped from "
-                    + owner.getName() + " — no claimant found, zone is unowned.");
-        }
-        owner.adjustPlayerOpinion(GameParameters.COUNCIL_UNLAWFUL_OWNER_OPINION);
+private List<String> applyUnlawfulAcquisition(String zoneId,
+                                               NobleHouseManager houseManager,
+                                               ArmyManager playerArmyManager,
+                                               City.main.nobles.PlayerPrestige playerPrestige) {
+    List<String> log = new ArrayList<>();
+    if (zoneId == null || zoneId.isBlank()) {
+        log.add("⚠ No zone selected for unlawful acquisition.");
         return log;
     }
 
-    // ── Per-turn processing ───────────────────────────────────────────────────
+    NobleHouse owner = houseManager.getOwnerOfZone(zoneId);
+    if (owner == null) {
+        log.add("⚠ No noble house owns " + zoneId.replace("_", " ")
+                + " — cannot declare unlawful acquisition.");
+        return log;
+    }
 
-    public List<String> processTurn(NobleHouseManager houseManager,
+    // Check owner's army vs player
+    int ownerArmy  = owner.getTotalGarrisonSize() + owner.getNobleManpower();
+    int playerArmy = 0;
+    for (City.main.army.Army a : playerArmyManager.getArmies()) playerArmy += a.getSize();
+
+    double ratio = playerArmy > 0 ? (double) ownerArmy / playerArmy : 0;
+    if (ratio >= GameParameters.COUNCIL_UNLAWFUL_REFUSE_THRESHOLD) {
+        log.add("⚑ " + owner.getName()
+                + " refuses to cede " + zoneId.replace("_", " ")
+                + " — their forces are strong enough to resist.");
+        pendingUnlawfulZoneId  = zoneId;
+        pendingUnlawfulOwnerId = owner.getId();
+        pendingUnlawfulTurns   = UNLAWFUL_RETURN_TURNS;
+        log.add("  Player prestige will suffer each turn until the zone is returned.");
+        return log;
+    }
+
+    // Transfer to a claimant
+    List<NobleHouse> claimants = new ArrayList<>();
+    for (NobleHouse h : houseManager.getHouses()) {
+        if (h == owner || h.isEliminated()) continue;
+        if (houseManager.getClaimManager().hasClaim(h.getId(), zoneId)) claimants.add(h);
+    }
+
+    NobleHouse recipient = claimants.isEmpty()
+            ? null : claimants.get(rng.nextInt(claimants.size()));
+
+    owner.removeZone(zoneId);
+    if (recipient != null) {
+        recipient.addZone(zoneId);
+        recipient.adjustPlayerOpinion(GameParameters.COUNCIL_UNLAWFUL_RECIPIENT_OPINION);
+        log.add("⚑ Unlawful Acquisition declared. "
+                + zoneId.replace("_", " ") + " ceded from "
+                + owner.getName() + " to " + recipient.getName() + ".");
+    } else {
+        log.add("⚑ Unlawful Acquisition declared. "
+                + zoneId.replace("_", " ") + " stripped from "
+                + owner.getName() + " — no claimant found, zone is ungoverned.");
+    }
+    owner.adjustPlayerOpinion(GameParameters.COUNCIL_UNLAWFUL_OWNER_OPINION);
+    return log;
+}
+
+// ── Per-turn processing ───────────────────────────────────────────────────
+
+public List<String> processTurn(NobleHouseManager houseManager,
                                      ResourcePool resources,
                                      City.main.nobles.PlayerPrestige playerPrestige) {
         List<String> log = new ArrayList<>();
@@ -310,17 +314,17 @@ public class CouncilSessionManager {
         if (pendingUnlawfulZoneId != null) {
             NobleHouse owner = houseManager.getOwnerOfZone(pendingUnlawfulZoneId);
             if (owner == null || !owner.getId().equals(pendingUnlawfulOwnerId)) {
-                // Zone was returned or changed hands
                 pendingUnlawfulZoneId  = null;
                 pendingUnlawfulOwnerId = null;
                 pendingUnlawfulTurns   = 0;
             } else {
                 pendingUnlawfulTurns--;
                 playerPrestige.addPrestige(GameParameters.COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN);
-                log.add("⚠ " + owner.getName() + " still holds " + pendingUnlawfulZoneId.replace("_", " ")
-                        + " in defiance. Prestige -" + Math.abs(GameParameters.COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN) + ".");
+                log.add("⚠ " + owner.getName() + " still holds "
+                        + pendingUnlawfulZoneId.replace("_", " ")
+                        + " in defiance. Prestige "
+                        + GameParameters.COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN + ".");
                 if (pendingUnlawfulTurns <= 0) {
-                    // Force transfer to random claimant
                     log.addAll(forceTransfer(pendingUnlawfulZoneId, owner, houseManager));
                     pendingUnlawfulZoneId  = null;
                     pendingUnlawfulOwnerId = null;
@@ -331,7 +335,7 @@ public class CouncilSessionManager {
         return log;
     }
 
-    private List<String> forceTransfer(String zoneId, NobleHouse owner,
+private List<String> forceTransfer(String zoneId, NobleHouse owner,
                                         NobleHouseManager houseManager) {
         List<String> log = new ArrayList<>();
         List<NobleHouse> claimants = new ArrayList<>();

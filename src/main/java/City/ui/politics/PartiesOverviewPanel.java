@@ -81,6 +81,21 @@ public class PartiesOverviewPanel extends JPanel {
         listPanel.add(elBanner);
 
         List<PoliticalParty> parties = gameState.getPartyManager().getParties();
+        // Election support button (during campaign)
+        
+        if (em.canSupportParty()) {
+            JPanel supportBanner = buildSupportBanner(parties, em);
+            listPanel.add(supportBanner);
+            listPanel.add(Box.createVerticalStrut(10));
+        } else if (em.getSupportedPartyName() != null) {
+            JLabel supportLabel = new JLabel(
+                    "⚑ You are backing: " + em.getSupportedPartyName());
+            supportLabel.setFont(UITheme.FONT_BODY);
+            supportLabel.setForeground(new Color(240, 200, 80));
+            supportLabel.setBorder(new javax.swing.border.EmptyBorder(0, 0, 10, 0));
+            listPanel.add(supportLabel);
+        }
+
         for (PoliticalParty party : parties) {
             listPanel.add(buildPartyCard(party));
             listPanel.add(Box.createVerticalStrut(8));
@@ -106,7 +121,64 @@ public class PartiesOverviewPanel extends JPanel {
         return card;
     }
 
-    private JPanel buildPortraitPlaceholder(PoliticalParty party) {
+private JPanel buildSupportBanner(java.util.List<PoliticalParty> parties,
+                                   City.main.politics.ElectionManager em) {
+    JPanel banner = new JPanel(new BorderLayout(12, 0));
+    banner.setBackground(new Color(55, 42, 10));
+    banner.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+            javax.swing.BorderFactory.createLineBorder(new Color(180, 140, 40), 1),
+            new javax.swing.border.EmptyBorder(10, 14, 10, 14)));
+    banner.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+    banner.setAlignmentX(LEFT_ALIGNMENT);
+
+    JLabel text = new JLabel("<html><b>Election Campaign</b> — Declare your support for one party.<br>"
+            + "Your prestige grants them a bonus, but if they lose 2+ seats you suffer -20 prestige.</html>");
+    text.setFont(UITheme.FONT_SMALL);
+    text.setForeground(new Color(220, 190, 140));
+
+    JComboBox<String> partyBox = new JComboBox<>(
+            parties.stream().filter(p -> !p.getName().equals("Oracles"))
+                    .map(PoliticalParty::getName).toArray(String[]::new));
+    partyBox.setFont(UITheme.FONT_SMALL);
+    partyBox.setBackground(UITheme.BG_PANEL);
+    partyBox.setForeground(UITheme.TEXT_GOLD);
+
+    JButton supportBtn = new JButton("DECLARE SUPPORT");
+    supportBtn.setFont(UITheme.FONT_BUTTON);
+    supportBtn.setForeground(new Color(240, 200, 80));
+    supportBtn.setBackground(new Color(70, 50, 10));
+    supportBtn.setBorderPainted(false);
+    supportBtn.setFocusPainted(false);
+    supportBtn.addActionListener(e -> {
+        String chosen = (String) partyBox.getSelectedItem();
+        if (chosen == null) return;
+        for (PoliticalParty p : parties) {
+            if (p.getName().equals(chosen)) {
+                int prestige = gameState.getPlayerPrestige().getPrestige();
+                boolean ok   = em.declareSupport(p, prestige);
+                if (ok) {
+                    JOptionPane.showMessageDialog(this,
+                            "You declare support for " + p.getName() + ".\n"
+                            + "They receive a prestige bonus based on your standing.",
+                            "Support Declared", JOptionPane.INFORMATION_MESSAGE);
+                    refresh();
+                }
+                break;
+            }
+        }
+    });
+
+    JPanel right = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 6, 0));
+    right.setBackground(new Color(55, 42, 10));
+    right.add(partyBox);
+    right.add(supportBtn);
+
+    banner.add(text,  BorderLayout.CENTER);
+    banner.add(right, BorderLayout.EAST);
+    return banner;
+}
+
+private JPanel buildPortraitPlaceholder(PoliticalParty party) {
         JPanel portrait = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);

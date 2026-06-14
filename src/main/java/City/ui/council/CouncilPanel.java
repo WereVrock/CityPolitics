@@ -79,7 +79,7 @@ public class CouncilPanel extends JPanel {
             return;
         }
 
-        // Active session
+        // Active session — filter out 0-seat parties from voter list
         CouncilSession session = gameState.getActiveCouncilSession();
         voterListPanel = new JPanel();
         voterListPanel.setLayout(new BoxLayout(voterListPanel, BoxLayout.Y_AXIS));
@@ -174,9 +174,6 @@ public class CouncilPanel extends JPanel {
             panel.add(Box.createVerticalStrut(10));
         }
 
-        panel.add(Box.createVerticalStrut(20));
-        panel.add(buildProtectionSection());
-
         return panel;
     }
 
@@ -220,7 +217,10 @@ public class CouncilPanel extends JPanel {
         return card;
     }
 
+    // Protection is now in the Realm action list (ActionsPanel realm tab).
+    // This method is kept for legacy but renders nothing by default.
     private JPanel buildProtectionSection() {
+        // Empty — protection moved to realm actions
         JPanel section = new JPanel();
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
         section.setBackground(UITheme.BG_DARK);
@@ -315,28 +315,35 @@ public class CouncilPanel extends JPanel {
         onBack.run();
     }
 
-    private void startSession(CouncilAction action) {
-        if (action == CouncilAction.UNLAWFUL_ACQUISITION) {
-            selectedZoneId = pickZoneForUnlawful();
-            if (selectedZoneId == null) return;
-        }
-
-        int oracleOpinion = 50;
-        for (City.main.politics.PoliticalParty p : gameState.getPartyManager().getParties()) {
-            if (p.getName().equals("Oracles")) { oracleOpinion = p.getPlayerOpinion(); break; }
-        }
-
-        CouncilSession session = gameState.getCouncilSessionManager().createSession(
-                action,
-                gameState.getPlayerPrestige().getPrestige(),
-                oracleOpinion,
-                new java.util.ArrayList<>(gameState.getNobleHouseManager().getHouses()));
-        gameState.setActiveCouncilSession(session);
-        // Rebuild panel with session active
-        onBack.run();
+private void startSession(CouncilAction action) {
+    if (action == CouncilAction.UNLAWFUL_ACQUISITION) {
+        // Open map view and let player pick from map
+        JOptionPane.showMessageDialog(this,
+                "Select the zone to declare as unlawfully acquired from the map.\n"
+                + "Click a zone owned by a noble house, then use the action button in the zone details.",
+                "Unlawful Acquisition — Select Zone",
+                JOptionPane.INFORMATION_MESSAGE);
+        // For now fall back to zone picker if map integration not yet wired
+        selectedZoneId = pickZoneForUnlawful();
+        if (selectedZoneId == null) return;
     }
 
-    private String pickZoneForUnlawful() {
+    int oracleOpinion = 50;
+    for (City.main.politics.PoliticalParty p : gameState.getPartyManager().getParties()) {
+        if (p.getName().equals("Oracles")) { oracleOpinion = p.getPlayerOpinion(); break; }
+    }
+
+    CouncilSession session = gameState.getCouncilSessionManager().createSession(
+            action,
+            gameState.getPlayerPrestige().getPrestige(),
+            oracleOpinion,
+            new java.util.ArrayList<>(gameState.getNobleHouseManager().getHouses()));
+    gameState.setActiveCouncilSession(session);
+    // Immediately show voting panel
+    onBack.run();
+}
+
+private String pickZoneForUnlawful() {
         // Show dialog to pick a zone with an owner
         java.util.List<City.main.map.Zone> ownedZones = new java.util.ArrayList<>();
         for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
@@ -367,34 +374,40 @@ public class CouncilPanel extends JPanel {
         return ownedZones.get(choice).getId();
     }
 
-    public void refresh() {
+public void refresh() {
         CouncilSession session = gameState.getActiveCouncilSession();
         if (session == null || voterListPanel == null) return;
 
         voterListPanel.removeAll();
 
-        // Player row
         CouncilVoter pv = session.getPlayerVoter();
-        if (pv != null) voterListPanel.add(buildVoterRow(session, pv, true));
+        if (pv != null) {
+            JPanel row = buildVoterRow(session, pv, true);
+            if (row != null) voterListPanel.add(row);
+        }
         voterListPanel.add(Box.createVerticalStrut(4));
 
-        // Oracle row
         CouncilVoter ov = session.getOracleVoter();
-        if (ov != null) voterListPanel.add(buildVoterRow(session, ov, false));
+        if (ov != null) {
+            JPanel row = buildVoterRow(session, ov, false);
+            if (row != null) voterListPanel.add(row);
+        }
         voterListPanel.add(Box.createVerticalStrut(4));
 
-        // Noble voters sorted by impression desc
         java.util.List<CouncilVoter> nobles = session.getNoblevoters();
         nobles.sort((a, b) -> Integer.compare(b.getImpression(), a.getImpression()));
         for (CouncilVoter voter : nobles) {
-            voterListPanel.add(buildVoterRow(session, voter, false));
+            // Skip voters for eliminated/0-seat houses
+            City.main.nobles.NobleHouse house = voter.getHouse();
+            if (house != null && house.isEliminated()) continue;
+            JPanel row = buildVoterRow(session, voter, false);
+            if (row != null) voterListPanel.add(row);
             voterListPanel.add(Box.createVerticalStrut(3));
         }
 
         voterListPanel.revalidate();
         voterListPanel.repaint();
 
-        // Update totals label
         int yes   = session.getTotalYes();
         int no    = session.getTotalNo();
         int total = session.getTotalImpression();
@@ -415,82 +428,86 @@ public class CouncilPanel extends JPanel {
         }
     }
 
-    private JPanel buildVoterRow(CouncilSession session, CouncilVoter voter,
-                                  boolean isPlayer) {
-        JPanel row = new JPanel(new BorderLayout(10, 0));
-        row.setBackground(isPlayer ? new Color(30, 28, 50) : UITheme.BG_PANEL);
-        row.setBorder(javax.swing.BorderFactory.createCompoundBorder(
-                javax.swing.BorderFactory.createLineBorder(
-                        isPlayer ? UITheme.ACCENT_FROST : UITheme.BORDER_COLOR, 1),
-                new EmptyBorder(6, 12, 6, 12)));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
-        row.setAlignmentX(LEFT_ALIGNMENT);
-
-        JPanel left = new JPanel();
-        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
-        left.setBackground(row.getBackground());
-
-        String typeLabel = switch (voter.getType()) {
-            case PLAYER           -> "You";
-            case ORACLE           -> "Arch Oracle";
-            case PRESTIGIOUS_NOBLE-> "⭐ Prestigious";
-            case MINOR_NOBLE      -> "Minor";
-        };
-        JLabel nameLabel = new JLabel(voter.getDisplayName()
-                + "  [" + typeLabel + "]"
-                + "  " + voter.getImpression() + " impression");
-        nameLabel.setFont(UITheme.FONT_BUTTON);
-        nameLabel.setForeground(isPlayer ? UITheme.ACCENT_FROST : UITheme.TEXT_PRIMARY);
-
-        left.add(nameLabel);
-
-        row.add(left, BorderLayout.WEST);
-
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        right.setBackground(row.getBackground());
-
-        if (!isPlayer && !voter.isDealt()
-                && voter.getType() != CouncilVoter.VoterType.ORACLE) {
-            JButton dealBtn = new JButton("negotiate");
-            dealBtn.setFont(UITheme.FONT_SMALL);
-            dealBtn.setForeground(UITheme.TEXT_SECONDARY);
-            dealBtn.setBackground(UITheme.BUTTON_BG);
-            dealBtn.setBorderPainted(false);
-            dealBtn.setFocusPainted(false);
-            dealBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            dealBtn.addActionListener(e -> openDealDialog(session, voter));
-            right.add(dealBtn);
-        } else if (voter.isDealt()) {
-            JLabel dealt = new JLabel("DEAL ✓");
-            dealt.setFont(UITheme.FONT_SMALL);
-            dealt.setForeground(UITheme.TEXT_GREEN);
-            right.add(dealt);
-        }
-
-        // Stance selector for player; fixed label for others
-        if (isPlayer) {
-            String[] opts = { "YES", "NO" };
-            JComboBox<String> stanceBox = new JComboBox<>(opts);
-            stanceBox.setSelectedItem(voter.getStance() == CouncilVoter.Stance.NO ? "NO" : "YES");
-            stanceBox.setFont(UITheme.FONT_SMALL);
-            stanceBox.addActionListener(e -> {
-                voter.setStance("NO".equals(stanceBox.getSelectedItem())
-                        ? CouncilVoter.Stance.NO : CouncilVoter.Stance.YES);
-                refresh();
-            });
-            right.add(stanceBox);
-        } else {
-            JLabel stanceLabel = new JLabel(stanceText(voter.getStance()));
-            stanceLabel.setFont(UITheme.FONT_BUTTON);
-            stanceLabel.setForeground(stanceColor(voter.getStance()));
-            right.add(stanceLabel);
-        }
-
-        row.add(right, BorderLayout.EAST);
-        return row;
+private JPanel buildVoterRow(CouncilSession session, CouncilVoter voter,
+                              boolean isPlayer) {
+    // Skip 0-seat non-player, non-oracle voters (eliminated parties)
+    if (!isPlayer && voter.getType() != CouncilVoter.VoterType.ORACLE) {
+        City.main.nobles.NobleHouse house = voter.getHouse();
+        if (house != null && house.isEliminated()) return null;
     }
 
-    private void openDealDialog(CouncilSession session, CouncilVoter voter) {
+    JPanel row = new JPanel(new BorderLayout(10, 0));
+    row.setBackground(isPlayer ? new Color(30, 28, 50) : UITheme.BG_PANEL);
+    row.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+            javax.swing.BorderFactory.createLineBorder(
+                    isPlayer ? UITheme.ACCENT_FROST : UITheme.BORDER_COLOR, 1),
+            new EmptyBorder(6, 12, 6, 12)));
+    row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+    row.setAlignmentX(LEFT_ALIGNMENT);
+
+    JPanel left = new JPanel();
+    left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+    left.setBackground(row.getBackground());
+
+    String typeLabel = switch (voter.getType()) {
+        case PLAYER           -> "You";
+        case ORACLE           -> "Arch Oracle";
+        case PRESTIGIOUS_NOBLE-> "⭐ Prestigious";
+        case MINOR_NOBLE      -> "Minor";
+    };
+    JLabel nameLabel = new JLabel(voter.getDisplayName()
+            + "  [" + typeLabel + "]"
+            + "  " + voter.getImpression() + " impression");
+    nameLabel.setFont(UITheme.FONT_BUTTON);
+    nameLabel.setForeground(isPlayer ? UITheme.ACCENT_FROST : UITheme.TEXT_PRIMARY);
+
+    left.add(nameLabel);
+    row.add(left, BorderLayout.WEST);
+
+    JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+    right.setBackground(row.getBackground());
+
+    if (!isPlayer && !voter.isDealt()
+            && voter.getType() != CouncilVoter.VoterType.ORACLE) {
+        JButton dealBtn = new JButton("negotiate");
+        dealBtn.setFont(UITheme.FONT_SMALL);
+        dealBtn.setForeground(UITheme.TEXT_SECONDARY);
+        dealBtn.setBackground(UITheme.BUTTON_BG);
+        dealBtn.setBorderPainted(false);
+        dealBtn.setFocusPainted(false);
+        dealBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        dealBtn.addActionListener(e -> openDealDialog(session, voter));
+        right.add(dealBtn);
+    } else if (voter.isDealt()) {
+        JLabel dealt = new JLabel("DEAL ✓");
+        dealt.setFont(UITheme.FONT_SMALL);
+        dealt.setForeground(UITheme.TEXT_GREEN);
+        right.add(dealt);
+    }
+
+    if (isPlayer) {
+        String[] opts = { "YES", "NO" };
+        JComboBox<String> stanceBox = new JComboBox<>(opts);
+        stanceBox.setSelectedItem(voter.getStance() == CouncilVoter.Stance.NO ? "NO" : "YES");
+        stanceBox.setFont(UITheme.FONT_SMALL);
+        stanceBox.addActionListener(e -> {
+            voter.setStance("NO".equals(stanceBox.getSelectedItem())
+                    ? CouncilVoter.Stance.NO : CouncilVoter.Stance.YES);
+            refresh();
+        });
+        right.add(stanceBox);
+    } else {
+        JLabel stanceLabel = new JLabel(stanceText(voter.getStance()));
+        stanceLabel.setFont(UITheme.FONT_BUTTON);
+        stanceLabel.setForeground(stanceColor(voter.getStance()));
+        right.add(stanceLabel);
+    }
+
+    row.add(right, BorderLayout.EAST);
+    return row;
+}
+
+private void openDealDialog(CouncilSession session, CouncilVoter voter) {
         CouncilDealOffer offer = session.getDealOffer(voter,
                 gameState.getNobleHouseManager().getClaimManager(),
                 gameState.getProtectionManager(),

@@ -270,99 +270,95 @@ private JPanel buildLegislationCard() {
         return outer;
     }
 
-    private JPanel buildRealmCard() {
-        JPanel outer = new JPanel(new BorderLayout());
-        outer.setBackground(UITheme.BG_DARK);
-        outer.add(makeDescLabel(
-                "<html>Realm actions affect the broader realm and noble relations.<br>"
-                + "Some require legislative authorisation.</html>"),
-                BorderLayout.NORTH);
+private JPanel buildRealmCard() {
+    JPanel outer = new JPanel(new BorderLayout());
+    outer.setBackground(UITheme.BG_DARK);
+    outer.add(makeDescLabel(
+            "<html>Realm actions affect the broader realm and noble relations.<br>"
+            + "Some require legislative authorisation.</html>"),
+            BorderLayout.NORTH);
 
-        JPanel buttons = new JPanel();
-        buttons.setLayout(new BoxLayout(buttons, BoxLayout.Y_AXIS));
-        buttons.setBackground(UITheme.BG_DARK);
+    JPanel buttons = new JPanel();
+    buttons.setLayout(new BoxLayout(buttons, BoxLayout.Y_AXIS));
+    buttons.setBackground(UITheme.BG_DARK);
 
-        LegislationManager lm = gameState.getLegislationManager();
-        for (PlayerAction action : gameState.getActionRegistry().getRealmActions()) {
-            // Hide Send Resources if not authorised
-            if (action instanceof City.main.actions.SendResourcesToNoblesAction
-                    && !lm.hasSendResourcesAvailable()) continue;
+    LegislationManager lm = gameState.getLegislationManager();
+    for (PlayerAction action : gameState.getActionRegistry().getRealmActions()) {
+        if (action instanceof City.main.actions.SendResourcesToNoblesAction
+                && !lm.hasSendResourcesAvailable()) continue;
 
-            ActionButton btn = makeActionButton(action);
-            allButtons.add(btn);
-            buttons.add(btn);
-            buttons.add(Box.createVerticalStrut(6));
-        }
-
-        if (gameState.getActionRegistry().getRealmActions().stream()
-                .noneMatch(a -> !(a instanceof City.main.actions.SendResourcesToNoblesAction)
-                        || lm.hasSendResourcesAvailable())) {
-            // If all realm actions hidden, show placeholder
-            boolean anyVisible = false;
-            for (PlayerAction a : gameState.getActionRegistry().getRealmActions()) {
-                if (a instanceof City.main.actions.SendResourcesToNoblesAction) {
-                    if (lm.hasSendResourcesAvailable()) { anyVisible = true; break; }
-                } else {
-                    anyVisible = true; break;
-                }
-            }
-            if (!anyVisible) {
-                JLabel none = new JLabel("  No realm actions currently available.");
-                none.setFont(UITheme.FONT_SMALL);
-                none.setForeground(UITheme.TEXT_SECONDARY);
-                buttons.add(none);
-            }
-        }
-
-        outer.add(wrapInScroll(buttons), BorderLayout.CENTER);
-        return outer;
+        ActionButton btn = makeActionButton(action);
+        allButtons.add(btn);
+        buttons.add(btn);
+        buttons.add(Box.createVerticalStrut(6));
     }
+
+    // Show placeholder if nothing visible
+    boolean anyVisible = false;
+    for (PlayerAction a : gameState.getActionRegistry().getRealmActions()) {
+        if (a instanceof City.main.actions.SendResourcesToNoblesAction) {
+            if (lm.hasSendResourcesAvailable()) { anyVisible = true; break; }
+        } else {
+            anyVisible = true; break;
+        }
+    }
+    if (!anyVisible) {
+        JLabel none = new JLabel("  No realm actions currently available.");
+        none.setFont(UITheme.FONT_SMALL);
+        none.setForeground(UITheme.TEXT_SECONDARY);
+        buttons.add(none);
+    }
+
+    outer.add(wrapInScroll(buttons), BorderLayout.CENTER);
+    return outer;
+}
 
 private JPanel buildLegislationCard(LegislationType type) {
-        JPanel card = new JPanel(new BorderLayout(8, 4));
-        card.setBackground(UITheme.BG_PANEL);
-        card.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
-                new EmptyBorder(6, 10, 6, 10)));
-        card.setAlignmentX(LEFT_ALIGNMENT);
+    JPanel card = new JPanel(new BorderLayout(8, 4));
+    card.setBackground(UITheme.BG_PANEL);
+    card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+            new EmptyBorder(6, 10, 6, 10)));
+    card.setAlignmentX(LEFT_ALIGNMENT);
+    // No fixed height — let content determine size
 
-        JPanel text = new JPanel();
-        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-        text.setBackground(UITheme.BG_PANEL);
+    JPanel text = new JPanel();
+    text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+    text.setBackground(UITheme.BG_PANEL);
 
-        JLabel nameLabel = new JLabel(type.getDisplayName());
-        nameLabel.setFont(UITheme.FONT_BUTTON);
-        nameLabel.setForeground(UITheme.TEXT_GOLD);
+    JLabel nameLabel = new JLabel(type.getDisplayName());
+    nameLabel.setFont(UITheme.FONT_BUTTON);
+    nameLabel.setForeground(UITheme.TEXT_GOLD);
 
-        JTextArea descArea = new JTextArea(type.getDescription());
-        descArea.setFont(UITheme.FONT_SMALL);
-        descArea.setForeground(UITheme.TEXT_SECONDARY);
-        descArea.setBackground(UITheme.BG_PANEL);
-        descArea.setEditable(false);
-        descArea.setLineWrap(true);
-        descArea.setWrapStyleWord(true);
+    JTextArea descArea = new JTextArea(type.getDescription());
+    descArea.setFont(UITheme.FONT_SMALL);
+    descArea.setForeground(UITheme.TEXT_SECONDARY);
+    descArea.setBackground(UITheme.BG_PANEL);
+    descArea.setEditable(false);
+    descArea.setLineWrap(true);
+    descArea.setWrapStyleWord(true);
 
-        text.add(nameLabel);
-        text.add(Box.createVerticalStrut(3));
-        text.add(descArea);
+    text.add(nameLabel);
+    text.add(Box.createVerticalStrut(3));
+    text.add(descArea);
 
-        boolean canVote = !gameState.hasActiveSession()
-                && !gameState.getActionRegistry().isFormalUsedThisTurn();
-        JButton proposeBtn = new JButton("PROPOSE");
-        proposeBtn.setFont(UITheme.FONT_BUTTON);
-        proposeBtn.setForeground(UITheme.TEXT_GOLD);
-        proposeBtn.setBackground(UITheme.BUTTON_BG);
-        proposeBtn.setBorderPainted(false);
-        proposeBtn.setFocusPainted(false);
-        proposeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        proposeBtn.setEnabled(canVote);
-        if (!canVote) proposeBtn.setToolTipText("Formal/legislation vote already used this turn.");
-        proposeBtn.addActionListener(e -> proposeLegislation(type));
+    boolean canVote = !gameState.hasActiveSession()
+            && !gameState.getActionRegistry().isFormalUsedThisTurn();
+    JButton proposeBtn = new JButton("PROPOSE");
+    proposeBtn.setFont(UITheme.FONT_BUTTON);
+    proposeBtn.setForeground(UITheme.TEXT_GOLD);
+    proposeBtn.setBackground(UITheme.BUTTON_BG);
+    proposeBtn.setBorderPainted(false);
+    proposeBtn.setFocusPainted(false);
+    proposeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    proposeBtn.setEnabled(canVote);
+    if (!canVote) proposeBtn.setToolTipText("Formal/legislation vote already used this turn.");
+    proposeBtn.addActionListener(e -> proposeLegislation(type));
 
-        card.add(text,       BorderLayout.CENTER);
-        card.add(proposeBtn, BorderLayout.EAST);
-        return card;
-    }
+    card.add(text,       BorderLayout.CENTER);
+    card.add(proposeBtn, BorderLayout.EAST);
+    return card;
+}
 
 private void proposeLegislation(LegislationType type) {
         if (gameState.hasActiveSession()) {

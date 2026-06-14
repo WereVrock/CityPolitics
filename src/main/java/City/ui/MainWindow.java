@@ -521,11 +521,220 @@ private void swapCenter(JPanel panel) {
     }
 
     private void showCouncilView() {
-    councilPanel = new City.ui.council.CouncilPanel(gameState, this::showMainView);
-    if (gameState.hasActiveCouncilSession()) {
-        councilPanel.refresh();
+        councilPanel = new City.ui.council.CouncilPanel(gameState, this::showMainView);
+        if (gameState.hasActiveCouncilSession()) {
+            councilPanel.refresh();
+        }
+        swapCenter(councilPanel);
     }
-    swapCenter(councilPanel);
+
+    private void showCampaignDialog() {
+        int turns = gameState.getElectionManager().getTurnsUntilElection();
+        JDialog d = new JDialog(this, "⚑ Election Campaign", true);
+        d.setUndecorated(true);
+        d.setSize(420, 280);
+        d.setLocationRelativeTo(this);
+
+        JPanel root = new JPanel(new BorderLayout(0, 10));
+        root.setBackground(UITheme.BG_PANEL);
+        root.setBorder(javax.swing.BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 2));
+
+        JLabel title = new JLabel("  ⚑ ELECTION CAMPAIGN BEGINS");
+        title.setFont(UITheme.FONT_TITLE);
+        title.setForeground(new Color(240, 200, 80));
+        title.setBackground(UITheme.BG_PANEL_LIGHT);
+        title.setOpaque(true);
+        title.setBorder(new javax.swing.border.EmptyBorder(12, 12, 10, 12));
+
+        JLabel body = new JLabel("<html><body style='width:340px; padding: 8px'>"
+                + "The election is <b>" + turns + " turn(s)</b> away.<br><br>"
+                + "You may declare support for one party. Based on your prestige, "
+                + "they will receive a bonus. However, if they lose more than 2 seats, "
+                + "you will suffer a significant prestige penalty.<br><br>"
+                + "Open <b>PARTIES</b> to declare support."
+                + "</body></html>");
+        body.setFont(UITheme.FONT_BODY);
+        body.setForeground(UITheme.TEXT_PRIMARY);
+
+        JPanel btns = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
+        btns.setBackground(UITheme.BG_PANEL);
+
+        JButton openPartiesBtn = new JButton("OPEN PARTIES");
+        openPartiesBtn.setFont(UITheme.FONT_BUTTON);
+        openPartiesBtn.setForeground(new Color(240, 200, 80));
+        openPartiesBtn.setBackground(new Color(60, 45, 15));
+        openPartiesBtn.setBorderPainted(false);
+        openPartiesBtn.setFocusPainted(false);
+        openPartiesBtn.addActionListener(e -> { d.dispose(); showPartiesView(); });
+
+        JButton closeBtn = new JButton("Dismiss");
+        closeBtn.setFont(UITheme.FONT_BUTTON);
+        closeBtn.setForeground(UITheme.TEXT_SECONDARY);
+        closeBtn.setBackground(UITheme.BUTTON_BG);
+        closeBtn.setBorderPainted(false);
+        closeBtn.setFocusPainted(false);
+        closeBtn.addActionListener(e -> d.dispose());
+
+        btns.add(closeBtn);
+        btns.add(openPartiesBtn);
+
+        root.add(title, BorderLayout.NORTH);
+        root.add(body,  BorderLayout.CENTER);
+        root.add(btns,  BorderLayout.SOUTH);
+        d.setContentPane(root);
+        d.setVisible(true);
+    }
+
+private void showProtectionDialog(City.main.actions.DeclareProtectionAction action) {
+    java.util.List<City.main.nobles.NobleHouse> houses =
+            gameState.getNobleHouseManager().getHouses();
+    java.util.List<City.main.nobles.NobleHouse> eligible = new java.util.ArrayList<>();
+    for (City.main.nobles.NobleHouse h : houses) {
+        if (!h.isEliminated()
+                && !gameState.getProtectionManager().isUnderProtection(h.getId())) {
+            eligible.add(h);
+        }
+    }
+    if (eligible.isEmpty()) {
+        JOptionPane.showMessageDialog(this,
+                "All noble houses are already under protection or none are available.",
+                "Declare Protection", JOptionPane.INFORMATION_MESSAGE);
+        return;
+    }
+
+    JDialog d = new JDialog(this, "Declare Protection", true);
+    d.setUndecorated(true);
+    d.setSize(440, 380);
+    d.setLocationRelativeTo(this);
+
+    JPanel root = new JPanel(new BorderLayout(0, 8));
+    root.setBackground(UITheme.BG_PANEL);
+    root.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 2));
+
+    JLabel title = new JLabel("  🛡 Declare Protection");
+    title.setFont(UITheme.FONT_TITLE);
+    title.setForeground(UITheme.TEXT_GOLD);
+    title.setBackground(UITheme.BG_PANEL_LIGHT);
+    title.setOpaque(true);
+    title.setBorder(new javax.swing.border.EmptyBorder(12, 12, 10, 12));
+
+    JLabel info = new JLabel("<html><body style='width:360px'>"
+            + "Declare a noble house under your protection.<br>"
+            + "Costs <b>" + City.main.parameters.GameParameters.PROTECTION_INFLUENCE_COST
+            + " influence</b>. Target gains <b>+"
+            + City.main.parameters.GameParameters.PROTECTION_TARGET_OPINION_BONUS
+            + " opinion</b>. Their rivals get <b>"
+            + City.main.parameters.GameParameters.PROTECTION_RIVAL_OPINION_MALUS
+            + " opinion</b>.<br>"
+            + "If they lose a zone, you suffer <b>-"
+            + Math.abs(City.main.parameters.GameParameters.PLAYER_PRESTIGE_PROTECTED_ZONE_LOST)
+            + " prestige</b>."
+            + "</body></html>");
+    info.setFont(UITheme.FONT_SMALL);
+    info.setForeground(UITheme.TEXT_SECONDARY);
+    info.setBorder(new javax.swing.border.EmptyBorder(8, 12, 8, 12));
+
+    JPanel listPanel = new JPanel();
+    listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+    listPanel.setBackground(UITheme.BG_DARK);
+    listPanel.setBorder(new javax.swing.border.EmptyBorder(4, 8, 4, 8));
+
+    final City.main.nobles.NobleHouse[] chosen = {eligible.get(0)};
+    ButtonGroup group = new ButtonGroup();
+
+    for (City.main.nobles.NobleHouse house : eligible) {
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setBackground(UITheme.BG_PANEL);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                new javax.swing.border.EmptyBorder(6, 10, 6, 10)));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+
+        JRadioButton rb = new JRadioButton();
+        rb.setBackground(UITheme.BG_PANEL);
+        if (house == chosen[0]) rb.setSelected(true);
+        group.add(rb);
+
+        JLabel nameLabel = new JLabel(house.getName());
+        nameLabel.setFont(UITheme.FONT_BUTTON);
+        nameLabel.setForeground(UITheme.TEXT_GOLD);
+
+        JLabel opinionLabel = new JLabel("Opinion: " + house.getPlayerOpinion()
+                + "  |  Zones: " + house.getZoneIds().size());
+        opinionLabel.setFont(UITheme.FONT_SMALL);
+        opinionLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+        JPanel infoCol = new JPanel();
+        infoCol.setLayout(new BoxLayout(infoCol, BoxLayout.Y_AXIS));
+        infoCol.setBackground(UITheme.BG_PANEL);
+        infoCol.add(nameLabel);
+        infoCol.add(opinionLabel);
+
+        row.add(rb, BorderLayout.WEST);
+        row.add(infoCol, BorderLayout.CENTER);
+
+        row.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                rb.setSelected(true);
+                chosen[0] = house;
+            }
+        });
+        listPanel.add(row);
+        listPanel.add(Box.createVerticalStrut(4));
+    }
+
+    JScrollPane scroll = new JScrollPane(listPanel);
+    scroll.setBorder(null);
+    scroll.setBackground(UITheme.BG_DARK);
+    scroll.getViewport().setBackground(UITheme.BG_DARK);
+
+    JPanel btnRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 8, 8));
+    btnRow.setBackground(UITheme.BG_PANEL);
+
+    JButton confirmBtn = new JButton("DECLARE PROTECTION");
+    confirmBtn.setFont(UITheme.FONT_BUTTON);
+    confirmBtn.setForeground(UITheme.TEXT_GOLD);
+    confirmBtn.setBackground(UITheme.BUTTON_BG);
+    confirmBtn.setBorderPainted(false);
+    confirmBtn.setFocusPainted(false);
+    confirmBtn.addActionListener(e -> {
+        City.main.actions.ActionResult result =
+                action.applyProtection(chosen[0], gameState.getResources(),
+                        gameState.getLedger());
+        d.dispose();
+        if (result.isSuccess()) {
+            eventLogPanel.appendLine("✓ " + result.getMessage());
+        } else {
+            JOptionPane.showMessageDialog(this, result.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+        actionsPanel.refresh();
+        resourcePanel.refresh();
+    });
+
+    JButton cancelBtn = new JButton("CANCEL");
+    cancelBtn.setFont(UITheme.FONT_BUTTON);
+    cancelBtn.setForeground(UITheme.TEXT_SECONDARY);
+    cancelBtn.setBackground(UITheme.BUTTON_BG);
+    cancelBtn.setBorderPainted(false);
+    cancelBtn.setFocusPainted(false);
+    cancelBtn.addActionListener(e -> d.dispose());
+
+    btnRow.add(cancelBtn);
+    btnRow.add(confirmBtn);
+
+    root.add(title, BorderLayout.NORTH);
+    root.add(info,  BorderLayout.CENTER);
+    // Note: info is small — add scroll below it
+    JPanel center = new JPanel(new BorderLayout());
+    center.setBackground(UITheme.BG_PANEL);
+    center.add(info,   BorderLayout.NORTH);
+    center.add(scroll, BorderLayout.CENTER);
+    root.add(center, BorderLayout.CENTER);
+    root.add(btnRow, BorderLayout.SOUTH);
+
+    d.setContentPane(root);
+    d.setVisible(true);
 }
 
 private void showMilitaryView() {
@@ -613,10 +822,16 @@ private void endTurn() {
         City.main.politics.ElectionRecord recordAfter =
                 gameState.getElectionManager().getLastRecord();
         if (recordAfter != null && recordAfter != recordBefore) {
-            // Patch the record with current calendar info
             showElectionResults();
             electionPending  = true;
             electionBadge.setVisible(true);
+        }
+
+        // Show campaign popup if campaign just started
+        City.main.politics.ElectionManager elMgr = gameState.getElectionManager();
+        if (elMgr.isCampaignPeriod() && elMgr.getTurnsUntilElection()
+                == City.main.parameters.GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS) {
+            showCampaignDialog();
         }
     }
 
@@ -923,6 +1138,14 @@ private City.main.nobles.NobleHouse showZoneAwardDialog(
                         () -> actionsPanel.refresh());
                 return false;
             });
+
+    // Declare Protection dialog
+    for (City.main.actions.PlayerAction pa : gameState.getActionRegistry().getRealmActions()) {
+        if (pa instanceof City.main.actions.DeclareProtectionAction dpa) {
+            dpa.setDialogCallback(() -> showProtectionDialog(dpa));
+            break;
+        }
+    }
 
     // Recreate vote session panel with new reference after reset
     voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);

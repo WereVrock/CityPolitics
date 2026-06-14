@@ -123,19 +123,37 @@ public class TurnProcessor {
         // (tracked via NobleHouseManager callback — prestige hit applied in PlayerCombatProcessor)
 
         // ── Election tick ─────────────────────────────────────────────────────
-        gameState.getElectionManager().setCalendarContext(
-                calendar.getYear(), calendar.getPeriod().getDisplayName());
-        List<String> electionLog = gameState.getElectionManager().tick(
+        City.main.politics.ElectionManager elMgr = gameState.getElectionManager();
+        elMgr.setCalendarContext(calendar.getYear(), calendar.getPeriod().getDisplayName());
+
+        // Check if campaign period just started — UI callback will handle popup
+        boolean wasInCampaign = elMgr.isCampaignPeriod();
+
+        List<String> electionLog = elMgr.tick(
                 gameState.getPartyManager().getParties(),
                 gameState.getPopManager(),
                 gameState.getPropagandaManager(),
                 gameState.getStats().getCorruption());
         log.addAll(electionLog);
 
+        // Resolve support outcome after election fires
+        if (!electionLog.isEmpty()) {
+            log.addAll(elMgr.resolveSupportOutcome(
+                    gameState.getPartyManager().getParties(),
+                    gameState.getPlayerPrestige()));
+        }
+
+        // Notify campaign start
+        if (!wasInCampaign && elMgr.isCampaignPeriod()) {
+            log.add("⚑ ELECTION CAMPAIGN HAS BEGUN — " + elMgr.getTurnsUntilElection()
+                    + " turn(s) until the vote. Open PARTIES to declare support.");
+        }
+
         // ── Legislation ticking ───────────────────────────────────────────────
         gameState.getLegislationManager().tickMercenaryWindow();
         gameState.getLegislationManager().tickWartimeTaxesCooldown();
         gameState.getLegislationManager().tickSendResourcesWindow();
+        gameState.getLegislationManager().resetCouncilEventUsed();
 
         // ── Refresh mercenary hire pool ───────────────────────────────────────
         gameState.getMercenaryManager().getHirePool().refresh();

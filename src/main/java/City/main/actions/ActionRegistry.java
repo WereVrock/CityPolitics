@@ -35,7 +35,7 @@ public class ActionRegistry {
 
     private final LegislationManager legislationManager;
 
-    public ActionRegistry(GameState gameState) {
+public ActionRegistry(GameState gameState) {
         this.legislationManager = gameState.getLegislationManager();
 
         // ── Authorized (free) actions ──────────────────────────────────────
@@ -85,9 +85,13 @@ public class ActionRegistry {
         grantZoneClaimAction = new GrantZoneClaimAction(
                 gameState.getNobleHouseManager(),
                 gameState.getNobleHouseManager().getClaimManager());
+        DeclareProtectionAction protectionAction = new DeclareProtectionAction(
+                gameState.getProtectionManager(),
+                gameState.getNobleHouseManager());
 
         realmActions.add(sendResourcesToNoblesAction);
         realmActions.add(grantZoneClaimAction);
+        realmActions.add(protectionAction);
 
         // Combine all
         allActions.addAll(authorizedActions);
@@ -102,7 +106,7 @@ public class ActionRegistry {
         }
     }
 
-    // ─── Shared vote counter ──────────────────────────────────────────────────
+// ─── Shared vote counter ──────────────────────────────────────────────────
 
     public boolean isFormalUsedThisTurn()   { return formalUsedThisTurn; }
     public void    markFormalUsedThisTurn() {
