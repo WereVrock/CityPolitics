@@ -73,14 +73,19 @@ public String getDescription() {
     public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
     @Override
-    public boolean isAvailable() {
-        return super.isAvailable()
-                && legislationManager.isPassed(LegislationType.WARTIME_TAXES_LAW)
-                && warStateChecker.isAtWar()
-                && !legislationManager.isWartimeTaxesOnCooldown();
+
+public boolean isAvailable() {
+        // Note: do NOT call super.isAvailable() here because AbstractFormalAction.isAvailable()
+        // returns usesThisTurn < maxUsesPerTurn which is always true at the start of a turn.
+        // The real gate is the legislation, war state, and cooldown checks below.
+        if (getUsesThisTurn() >= getMaxUsesPerTurn()) return false;
+        if (!legislationManager.isPassed(LegislationType.WARTIME_TAXES_LAW)) return false;
+        if (!warStateChecker.isAtWar()) return false;
+        if (legislationManager.isWartimeTaxesOnCooldown()) return false;
+        return true;
     }
 
-    public String getUnavailableReason() {
+public String getUnavailableReason() {
         if (!legislationManager.isPassed(LegislationType.WARTIME_TAXES_LAW))
             return "Requires Wartime Taxes Law to be passed.";
         if (!warStateChecker.isAtWar())

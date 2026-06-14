@@ -25,13 +25,11 @@ this.votingEngine = new VotingEngine();
 
 
 @Override
-
 public final ActionResult execute(ResourcePool resources, StatBlock stats) {
     if (!isAvailable()) {
-        return ActionResult.fail(getName() + " already used this turn.");
+        return ActionResult.fail(getName() + " is not available right now.");
     }
-    // Check shared formal/legislation slot
-        City.main.core.GameState gs = getGameState();
+    City.main.core.GameState gs = getGameState();
     if (gs != null && gs.getActionRegistry().isFormalUsedThisTurn()) {
         return ActionResult.fail("Only one formal action or legislation vote is allowed per turn.");
     }

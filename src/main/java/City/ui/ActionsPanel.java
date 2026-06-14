@@ -251,6 +251,7 @@ private JPanel buildLegislationCard() {
                 buttons.add(Box.createVerticalStrut(6));
             }
         }
+        buttons.add(Box.createVerticalStrut(4));
 
         buttons.add(Box.createVerticalStrut(10));
         JLabel passedHeader = new JLabel("PASSED LAWS:");
@@ -317,10 +318,9 @@ private JPanel buildLegislationCard() {
         return outer;
     }
 
-    private JPanel buildLegislationCard(LegislationType type) {
-        JPanel card = new JPanel(new BorderLayout(8, 0));
+private JPanel buildLegislationCard(LegislationType type) {
+        JPanel card = new JPanel(new BorderLayout(8, 4));
         card.setBackground(UITheme.BG_PANEL);
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
         card.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
                 new EmptyBorder(6, 10, 6, 10)));
@@ -334,13 +334,17 @@ private JPanel buildLegislationCard() {
         nameLabel.setFont(UITheme.FONT_BUTTON);
         nameLabel.setForeground(UITheme.TEXT_GOLD);
 
-        JLabel descLabel = new JLabel("<html><body style='width:220px'>"
-                + type.getDescription() + "</body></html>");
-        descLabel.setFont(UITheme.FONT_SMALL);
-        descLabel.setForeground(UITheme.TEXT_SECONDARY);
+        JTextArea descArea = new JTextArea(type.getDescription());
+        descArea.setFont(UITheme.FONT_SMALL);
+        descArea.setForeground(UITheme.TEXT_SECONDARY);
+        descArea.setBackground(UITheme.BG_PANEL);
+        descArea.setEditable(false);
+        descArea.setLineWrap(true);
+        descArea.setWrapStyleWord(true);
 
         text.add(nameLabel);
-        text.add(descLabel);
+        text.add(Box.createVerticalStrut(3));
+        text.add(descArea);
 
         boolean canVote = !gameState.hasActiveSession()
                 && !gameState.getActionRegistry().isFormalUsedThisTurn();
@@ -360,7 +364,7 @@ private JPanel buildLegislationCard() {
         return card;
     }
 
-    private void proposeLegislation(LegislationType type) {
+private void proposeLegislation(LegislationType type) {
         if (gameState.hasActiveSession()) {
             onResult.accept(City.main.actions.ActionResult.fail("A vote is already pending this turn."));
             return;

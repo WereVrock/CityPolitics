@@ -305,6 +305,9 @@ public List<String> resolveOrders(List<NobleHouse> allHouses, ClaimManager claim
             City.main.army.PlayerBattleInterventionProcessor.PlayerChoice choice =
                     interventionProcessor.checkIntervention(
                             attacker, defender, zoneId, totalAtkSz, playerArmyManager);
+            City.debug.Debug.log("noble-intervention", "choice",
+                    attacker.getName() + " vs " + defender.getName()
+                    + " at " + zoneId + " → " + choice);
             switch (choice) {
                 case STOP_FIGHT -> {
                     log.add("⚔ Player intervenes and stops the battle at " + zoneId + ".");

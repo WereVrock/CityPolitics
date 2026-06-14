@@ -13,10 +13,13 @@ import java.util.*;
  */
 public class MercenaryManager {
 
-    private final List<MercenaryArmy> armies = new ArrayList<>();
-    private final Random              rng    = new Random();
+    private final List<MercenaryArmy>  armies  = new ArrayList<>();
+    private final Random               rng     = new Random();
+    private final City.main.mercenaries.MercenaryHirePool hirePool = new City.main.mercenaries.MercenaryHirePool();
 
     public MercenaryManager() {}
+
+    public City.main.mercenaries.MercenaryHirePool getHirePool() { return hirePool; }
 
     // ─── Recruitment ─────────────────────────────────────────────────────────
 
@@ -151,5 +154,6 @@ public class MercenaryManager {
     public void reset() {
         armies.clear();
         MercenaryArmy.resetIdCounter();
+        hirePool.refresh();
     }
 }

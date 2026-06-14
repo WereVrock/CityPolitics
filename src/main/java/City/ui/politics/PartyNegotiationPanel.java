@@ -305,102 +305,104 @@ private JPanel buildSideDealRow(VotingSession session, DealOffer mainOffer) {
     return row;
 }
 
-private void showSideDealResultDialog(SideLeader sideLeader, SideDealResult result) {
-    javax.swing.JDialog dialog = new javax.swing.JDialog(
-            javax.swing.SwingUtilities.getWindowAncestor(this) instanceof java.awt.Frame
-                    ? (java.awt.Frame) javax.swing.SwingUtilities.getWindowAncestor(this) : null,
-            "Side Deal — " + sideLeader.getName(), true);
-    dialog.setSize(420, 300);
-    dialog.setLocationRelativeTo(this);
-    dialog.setResizable(false);
-    dialog.getContentPane().setBackground(UITheme.BG_PANEL);
+    private void showSideDealResultDialog(SideLeader sideLeader, SideDealResult result) {
+        javax.swing.JDialog dialog = new javax.swing.JDialog(
+                javax.swing.SwingUtilities.getWindowAncestor(this) instanceof java.awt.Frame
+                        ? (java.awt.Frame) javax.swing.SwingUtilities.getWindowAncestor(this) : null,
+                "Side Deal — " + sideLeader.getName(), true);
+        dialog.setMinimumSize(new Dimension(460, 320));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(true);
+        dialog.getContentPane().setBackground(UITheme.BG_PANEL);
 
-    JPanel root = new JPanel(new BorderLayout(12, 12));
-    root.setBackground(UITheme.BG_PANEL);
-    root.setBorder(new EmptyBorder(16, 16, 16, 16));
+        JPanel root = new JPanel(new BorderLayout(12, 12));
+        root.setBackground(UITheme.BG_PANEL);
+        root.setBorder(new EmptyBorder(16, 16, 16, 16));
 
-    // Portrait placeholder
-    JPanel portrait = new JPanel() {
-        @Override
-        protected void paintComponent(java.awt.Graphics g) {
-            super.paintComponent(g);
-            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
-            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(UITheme.BG_PANEL_LIGHT);
-            g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
-            g2.setColor(UITheme.BORDER_COLOR);
-            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
-            int cx = getWidth() / 2;
-            g2.setColor(new Color(180, 200, 255));
-            g2.fillOval(cx - 20, 14, 40, 40);
-            g2.setColor(new Color(160, 180, 220));
-            g2.fillRoundRect(cx - 25, 58, 50, 40, 8, 8);
+        JPanel portrait = new JPanel() {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                super.paintComponent(g);
+                java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(UITheme.BG_PANEL_LIGHT);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
+                g2.setColor(UITheme.BORDER_COLOR);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
+                int cx = getWidth() / 2;
+                g2.setColor(new Color(180, 200, 255));
+                g2.fillOval(cx - 20, 14, 40, 40);
+                g2.setColor(new Color(160, 180, 220));
+                g2.fillRoundRect(cx - 25, 58, 50, 40, 8, 8);
+            }
+        };
+        portrait.setPreferredSize(new Dimension(90, 110));
+        portrait.setBackground(UITheme.BG_PANEL);
+
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setBackground(UITheme.BG_PANEL);
+
+        JLabel nameLabel = new JLabel(sideLeader.getName());
+        nameLabel.setFont(UITheme.FONT_HEADER);
+        nameLabel.setForeground(new Color(180, 200, 255));
+
+        String message;
+        if (result.seatsWon <= 0) {
+            message = "\"I tried my best, but I couldn't convince anyone to cross the party line. "
+                    + "I will vote with you myself, for whatever that is worth.\"";
+        } else if (result.seatsWon == 1) {
+            message = "\"It wasn't easy, but I managed to bring one seat over to your side. "
+                    + "Don't expect me to make a habit of it.\"";
+        } else {
+            message = "\"I worked the room as best I could. "
+                    + result.seatsWon + " of my colleagues will cast their vote for you. "
+                    + "The rest wouldn't hear of it.\"";
         }
-    };
-    portrait.setPreferredSize(new Dimension(90, 110));
-    portrait.setBackground(UITheme.BG_PANEL);
 
-    JPanel textPanel = new JPanel();
-    textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
-    textPanel.setBackground(UITheme.BG_PANEL);
+        JTextArea messageArea = new JTextArea(message);
+        messageArea.setFont(new java.awt.Font("Serif", java.awt.Font.ITALIC, 13));
+        messageArea.setForeground(UITheme.TEXT_PRIMARY);
+        messageArea.setBackground(UITheme.BG_PANEL);
+        messageArea.setEditable(false);
+        messageArea.setLineWrap(true);
+        messageArea.setWrapStyleWord(true);
+        messageArea.setPreferredSize(new Dimension(300, 80));
+        messageArea.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                new EmptyBorder(8, 10, 8, 10)));
 
-    JLabel nameLabel = new JLabel(sideLeader.getName());
-    nameLabel.setFont(UITheme.FONT_HEADER);
-    nameLabel.setForeground(new Color(180, 200, 255));
+        String seatsText = result.seatsWon > 0
+                ? "Seats convinced: " + result.seatsWon + " / " + party.getSeats()
+                : "No additional seats convinced — side leader votes with you alone.";
+        JLabel seatsLabel = new JLabel("<html><body style='width:280px'>" + seatsText + "</body></html>");
+        seatsLabel.setFont(UITheme.FONT_SMALL);
+        seatsLabel.setForeground(result.seatsWon > 0 ? UITheme.TEXT_GREEN : UITheme.TEXT_SECONDARY);
 
-    // In-character message from the side leader
-    String message;
-    if (result.seatsWon <= 0) {
-        message = "\"I tried my best, but I couldn't convince anyone to cross the party line. "
-                + "I will vote with you myself, for whatever that is worth.\"";
-    } else if (result.seatsWon == 1) {
-        message = "\"It wasn't easy, but I managed to bring one seat over to your side. "
-                + "Don't expect me to make a habit of it.\"";
-    } else {
-        message = "\"I worked the room as best I could. "
-                + result.seatsWon + " of my colleagues will cast their vote for you. "
-                + "The rest wouldn't hear of it.\"";
+        textPanel.add(nameLabel);
+        textPanel.add(Box.createVerticalStrut(8));
+        textPanel.add(messageArea);
+        textPanel.add(Box.createVerticalStrut(6));
+        textPanel.add(seatsLabel);
+
+        JButton closeBtn = new JButton("CONTINUE");
+        closeBtn.setFont(UITheme.FONT_BUTTON);
+        closeBtn.setForeground(UITheme.TEXT_GOLD);
+        closeBtn.setBackground(UITheme.BUTTON_BG);
+        closeBtn.setBorderPainted(false);
+        closeBtn.setFocusPainted(false);
+        closeBtn.addActionListener(ev -> dialog.dispose());
+
+        root.add(portrait,  BorderLayout.WEST);
+        root.add(textPanel, BorderLayout.CENTER);
+        root.add(closeBtn,  BorderLayout.SOUTH);
+
+        dialog.add(root);
+        dialog.pack();
+        dialog.setVisible(true);
     }
-
-    JTextArea messageArea = new JTextArea(message);
-    messageArea.setFont(new java.awt.Font("Serif", java.awt.Font.ITALIC, 13));
-    messageArea.setForeground(UITheme.TEXT_PRIMARY);
-    messageArea.setBackground(UITheme.BG_PANEL);
-    messageArea.setEditable(false);
-    messageArea.setLineWrap(true);
-    messageArea.setWrapStyleWord(true);
-    messageArea.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
-            new EmptyBorder(8, 10, 8, 10)));
-
-    JLabel seatsLabel = new JLabel(result.seatsWon > 0
-            ? "Seats convinced: " + result.seatsWon
-            : "No seats convinced — side leader votes with you alone.");
-    seatsLabel.setFont(UITheme.FONT_SMALL);
-    seatsLabel.setForeground(result.seatsWon > 0 ? UITheme.TEXT_GREEN : UITheme.TEXT_SECONDARY);
-
-    textPanel.add(nameLabel);
-    textPanel.add(Box.createVerticalStrut(8));
-    textPanel.add(messageArea);
-    textPanel.add(Box.createVerticalStrut(6));
-    textPanel.add(seatsLabel);
-
-    JButton closeBtn = new JButton("CONTINUE");
-    closeBtn.setFont(UITheme.FONT_BUTTON);
-    closeBtn.setForeground(UITheme.TEXT_GOLD);
-    closeBtn.setBackground(UITheme.BUTTON_BG);
-    closeBtn.setBorderPainted(false);
-    closeBtn.setFocusPainted(false);
-    closeBtn.addActionListener(ev -> dialog.dispose());
-
-    root.add(portrait,  BorderLayout.WEST);
-    root.add(textPanel, BorderLayout.CENTER);
-    root.add(closeBtn,  BorderLayout.SOUTH);
-
-    dialog.add(root);
-    dialog.setVisible(true);
-}
 
 private JPanel buildSideDealResultPanel(SideLeader sideLeader, int seatsWon) {
     JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT));

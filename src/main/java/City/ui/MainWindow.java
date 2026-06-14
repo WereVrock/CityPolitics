@@ -849,14 +849,14 @@ private City.main.nobles.NobleHouse showZoneAwardDialog(
                 () -> ledgerPanel.captureSnapshot());
     }
 
-    // Mercenary hire dialog
+    // Mercenary hire dialog — pool-based
     gameState.getActionRegistry().getHireMercenariesAction()
             .setHireDialogCallback(() ->
-                City.ui.MercenaryHireDialog.show(
+                City.ui.MercenaryPoolHireDialog.show(
                         this,
-                        gameState.getArmyManager(),
                         gameState.getMercenaryManager(),
                         gameState.getResources(),
+                        gameState.getLedger(),
                         () -> { resourcePanel.refresh(); popPanel.refresh(); }));
 
     // Send Resources to Nobles dialog
@@ -887,6 +887,28 @@ private City.main.nobles.NobleHouse showZoneAwardDialog(
 
     // Recreate vote session panel with new reference after reset
     voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
+
+    // Battle intervention dialog
+    gameState.getBattleInterventionProcessor().setCallback(
+        (attackerName, defenderName, zoneId, playerSize, attackerSize) -> {
+            final City.main.army.PlayerBattleInterventionProcessor.PlayerChoice[] result =
+                { City.main.army.PlayerBattleInterventionProcessor.PlayerChoice.IGNORE };
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                result[0] = City.ui.BattleInterventionDialog.show(
+                        this, attackerName, defenderName, zoneId, playerSize, attackerSize);
+            } else {
+                try {
+                    javax.swing.SwingUtilities.invokeAndWait(() ->
+                        result[0] = City.ui.BattleInterventionDialog.show(
+                                this, attackerName, defenderName, zoneId, playerSize, attackerSize));
+                } catch (Exception ignored) {}
+            }
+            return result[0];
+        });
+    // Wire intervention processor to army manager
+    gameState.getNobleArmyManager().setInterventionProcessor(
+            gameState.getBattleInterventionProcessor(),
+            gameState.getArmyManager());
 }
 
 private void wireMapViewCallbacks() {

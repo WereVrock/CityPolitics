@@ -215,13 +215,21 @@ public final class GameParameters {
     // MERCENARIES
     // =========================================================
     /** Multiplier on normal soldier recruit AND upkeep cost for mercenaries. */
-    public static final double MERCENARY_COST_MULTIPLIER    = 3.0;
+    public static final double MERCENARY_COST_MULTIPLIER        = 3.0;
     /** Ally force must be > this × merc size to suppress raiding. */
-    public static final double MERCENARY_RAID_ALLY_THRESHOLD = 1.5;
+    public static final double MERCENARY_RAID_ALLY_THRESHOLD    = 1.5;
     /** Chance per turn that an unsupervised mercenary army raids. */
-    public static final double MERCENARY_RAID_CHANCE        = 0.30;
+    public static final double MERCENARY_RAID_CHANCE            = 0.30;
     /** Cost variance for mercenary recruitment (±fraction). */
-    public static final double MERCENARY_RECRUIT_COST_VARIANCE = 0.15;
+    public static final double MERCENARY_RECRUIT_COST_VARIANCE  = 0.15;
+    /** Minimum number of mercenary armies available for hire each turn. */
+    public static final int    MERCENARY_POOL_MIN_COUNT         = 1;
+    /** Maximum number of mercenary armies available for hire each turn. */
+    public static final int    MERCENARY_POOL_MAX_COUNT         = 4;
+    /** Minimum size of a mercenary army in the hire pool. */
+    public static final int    MERCENARY_POOL_MIN_SIZE          = 100;
+    /** Maximum size of a mercenary army in the hire pool. */
+    public static final int    MERCENARY_POOL_MAX_SIZE          = 500;
 
     // =========================================================
     // VOTING

@@ -114,6 +114,9 @@ public class GameState {
         playerCombatProcessor.setProtectionManager(protectionManager);
         playerCombatProcessor.setNobleHouseManagerRef(nobleHouseManager);
         battleInterventionProcessor  = new City.main.army.PlayerBattleInterventionProcessor();
+        // Wire intervention processor so noble army manager can prompt the player
+        nobleHouseManager.getArmyManager().setInterventionProcessor(
+                battleInterventionProcessor, armyManager);
         commanderRoster      = new City.main.army.commander.CommanderRoster(resources, partyManager);
         commanderRecruitPool = new City.main.army.commander.CommanderRecruitPool(resources, partyManager);
 

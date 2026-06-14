@@ -249,7 +249,7 @@ public class VoteSessionPanel extends JPanel {
             BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
             new EmptyBorder(8, 12, 8, 12)
         ));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 52));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         row.setAlignmentX(LEFT_ALIGNMENT);
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         row.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -275,7 +275,8 @@ public class VoteSessionPanel extends JPanel {
         nameLabel.setFont(UITheme.FONT_BUTTON);
         nameLabel.setForeground(isOracles ? UITheme.TEXT_GOLD : UITheme.TEXT_PRIMARY);
 
-        JLabel leaderLabel = new JLabel(party.getLeaderName());
+        JLabel leaderLabel = new JLabel("<html><body style='width:200px'>"
+                + party.getLeaderName() + "</body></html>");
         leaderLabel.setFont(UITheme.FONT_SMALL);
         leaderLabel.setForeground(UITheme.TEXT_SECONDARY);
 

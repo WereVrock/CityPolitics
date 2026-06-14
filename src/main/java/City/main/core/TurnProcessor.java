@@ -135,6 +135,9 @@ public class TurnProcessor {
         gameState.getLegislationManager().tickWartimeTaxesCooldown();
         gameState.getLegislationManager().tickSendResourcesWindow();
 
+        // ── Refresh mercenary hire pool ───────────────────────────────────────
+        gameState.getMercenaryManager().getHirePool().refresh();
+
         applyLedgerToResources(ledger, resources);
 
         City.main.army.PlayerCombatProcessor pcp = gameState.getPlayerCombatProcessor();
