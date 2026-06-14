@@ -123,6 +123,8 @@ public class TurnProcessor {
         // (tracked via NobleHouseManager callback — prestige hit applied in PlayerCombatProcessor)
 
         // ── Election tick ─────────────────────────────────────────────────────
+        gameState.getElectionManager().setCalendarContext(
+                calendar.getYear(), calendar.getPeriod().getDisplayName());
         List<String> electionLog = gameState.getElectionManager().tick(
                 gameState.getPartyManager().getParties(),
                 gameState.getPopManager(),

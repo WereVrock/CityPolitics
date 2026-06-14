@@ -10,26 +10,19 @@ import java.util.*;
 
 /**
  * Runs the full election simulation every ELECTION_PERIOD_TURNS turns.
- *
- * Election order:
- * 1. Pops vote based on view matching + propaganda
- * 2. Parties buy unaffiliated non-voting-for-them pops (power-based)
- * 3. Parties with power > 70 steal votes (corruption-scaled total cheat)
- * 4. Votes counted → seats redistributed (fixed-seat parties excluded)
- * 5. Affiliation streaks updated
- * 6. Power drift applied each turn (separately via applyPowerDrift)
+ * Produces a structured ElectionRecord alongside log lines.
  */
 public class ElectionManager {
 
     private int turnsSinceLastElection = 0;
 
+    /** Last election result — shown in ElectionResultsPanel. */
+    private ElectionRecord lastRecord = null;
+
     private final Random rng = new Random();
 
     // ─── Turn tick ────────────────────────────────────────────────────────────
 
-    /**
-     * Called each turn. Returns non-empty log if election fires.
-     */
     public List<String> tick(List<PoliticalParty> parties,
                               PopManager popManager,
                               PropagandaManager propagandaManager,
@@ -43,7 +36,6 @@ public class ElectionManager {
         return log;
     }
 
-    /** Returns true if an election will fire next turn. */
     public boolean isElectionImminent() {
         return turnsSinceLastElection >= GameParameters.ELECTION_PERIOD_TURNS - 1;
     }
@@ -52,11 +44,10 @@ public class ElectionManager {
         return Math.max(0, GameParameters.ELECTION_PERIOD_TURNS - turnsSinceLastElection);
     }
 
-    // ─── Power drift (applied every turn) ────────────────────────────────────
+    public ElectionRecord getLastRecord() { return lastRecord; }
 
-    /**
-     * If a party has power > seats × POWER_PER_SEAT_THRESHOLD, power drops by 1.
-     */
+    // ─── Power drift ─────────────────────────────────────────────────────────
+
     public void applyPowerDrift(List<PoliticalParty> parties) {
         for (PoliticalParty party : parties) {
             if (isFixedSeat(party)) continue;
@@ -68,6 +59,14 @@ public class ElectionManager {
     }
 
     // ─── Election ─────────────────────────────────────────────────────────────
+
+    private int  lastElectionYear   = 0;
+    private String lastElectionPeriod = "";
+
+    public void setCalendarContext(int year, String period) {
+        this.lastElectionYear   = year;
+        this.lastElectionPeriod = period;
+    }
 
     private List<String> runElection(List<PoliticalParty> parties,
                                       PopManager popManager,
@@ -82,13 +81,30 @@ public class ElectionManager {
         List<Pop> pops = new ArrayList<>(popManager.getPops());
         int totalPopCount = pops.stream().mapToInt(Pop::getCount).sum();
 
-        // Step 1: Base votes from view matching + propaganda
+        // Snapshot seats and power before changes
+        Map<PoliticalParty, Integer> seatsBefore = new LinkedHashMap<>();
+        Map<PoliticalParty, Integer> powerBefore = new LinkedHashMap<>();
+        for (PoliticalParty p : parties) {
+            seatsBefore.put(p, p.getSeats());
+            powerBefore.put(p, p.getPower());
+        }
+
+        // Snapshot propaganda before consumption
+        Map<String, Double> propagandaSnapshot = new LinkedHashMap<>();
+        for (PoliticalParty p : electable) {
+            propagandaSnapshot.put(p.getName(), propagandaManager.getElectionPropaganda(p));
+        }
+
+        // Step 1: Natural votes
         Map<PoliticalParty, Integer> votes = new LinkedHashMap<>();
         for (PoliticalParty p : parties) votes.put(p, 0);
 
-        // Track how each pop chunk voted (for affiliation updates)
-        Map<Pop, PoliticalParty> popNaturalVote  = new LinkedHashMap<>();
-        Map<Pop, PoliticalParty> popFinalVote     = new LinkedHashMap<>();
+        Map<Pop, PoliticalParty> popNaturalVote = new LinkedHashMap<>();
+        Map<Pop, PoliticalParty> popFinalVote   = new LinkedHashMap<>();
+
+        // Track natural votes per party
+        Map<PoliticalParty, Integer> naturalVotesMap = new LinkedHashMap<>();
+        for (PoliticalParty p : parties) naturalVotesMap.put(p, 0);
 
         for (Pop pop : pops) {
             PoliticalParty naturalChoice = pickNaturalVote(pop, electable, propagandaManager);
@@ -96,11 +112,13 @@ public class ElectionManager {
             popFinalVote.put(pop, naturalChoice);
             if (naturalChoice != null) {
                 votes.merge(naturalChoice, pop.getCount(), Integer::sum);
+                naturalVotesMap.merge(naturalChoice, pop.getCount(), Integer::sum);
             }
         }
-        Debug.log("election", "step1-natural", voteSummary(votes));
 
-        // Step 2: Affiliation override — affiliated pops vote for their party
+        // Step 2: Affiliation overrides
+        List<ElectionRecord.AffiliationChange> affiliationChanges = new ArrayList<>();
+
         for (Pop pop : pops) {
             PolitcalView affiliation = pop.getAffiliation();
             if (affiliation == PolitcalView.NONE) continue;
@@ -112,31 +130,26 @@ public class ElectionManager {
             boolean overridden = !affiliatedParty.equals(natural);
 
             if (overridden) {
-                // Remove from natural party, add to affiliated
                 if (natural != null) votes.merge(natural, -pop.getCount(), Integer::sum);
                 votes.merge(affiliatedParty, pop.getCount(), Integer::sum);
                 popFinalVote.put(pop, affiliatedParty);
             }
 
-            // Update streak
             PopElectoralData data = pop.getElectoralData();
             data.recordVote(affiliatedParty.getName(), overridden);
 
-            // Check if affiliation should be lost (3 consecutive overrides)
-            if (data.getConsecutiveOverrides() >= GameParameters.ELECTION_OVERRIDE_LOSS_THRESHOLD) {
+            if (data.getConsecutiveOverrides() >= GameParameters.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
+                String oldAff = pop.getAffiliation().getDisplayName();
                 pop.setAffiliation(PolitcalView.NONE);
                 data.setConsecutiveOverrides(0);
-                log.add("  " + pop.getType().getDisplayName() + " pops lose party affiliation"
-                        + " (overridden " + GameParameters.ELECTION_OVERRIDE_LOSS_THRESHOLD
-                        + " times).");
+                affiliationChanges.add(new ElectionRecord.AffiliationChange(
+                        pop.getType().getDisplayName(), oldAff, null, false));
+                log.add("  " + pop.getType().getDisplayName() + " pops lose party affiliation.");
                 Debug.log("election", "affiliation-lost", pop.getType().name());
             }
-
-            // Check if affiliation should be gained (3 votes for affiliated)
-            // (This is for unaffiliated pops; skip if already affiliated)
         }
 
-        // For unaffiliated pops: check if they should gain affiliation
+        // Unaffiliated pops: check affiliation gain
         for (Pop pop : pops) {
             if (pop.getAffiliation() != PolitcalView.NONE) continue;
             PopElectoralData data = pop.getElectoralData();
@@ -153,12 +166,15 @@ public class ElectionManager {
 
             if (data.getConsecutiveVotesForAffiliated()
                     >= GameParameters.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
-                // Gain affiliation — find the party's dominant view
                 PolitcalView newAffiliation = getDominantView(voted);
                 if (newAffiliation != PolitcalView.NONE) {
+                    String oldAff = pop.getAffiliation().getDisplayName();
                     pop.setAffiliation(newAffiliation);
                     data.setConsecutiveVotesForAffiliated(0);
-                    log.add("  " + pop.getType().getDisplayName() + " pops become affiliated with "
+                    affiliationChanges.add(new ElectionRecord.AffiliationChange(
+                            pop.getType().getDisplayName(), oldAff,
+                            newAffiliation.getDisplayName(), true));
+                    log.add("  " + pop.getType().getDisplayName() + " pops affiliate with "
                             + voted.getName() + ".");
                     Debug.log("election", "affiliation-gained",
                             pop.getType().name() + " → " + voted.getName());
@@ -166,51 +182,60 @@ public class ElectionManager {
             }
         }
 
-        // Clamp votes to 0
         for (PoliticalParty p : parties) {
             votes.put(p, Math.max(0, votes.getOrDefault(p, 0)));
         }
 
-        Debug.log("election", "step2-affiliations", voteSummary(votes));
+        // Step 3: Vote buying
+        Map<PoliticalParty, Integer> boughtVotesMap = new LinkedHashMap<>();
+        for (PoliticalParty p : parties) boughtVotesMap.put(p, 0);
+        buyVotes(electable, votes, pops, totalPopCount, boughtVotesMap, log);
 
-        // Step 3: Vote buying (power-based, unaffiliated pops)
-        buyVotes(electable, votes, pops, totalPopCount, log);
-        Debug.log("election", "step3-buying", voteSummary(votes));
+        // Step 4: Vote stealing
+        Map<PoliticalParty, Integer> stolenFromMap = new LinkedHashMap<>();
+        for (PoliticalParty p : parties) stolenFromMap.put(p, 0);
+        int totalStolenVotes = stealVotes(electable, votes, totalPopCount,
+                corruption, stolenFromMap, log);
 
-        // Step 4: Vote stealing (parties with power > 70, corruption-scaled)
-        stealVotes(electable, votes, totalPopCount, corruption, log);
-        Debug.log("election", "step4-stealing", voteSummary(votes));
-
-        // Step 5: Count votes → redistribute seats among electable parties
-        int totalVotes = votes.values().stream().mapToInt(v -> v).sum();
-        if (totalVotes <= 0) totalVotes = 1;
-
-        int totalSeatPool = electable.stream().mapToInt(PoliticalParty::getSeats).sum();
-        // Also count fixed-seat parties for total
-        // Only redistribute electable seats
-        int electableSeatPool = totalSeatPool;
-
-        Map<PoliticalParty, Integer> newSeats = distributeSeats(electable, votes, totalVotes,
-                electableSeatPool);
+        // Step 5: Seat distribution
+        int totalVotes = Math.max(1, votes.values().stream().mapToInt(v -> v).sum());
+        int electableSeatPool = electable.stream().mapToInt(PoliticalParty::getSeats).sum();
+        Map<PoliticalParty, Integer> newSeats = distributeSeats(electable, votes,
+                totalVotes, electableSeatPool);
 
         log.add("─────────────────────────────────────");
         log.add("ELECTION RESULTS:");
-        for (PoliticalParty party : electable) {
-            int oldSeats  = party.getSeats();
-            int seats     = newSeats.getOrDefault(party, 0);
-            int v         = votes.getOrDefault(party, 0);
-            double pct    = totalVotes > 0 ? (double)v / totalVotes * 100 : 0;
-            String change = seats > oldSeats ? "▲" : seats < oldSeats ? "▼" : "─";
-            log.add(String.format("  %-22s %5.1f%%  %2d seats %s",
-                    party.getName(), pct, seats, change));
-        }
-        // Fixed-seat parties
+
+        // Build party results and apply seats
+        List<ElectionRecord.PartyResult> partyResults = new ArrayList<>();
+
         for (PoliticalParty party : parties) {
-            if (isFixedSeat(party)) {
-                log.add(String.format("  %-22s fixed    %2d seats",
-                        party.getName(), party.getSeats()));
+            boolean fixed    = isFixedSeat(party);
+            int     after    = fixed ? party.getSeats() : newSeats.getOrDefault(party, 0);
+            int     before   = seatsBefore.getOrDefault(party, 0);
+            int     pBefore  = powerBefore.getOrDefault(party, party.getPower());
+            int     natural  = naturalVotesMap.getOrDefault(party, 0);
+            int     bought   = boughtVotesMap.getOrDefault(party, 0);
+            int     stolen   = stolenFromMap.getOrDefault(party, 0);
+            int     total    = votes.getOrDefault(party, 0);
+            double  pct      = fixed ? 0.0 : (double) total / totalVotes * 100.0;
+            int     pAfter   = party.getPower();
+
+            if (!fixed) {
+                int change   = after - before;
+                String arrow = change > 0 ? "▲" : change < 0 ? "▼" : "─";
+                log.add(String.format("  %-22s %5.1f%%  %2d seats %s",
+                        party.getName(), pct, after, arrow));
+            } else {
+                log.add(String.format("  %-22s fixed    %2d seats", party.getName(), party.getSeats()));
             }
+
+            partyResults.add(new ElectionRecord.PartyResult(
+                    party.getName(), after, before,
+                    natural, bought, stolen, total, pct,
+                    pBefore, pAfter, fixed));
         }
+
         log.add("══════════════════════════════════════");
 
         // Apply new seats
@@ -218,10 +243,33 @@ public class ElectionManager {
             p.setSeats(newSeats.getOrDefault(p, 0));
         }
 
-        // Step 6: Consume election propaganda
+        // Update power after to reflect seat application
+        List<ElectionRecord.PartyResult> correctedResults = new ArrayList<>();
+        for (ElectionRecord.PartyResult r : partyResults) {
+            PoliticalParty p = findPartyByName(r.partyName, parties);
+            int powerNow = p != null ? p.getPower() : r.powerAfter;
+            correctedResults.add(new ElectionRecord.PartyResult(
+                    r.partyName, r.seatsAfter, r.seatsBefore,
+                    r.naturalVotes, r.boughtVotes, r.stolenVotes,
+                    r.totalVotes, r.votePct,
+                    r.powerBefore, powerNow, r.isFixedSeat));
+        }
+
+        // Step 6: Consume propaganda
         for (PoliticalParty p : electable) {
             propagandaManager.consumeElectionPropaganda(p);
         }
+
+        // Build and store record
+        lastRecord = new ElectionRecord(
+                lastElectionYear, lastElectionPeriod,
+                totalVotes, corruption, totalStolenVotes,
+                correctedResults, affiliationChanges, propagandaSnapshot);
+
+        Debug.log("election", "record-built",
+                "parties=" + partyResults.size()
+                + " totalVotes=" + totalVotes
+                + " stolen=" + totalStolenVotes);
 
         return log;
     }
@@ -235,10 +283,8 @@ public class ElectionManager {
         Map<PoliticalParty, Double> scores = new LinkedHashMap<>();
         for (PoliticalParty party : electable) {
             double score = computeViewMatchScore(pop, party);
-            // Propaganda bonus (election budget → extra score)
             double propaganda = propagandaManager.getElectionPropaganda(party);
             score += propaganda * GameParameters.PROPAGANDA_VOTE_BONUS_PER_UNIT;
-            // Prestige bonus
             score += party.getPrestige() * GameParameters.ELECTION_PRESTIGE_WEIGHT;
             scores.put(party, Math.max(0, score));
         }
@@ -246,7 +292,6 @@ public class ElectionManager {
         double total = scores.values().stream().mapToDouble(v -> v).sum();
         if (total <= 0) return electable.get(rng.nextInt(electable.size()));
 
-        // Weighted random pick
         double roll = rng.nextDouble() * total;
         double cum  = 0;
         for (Map.Entry<PoliticalParty, Double> e : scores.entrySet()) {
@@ -274,41 +319,33 @@ public class ElectionManager {
                           Map<PoliticalParty, Integer> votes,
                           List<Pop> pops,
                           int totalPopCount,
+                          Map<PoliticalParty, Integer> boughtVotesMap,
                           List<String> log) {
-        // Identify unaffiliated pops (not already voting for this party via affiliation)
         int unaffiliatedCount = 0;
         for (Pop pop : pops) {
-            if (pop.getAffiliation() == PolitcalView.NONE) {
-                unaffiliatedCount += pop.getCount();
-            }
+            if (pop.getAffiliation() == PolitcalView.NONE) unaffiliatedCount += pop.getCount();
         }
         if (unaffiliatedCount <= 0) return;
 
         double maxValue = (double) unaffiliatedCount / 10.0;
 
-        // Track which pops have been bought (by count pools)
-        Set<PoliticalParty> buyingParties = new LinkedHashSet<>();
         Map<PoliticalParty, Integer> toBuy = new LinkedHashMap<>();
-
         for (PoliticalParty party : electable) {
             int power = party.getPower();
             if (power <= 0) continue;
             double buyMax = (power / 100.0) * maxValue;
             double buyMin = buyMax / 10.0;
             int bought = (int)(buyMin + rng.nextDouble() * (buyMax - buyMin));
-            bought = Math.max(0, bought);
-            if (bought > 0) {
-                toBuy.put(party, bought);
-                buyingParties.add(party);
-            }
+            if (bought > 0) toBuy.put(party, bought);
         }
 
-        // Distribute buys — no party can buy the same voter twice
         int remainingPool = unaffiliatedCount;
-        for (PoliticalParty party : buyingParties) {
-            int amount = Math.min(toBuy.getOrDefault(party, 0), remainingPool);
+        for (Map.Entry<PoliticalParty, Integer> entry : toBuy.entrySet()) {
+            PoliticalParty party  = entry.getKey();
+            int            amount = Math.min(entry.getValue(), remainingPool);
             if (amount <= 0) continue;
             votes.merge(party, amount, Integer::sum);
+            boughtVotesMap.merge(party, amount, Integer::sum);
             remainingPool -= amount;
             Debug.log("election", "vote-buying",
                     party.getName() + " bought " + amount + " votes");
@@ -317,18 +354,17 @@ public class ElectionManager {
 
     // ─── Vote stealing ────────────────────────────────────────────────────────
 
-    private void stealVotes(List<PoliticalParty> electable,
-                             Map<PoliticalParty, Integer> votes,
-                             int totalPopCount,
-                             int corruption,
-                             List<String> log) {
-        // Total cheat amount: 5% at 0 corruption, asymptotically approaches 20%
+    private int stealVotes(List<PoliticalParty> electable,
+                            Map<PoliticalParty, Integer> votes,
+                            int totalPopCount,
+                            int corruption,
+                            Map<PoliticalParty, Integer> stolenFromMap,
+                            List<String> log) {
         double corruptionFraction = corruption / 100.0;
         double totalCheatFraction = 0.05 + 0.15 * (1.0 - Math.exp(-3.0 * corruptionFraction));
         int totalCheatVotes       = (int)(totalPopCount * totalCheatFraction);
-        if (totalCheatVotes <= 0) return;
+        if (totalCheatVotes <= 0) return 0;
 
-        // Parties with power > 70 get a cheat power value
         Map<PoliticalParty, Integer> cheatPowers = new LinkedHashMap<>();
         for (PoliticalParty party : electable) {
             if (party.getPower() > 70) {
@@ -336,39 +372,40 @@ public class ElectionManager {
                 cheatPowers.put(party, cheatPower);
             }
         }
-        if (cheatPowers.isEmpty()) return;
+        if (cheatPowers.isEmpty()) return 0;
 
-        // Sort by cheat power ascending (lower cheaters go first, can be stolen from)
         List<Map.Entry<PoliticalParty, Integer>> sorted = new ArrayList<>(cheatPowers.entrySet());
         sorted.sort(Map.Entry.comparingByValue());
 
         int totalCheatPower = sorted.stream().mapToInt(Map.Entry::getValue).sum();
-        if (totalCheatPower <= 0) return;
+        if (totalCheatPower <= 0) return 0;
 
-        // Each party steals votes proportional to their cheat power share
+        int totalActualStolen = 0;
         for (Map.Entry<PoliticalParty, Integer> entry : sorted) {
-            PoliticalParty thief   = entry.getKey();
-            int            cPower  = entry.getValue();
-            double         share   = (double) cPower / totalCheatPower;
+            PoliticalParty thief  = entry.getKey();
+            int            cPower = entry.getValue();
+            double         share  = (double) cPower / totalCheatPower;
             int            toSteal = (int)(totalCheatVotes * share);
             if (toSteal <= 0) continue;
 
-            // Steal from all other parties proportionally
             int stolen = 0;
             for (PoliticalParty victim : electable) {
                 if (victim == thief) continue;
-                int victimVotes    = votes.getOrDefault(victim, 0);
-                int fromVictim     = (int)(victimVotes * share);
-                fromVictim         = Math.min(fromVictim, Math.min(toSteal - stolen, victimVotes));
+                int victimVotes = votes.getOrDefault(victim, 0);
+                int fromVictim  = (int)(victimVotes * share);
+                fromVictim      = Math.min(fromVictim, Math.min(toSteal - stolen, victimVotes));
                 if (fromVictim <= 0) continue;
                 votes.merge(victim, -fromVictim, Integer::sum);
                 votes.merge(thief,   fromVictim, Integer::sum);
+                stolenFromMap.merge(victim, fromVictim, Integer::sum);
                 stolen += fromVictim;
                 if (stolen >= toSteal) break;
             }
-            Debug.log("election", "vote-stealing", thief.getName()
-                    + " stole " + stolen + " votes (cheatPower=" + cPower + ")");
+            totalActualStolen += stolen;
+            Debug.log("election", "vote-stealing",
+                    thief.getName() + " stole " + stolen + " votes");
         }
+        return totalActualStolen;
     }
 
     // ─── Seat distribution ────────────────────────────────────────────────────
@@ -377,22 +414,19 @@ public class ElectionManager {
                                                           Map<PoliticalParty, Integer> votes,
                                                           int totalVotes,
                                                           int seatPool) {
-        // Largest remainder method
-        Map<PoliticalParty, Double> quotas  = new LinkedHashMap<>();
-        Map<PoliticalParty, Integer> seats  = new LinkedHashMap<>();
-        Map<PoliticalParty, Double> remainders = new LinkedHashMap<>();
+        Map<PoliticalParty, Double>  quotas     = new LinkedHashMap<>();
+        Map<PoliticalParty, Integer> seats      = new LinkedHashMap<>();
+        Map<PoliticalParty, Double>  remainders = new LinkedHashMap<>();
 
         for (PoliticalParty p : electable) {
             double quota = (double) votes.getOrDefault(p, 0) / totalVotes * seatPool;
             seats.put(p, (int) quota);
             remainders.put(p, quota - (int) quota);
-            quotas.put(p, quota);
         }
 
-        int assigned = seats.values().stream().mapToInt(v -> v).sum();
+        int assigned  = seats.values().stream().mapToInt(v -> v).sum();
         int remaining = seatPool - assigned;
 
-        // Give remaining seats to parties with largest remainders
         List<PoliticalParty> byRemainder = new ArrayList<>(electable);
         byRemainder.sort((a, b) -> Double.compare(
                 remainders.getOrDefault(b, 0.0), remainders.getOrDefault(a, 0.0)));
@@ -401,20 +435,17 @@ public class ElectionManager {
             seats.merge(byRemainder.get(i), 1, Integer::sum);
         }
 
-        // Ensure minimum 1 seat per party that got votes
         for (PoliticalParty p : electable) {
             if (votes.getOrDefault(p, 0) > 0 && seats.getOrDefault(p, 0) == 0) {
                 seats.put(p, 1);
             }
         }
-
         return seats;
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private boolean isFixedSeat(PoliticalParty party) {
-        // Oracles are fixed-seat; in future, nobles panel party could also be fixed
         return party.getName().equals("Oracles");
     }
 
@@ -429,7 +460,6 @@ public class ElectionManager {
     private PoliticalParty findPartyByAffiliation(PolitcalView view,
                                                     List<PoliticalParty> electable,
                                                     List<PoliticalParty> all) {
-        // Find party that most strongly holds this view
         PoliticalParty best    = null;
         double         bestMul = 0;
         for (PoliticalParty p : all) {
@@ -439,9 +469,16 @@ public class ElectionManager {
         return best;
     }
 
+    private PoliticalParty findPartyByName(String name, List<PoliticalParty> parties) {
+        for (PoliticalParty p : parties) {
+            if (p.getName().equals(name)) return p;
+        }
+        return null;
+    }
+
     private PolitcalView getDominantView(PoliticalParty party) {
-        PolitcalView best   = PolitcalView.NONE;
-        double bestStrength = 0;
+        PolitcalView best        = PolitcalView.NONE;
+        double       bestStrength = 0;
         for (Map.Entry<PolitcalView, ViewStrength> e : party.getViews().entrySet()) {
             if (e.getValue().getMultiplier() > bestStrength) {
                 bestStrength = e.getValue().getMultiplier();
@@ -451,17 +488,8 @@ public class ElectionManager {
         return best;
     }
 
-    private String voteSummary(Map<PoliticalParty, Integer> votes) {
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<PoliticalParty, Integer> e : votes.entrySet()) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(e.getKey().getName()).append(":").append(e.getValue());
-        }
-        return sb.toString();
-    }
+    // ─── Save / load ─────────────────────────────────────────────────────────
 
-    // ─── Save/load ───────────────────────────────────────────────────────────
-
-    public int  getTurnsSinceLastElection()             { return turnsSinceLastElection; }
-    public void setTurnsSinceLastElection(int v)        { turnsSinceLastElection = v; }
+    public int  getTurnsSinceLastElection()      { return turnsSinceLastElection; }
+    public void setTurnsSinceLastElection(int v) { turnsSinceLastElection = v; }
 }

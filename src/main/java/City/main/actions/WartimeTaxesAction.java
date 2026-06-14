@@ -75,10 +75,7 @@ public String getDescription() {
     @Override
 
 public boolean isAvailable() {
-        // Note: do NOT call super.isAvailable() here because AbstractFormalAction.isAvailable()
-        // returns usesThisTurn < maxUsesPerTurn which is always true at the start of a turn.
-        // The real gate is the legislation, war state, and cooldown checks below.
-        if (getUsesThisTurn() >= getMaxUsesPerTurn()) return false;
+        if (!super.isAvailable()) return false;
         if (!legislationManager.isPassed(LegislationType.WARTIME_TAXES_LAW)) return false;
         if (!warStateChecker.isAtWar()) return false;
         if (legislationManager.isWartimeTaxesOnCooldown()) return false;

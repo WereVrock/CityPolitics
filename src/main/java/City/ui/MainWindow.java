@@ -32,6 +32,10 @@ public class MainWindow extends JFrame {
     private final MapView                mapView;
     private       City.ui.council.CouncilPanel councilPanel;
 
+    // Election notification badge (shown until dismissed)
+    private       JButton electionBadge;
+    private       boolean electionPending = false;
+
     // version & build info
     private String buildNo = "?";
     private String buildTime = "?";
@@ -192,21 +196,28 @@ private JPanel buildBottomBar() {
         councilBtn.setForeground(new Color(200, 170, 80));
         councilBtn.addActionListener(e -> showCouncilView());
 
-    JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-    leftBtns.setBackground(UITheme.BG_DARK);
-    leftBtns.add(partiesBtn);
-    leftBtns.add(noblesBtn);
-    leftBtns.add(mapBtn);
-    leftBtns.add(openVoteBtn);
-    leftBtns.add(ledgerBtn);
+        electionBadge = makeBottomBarButton("⚑ ELECTION RESULTS");
+        electionBadge.setForeground(new Color(240, 200, 80));
+        electionBadge.setBackground(new Color(70, 50, 10));
+        electionBadge.setVisible(false);
+        electionBadge.addActionListener(e -> showElectionResults());
+
+        JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        leftBtns.setBackground(UITheme.BG_DARK);
+        leftBtns.add(partiesBtn);
+        leftBtns.add(noblesBtn);
+        leftBtns.add(mapBtn);
+        leftBtns.add(openVoteBtn);
+        leftBtns.add(ledgerBtn);
         leftBtns.add(militaryBtn);
         leftBtns.add(councilBtn);
+        leftBtns.add(electionBadge);
 
-    JPanel wrapper = new JPanel(new BorderLayout(6, 0));
-    wrapper.setBackground(UITheme.BG_DARK);
-    wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
-    wrapper.add(leftBtns, BorderLayout.WEST);
-    return wrapper;
+        JPanel wrapper = new JPanel(new BorderLayout(6, 0));
+        wrapper.setBackground(UITheme.BG_DARK);
+        wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
+        wrapper.add(leftBtns, BorderLayout.WEST);
+        return wrapper;
 }
 
 private JButton makeBottomBarButton(String label) {
@@ -494,7 +505,22 @@ private void swapCenter(JPanel panel) {
         swapCenter(mapView);
     }
 
-private void showCouncilView() {
+    private void showElectionResults() {
+        City.main.politics.ElectionRecord record =
+                gameState.getElectionManager().getLastRecord();
+        if (record == null) return;
+        electionBadge.setVisible(false);
+        electionPending = false;
+        City.ui.politics.ElectionResultsPanel panel =
+                new City.ui.politics.ElectionResultsPanel(
+                        record,
+                        gameState.getCalendar(),
+                        this::showMainView,
+                        () -> { showMainView(); showCouncilView(); });
+        swapCenter(panel);
+    }
+
+    private void showCouncilView() {
     councilPanel = new City.ui.council.CouncilPanel(gameState, this::showMainView);
     if (gameState.hasActiveCouncilSession()) {
         councilPanel.refresh();
@@ -552,6 +578,9 @@ private void showVoteSession() {
     }
 
 private void endTurn() {
+        City.main.politics.ElectionRecord recordBefore =
+                gameState.getElectionManager().getLastRecord();
+
         List<String> log = gameState.getTurnProcessor().processTurn(
             gameState,
             gameState.getResources(),
@@ -578,6 +607,16 @@ private void endTurn() {
 
         if (gameState.getCalendar().isFrostGiantYear()) {
             eventLogPanel.appendLine("⚠  THE FROST GIANTS HAVE ARRIVED. THE REALM TREMBLES.");
+        }
+
+        // Show election results if an election just fired
+        City.main.politics.ElectionRecord recordAfter =
+                gameState.getElectionManager().getLastRecord();
+        if (recordAfter != null && recordAfter != recordBefore) {
+            // Patch the record with current calendar info
+            showElectionResults();
+            electionPending  = true;
+            electionBadge.setVisible(true);
         }
     }
 
