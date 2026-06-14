@@ -6,7 +6,8 @@ import City.main.nobles.NobleArmyManager;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.Relationship;
 import City.main.nobles.RelationshipManager;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.NobleHouseParams;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,10 +58,10 @@ final class NobleAIBattleJoiner {
         if (toJoin.isEmpty()) return;
 
         // Affordability check
-        int costPerSoldier      = Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER);
+        int costPerSoldier      = Math.max(1, NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER);
         int maxAffordableJoin   = Math.min(actor.getNobleManpower(),
                 actor.getGold() / costPerSoldier);
-        if (maxAffordableJoin < GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+        if (maxAffordableJoin < NobleHouseParams.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
             Debug.log("noble", "join-battle", actor.getName()
                     + " cannot afford even a minimal force (have "
                     + actor.getNobleManpower() + " manpower, " + actor.getGold() + " gold)");

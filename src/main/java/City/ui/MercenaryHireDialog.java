@@ -5,7 +5,9 @@ import City.main.army.ArmyManager;
 import City.main.mercenaries.MercenaryArmy;
 import City.main.mercenaries.MercenaryManager;
 import City.main.mercenaries.MercenaryRecruitmentHandler;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.MercenaryParams;
+import City.main.parameters.PlayerArmyParams;
 import City.main.resources.ResourcePool;
 
 import javax.swing.*;
@@ -50,13 +52,13 @@ public class MercenaryHireDialog {
         content.add(title, gc);
 
         gc.gridy = 1;
-        double mult = GameParameters.MERCENARY_COST_MULTIPLIER;
+        double mult = MercenaryParams.MERCENARY_COST_MULTIPLIER;
         double upkeepMult = mult;
         JLabel infoLabel = new JLabel("<html>"
                 + "Select one of your armies to hire out as mercenaries.<br>"
-                + "Cost: ~" + (int)(GameParameters.SOLDIER_RECRUIT_GOLD_COST * mult)
+                + "Cost: ~" + (int)(PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST * mult)
                 + "× per soldier (±15% variance).<br>"
-                + "Upkeep: " + String.format("%.1f", GameParameters.SOLDIER_UPKEEP_GOLD * upkeepMult)
+                + "Upkeep: " + String.format("%.1f", PlayerArmyParams.SOLDIER_UPKEEP_GOLD * upkeepMult)
                 + " gold/turn per soldier.<br>"
                 + "<font color='#C84646'>Warning: unsupervised mercenaries may raid (30% chance).</font>"
                 + "</html>");
@@ -208,14 +210,14 @@ public class MercenaryHireDialog {
 
     private static void updateCostDisplay(JLabel label, Army army, ResourcePool resources) {
         int preview = MercenaryRecruitmentHandler.computeHireCostPreview(army);
-        int minCost = (int)(preview * (1 - GameParameters.MERCENARY_RECRUIT_COST_VARIANCE));
-        int maxCost = (int)(preview * (1 + GameParameters.MERCENARY_RECRUIT_COST_VARIANCE));
+        int minCost = (int)(preview * (1 - MercenaryParams.MERCENARY_RECRUIT_COST_VARIANCE));
+        int maxCost = (int)(preview * (1 + MercenaryParams.MERCENARY_RECRUIT_COST_VARIANCE));
         boolean canAfford = resources.getMoney() >= minCost;
         label.setText("Estimated cost: " + minCost + "–" + maxCost
                 + " gold  |  Available: " + resources.getMoney()
                 + "  |  Upkeep: " + String.format("%.1f",
-                        army.getSize() * GameParameters.SOLDIER_UPKEEP_GOLD
-                        * GameParameters.MERCENARY_COST_MULTIPLIER) + "/turn");
+                        army.getSize() * PlayerArmyParams.SOLDIER_UPKEEP_GOLD
+                        * MercenaryParams.MERCENARY_COST_MULTIPLIER) + "/turn");
         label.setForeground(canAfford ? UITheme.TEXT_GOLD : UITheme.TEXT_RED);
     }
 }

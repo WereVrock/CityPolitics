@@ -3,7 +3,9 @@ package City.main.mercenaries;
 import City.debug.Debug;
 import City.main.army.Army;
 import City.main.army.ArmyManager;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.MercenaryParams;
+import City.main.parameters.PlayerArmyParams;
 import City.main.resources.ResourcePool;
 
 import java.util.ArrayList;
@@ -40,10 +42,10 @@ public class MercenaryRecruitmentHandler {
      * Base = soldiers × recruit_cost × MERCENARY_COST_MULTIPLIER, ±15% random variance.
      */
     public static int computeHireCost(Army army) {
-        double basePerSoldier = GameParameters.SOLDIER_RECRUIT_GOLD_COST
-                * GameParameters.MERCENARY_COST_MULTIPLIER;
+        double basePerSoldier = PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST
+                * MercenaryParams.MERCENARY_COST_MULTIPLIER;
         double variance = 1.0 + (RNG.nextDouble() * 2 - 1)
-                * GameParameters.MERCENARY_RECRUIT_COST_VARIANCE;
+                * MercenaryParams.MERCENARY_RECRUIT_COST_VARIANCE;
         return (int) Math.ceil(army.getSize() * basePerSoldier * variance);
     }
 
@@ -52,8 +54,8 @@ public class MercenaryRecruitmentHandler {
      */
     public static int computeHireCostPreview(Army army) {
         return (int) Math.ceil(army.getSize()
-                * GameParameters.SOLDIER_RECRUIT_GOLD_COST
-                * GameParameters.MERCENARY_COST_MULTIPLIER);
+                * PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST
+                * MercenaryParams.MERCENARY_COST_MULTIPLIER);
     }
 
     /**

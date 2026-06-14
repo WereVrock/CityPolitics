@@ -1,7 +1,8 @@
 package City.main.nobles.council;
 
 import City.main.nobles.NobleHouse;
-import City.main.parameters.GameParameters;
+import City.main.parameters.NobleCouncilParams;
+ 
 
 import java.util.List;
 
@@ -24,7 +25,7 @@ public final class CouncilPrestigeEvaluator {
     public static boolean isPrestigious(NobleHouse house, int totalPrestige) {
         if (house.isEliminated() || totalPrestige <= 0) return false;
         double fraction = (double) house.getPrestige() / totalPrestige;
-        return fraction >= GameParameters.NOBLE_COUNCIL_PRESTIGE_THRESHOLD;
+        return fraction >= NobleCouncilParams.NOBLE_COUNCIL_PRESTIGE_THRESHOLD;
     }
 
     public static int getTotalPrestigiousPrestige(List<NobleHouse> houses, int totalPrestige) {

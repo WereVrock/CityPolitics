@@ -1,6 +1,7 @@
 package City.main.actions;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -10,7 +11,7 @@ import City.main.resources.StatBlock;
 public class BribeAction extends AbstractAction {
 
     public BribeAction() {
-        super(GameParameters.BRIBE_MAX_USES);
+        super(ActionParams.BRIBE_MAX_USES);
     }
 
     @Override
@@ -20,9 +21,9 @@ public class BribeAction extends AbstractAction {
 
     @Override
     public String getDescription() {
-        return "Spend " + GameParameters.BRIBE_MONEY_COST
-            + " money to gain " + GameParameters.BRIBE_INFLUENCE_GAINED
-            + " influence. Raises corruption by " + GameParameters.BRIBE_CORRUPTION_GAIN + ".";
+        return "Spend " + ActionParams.BRIBE_MONEY_COST
+            + " money to gain " + ActionParams.BRIBE_INFLUENCE_GAINED
+            + " influence. Raises corruption by " + ActionParams.BRIBE_CORRUPTION_GAIN + ".";
     }
 
     @Override
@@ -32,18 +33,18 @@ public class BribeAction extends AbstractAction {
         if (!isAvailable()) {
             return ActionResult.fail("Bribe Officials already used " + getMaxUsesPerTurn() + " time(s) this turn.");
         }
-        if (resources.getMoney() < GameParameters.BRIBE_MONEY_COST) {
-            return ActionResult.fail("Not enough money. Need " + GameParameters.BRIBE_MONEY_COST + ".");
+        if (resources.getMoney() < ActionParams.BRIBE_MONEY_COST) {
+            return ActionResult.fail("Not enough money. Need " + ActionParams.BRIBE_MONEY_COST + ".");
         }
         City.main.ledger.Ledger ledger = getLedger();
         ledger.applyOneTime(City.main.resources.ResourceType.GOLD, "action", getName(),
-                -GameParameters.BRIBE_MONEY_COST, resources);
+                -ActionParams.BRIBE_MONEY_COST, resources);
         ledger.applyOneTime(City.main.resources.ResourceType.INFLUENCE, "action", getName(),
-                GameParameters.BRIBE_INFLUENCE_GAINED, resources);
-        stats.addCorruption(GameParameters.BRIBE_CORRUPTION_GAIN);
+                ActionParams.BRIBE_INFLUENCE_GAINED, resources);
+        stats.addCorruption(ActionParams.BRIBE_CORRUPTION_GAIN);
         recordUse();
-        return ActionResult.ok("Bribed officials. Gained " + GameParameters.BRIBE_INFLUENCE_GAINED
-                + " influence. Corruption +" + GameParameters.BRIBE_CORRUPTION_GAIN + ".");
+        return ActionResult.ok("Bribed officials. Gained " + ActionParams.BRIBE_INFLUENCE_GAINED
+                + " influence. Corruption +" + ActionParams.BRIBE_CORRUPTION_GAIN + ".");
     }
 
 }

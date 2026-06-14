@@ -7,7 +7,7 @@ import City.main.nobles.NobleCharacter;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.Relationship;
 import City.main.nobles.RelationshipManager;
-import City.main.parameters.GameParameters;
+ 
 
 import java.util.List;
 import City.main.nobles.Motivation;
@@ -15,6 +15,8 @@ import static City.main.nobles.Motivation.EXPANSION;
 import static City.main.nobles.Motivation.PRESTIGE;
 import static City.main.nobles.Motivation.SECURITY;
 import static City.main.nobles.Motivation.WEALTH;
+import City.main.parameters.DiplomacyParams;
+import City.main.parameters.NobleAIParams;
 
 /** Decides what a house wants (motivation) and what it will do (action) each tick. */
 final class NobleAIMotivation {
@@ -23,7 +25,7 @@ final class NobleAIMotivation {
 
     static Motivation pickMotivation(NobleCharacter character) {
         if (character == null) return Motivation.SECURITY;
-        return NobleAIUtils.RNG.nextDouble() < GameParameters.AI_DOMINANT_MOTIVATION_CHANCE
+        return NobleAIUtils.RNG.nextDouble() < NobleAIParams.AI_DOMINANT_MOTIVATION_CHANCE
                 ? character.getDominantMotivation()
                 : character.getSecondaryMotivation();
     }
@@ -65,7 +67,7 @@ final class NobleAIMotivation {
             case SECURITY -> {
                 List<String> rivals   = relationships.getAll(actor.getId(), Relationship.RIVAL,   allIds);
                 List<String> hostiles = relationships.getAll(actor.getId(), Relationship.HOSTILE, allIds);
-                if (!rivals.isEmpty() && actor.getDefense() < GameParameters.AI_FORTIFY_THRESHOLD) {
+                if (!rivals.isEmpty() && actor.getDefense() < NobleAIParams.AI_FORTIFY_THRESHOLD) {
                     yield NobleAction.FORTIFY;
                 }
                 if (!rivals.isEmpty() || !hostiles.isEmpty()) {
@@ -76,7 +78,7 @@ final class NobleAIMotivation {
                     }
                 }
                 int allyCount = relationships.getAll(actor.getId(), Relationship.ALLIED, allIds).size();
-                yield allyCount < GameParameters.ALLIANCE_MAX_PER_HOUSE
+                yield allyCount < DiplomacyParams.ALLIANCE_MAX_PER_HOUSE
                         ? NobleAction.ALLY : NobleAction.FORTIFY;
             }
             case PRESTIGE -> {
@@ -107,11 +109,11 @@ final class NobleAIMotivation {
                                RelationshipManager relationships,
                                NobleArmyManager armyManager) {
         double weight = switch (motivation) {
-            case SECURITY  -> GameParameters.GIFT_WEIGHT_SECURITY;
-            case WEALTH    -> actor.getGold() > GameParameters.GIFT_WEALTH_GOLD_THRESHOLD
-                    ? GameParameters.GIFT_WEIGHT_WEALTH : 0.0;
-            case PRESTIGE  -> GameParameters.GIFT_WEIGHT_PRESTIGE;
-            case EXPANSION -> GameParameters.GIFT_WEIGHT_EXPANSION;
+            case SECURITY  -> DiplomacyParams.GIFT_WEIGHT_SECURITY;
+            case WEALTH    -> actor.getGold() > DiplomacyParams.GIFT_WEALTH_GOLD_THRESHOLD
+                    ? DiplomacyParams.GIFT_WEIGHT_WEALTH : 0.0;
+            case PRESTIGE  -> DiplomacyParams.GIFT_WEIGHT_PRESTIGE;
+            case EXPANSION -> DiplomacyParams.GIFT_WEIGHT_EXPANSION;
         };
         if (NobleAIUtils.RNG.nextDouble() > weight) return false;
 
@@ -134,10 +136,10 @@ final class NobleAIMotivation {
 
     static double motivationPriority(Motivation m) {
         return switch (m) {
-            case EXPANSION -> GameParameters.WAR_CHEST_PRIORITY_EXPANSION;
-            case SECURITY  -> GameParameters.WAR_CHEST_PRIORITY_SECURITY;
-            case WEALTH    -> GameParameters.WAR_CHEST_PRIORITY_WEALTH;
-            case PRESTIGE  -> GameParameters.WAR_CHEST_PRIORITY_PRESTIGE;
+            case EXPANSION -> NobleAIParams.WAR_CHEST_PRIORITY_EXPANSION;
+            case SECURITY  -> NobleAIParams.WAR_CHEST_PRIORITY_SECURITY;
+            case WEALTH    -> NobleAIParams.WAR_CHEST_PRIORITY_WEALTH;
+            case PRESTIGE  -> NobleAIParams.WAR_CHEST_PRIORITY_PRESTIGE;
         };
     }
 

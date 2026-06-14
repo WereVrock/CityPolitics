@@ -6,7 +6,10 @@ import City.main.nobles.NobleCharacter;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.RelationshipManager;
 import City.main.nobles.Relationship;
-import City.main.parameters.GameParameters;
+import City.main.parameters.CombatParams;
+import City.main.parameters.DiplomacyParams;
+ 
+import City.main.parameters.NobleHouseParams;
 
 import java.util.List;
 
@@ -18,7 +21,7 @@ public final class NobleAIPower {
     public static int exactPotentialFieldArmy(NobleHouse house, NobleArmyManager armyManager) {
         int manpower = house.getNobleManpower();
         int gold = house.getGold();
-        int recruitable = Math.min(manpower, gold / GameParameters.NOBLE_RECRUIT_COST_PER_SOLDIER);
+        int recruitable = Math.min(manpower, gold / NobleHouseParams.NOBLE_RECRUIT_COST_PER_SOLDIER);
         int existingArmies = armyManager.getArmiesForHouse(house.getId()).stream()
                 .mapToInt(NobleArmy::getSize).sum();
         return recruitable + existingArmies;
@@ -41,7 +44,7 @@ public final class NobleAIPower {
     public static int estimateAttackPower(NobleHouse house, NobleArmyManager armyManager) {
         int milSkill = house.getActiveCharacter() != null
                 ? house.getActiveCharacter().getMilitary() : 0;
-        double mult = 1.0 + milSkill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+        double mult = 1.0 + milSkill * DiplomacyParams.MILITARY_SKILL_BONUS_PER_POINT;
         for (NobleArmy a : armyManager.getArmiesForHouse(house.getId())) {
             if (!a.hasPendingOrder() && a.getSize() > 0) {
                 return (int) (a.getSize() * mult);
@@ -64,8 +67,8 @@ public final class NobleAIPower {
         int fort     = defender.getFortificationFor(zoneId);
         int mil      = defender.getActiveCharacter() != null
                 ? defender.getActiveCharacter().getMilitary() : 0;
-        double mult        = 1.0 + mil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
-        double defReduction = 1.0 - (fort / 100.0) * GameParameters.COMBAT_DEFENSE_REDUCTION;
+        double mult        = 1.0 + mil * DiplomacyParams.MILITARY_SKILL_BONUS_PER_POINT;
+        double defReduction = 1.0 - (fort / 100.0) * CombatParams.COMBAT_DEFENSE_REDUCTION;
         int baseDefPower   = (int) (garrison * mult * defReduction);
 
         int fieldArmyEstimate = estimatedPower(attacker, defender, armyManager);
@@ -90,10 +93,10 @@ public final class NobleAIPower {
     static int maxRecruitableSize(NobleHouse house) {
         int manpower = house.getNobleManpower();
         int gold     = house.getGold();
-        int minSize  = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
-        if (manpower < minSize || gold < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) return 0;
+        int minSize  = NobleHouseParams.NOBLE_ARMY_MIN_RECRUIT_SIZE;
+        if (manpower < minSize || gold < NobleHouseParams.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) return 0;
         int maxByManpower = manpower;
-        int maxByGold     = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+        int maxByGold     = gold / NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
         return Math.max(minSize, Math.min(maxByManpower, maxByGold));
     }
 }

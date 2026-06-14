@@ -3,7 +3,8 @@ package City.main.actions;
 import City.main.legislation.LegislationManager;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -70,8 +71,8 @@ public class SendResourcesToNoblesAction extends AbstractAction {
         }
         ledger.applyOneTime(City.main.resources.ResourceType.GOLD, "realm", getName(), -amount, resources);
         house.addGold(amount);
-        int opinionGain = (amount / GameParameters.SEND_RESOURCES_OPINION_DIVISOR)
-                * GameParameters.SEND_RESOURCES_OPINION_PER_GOLD;
+        int opinionGain = (amount / ActionParams.SEND_RESOURCES_OPINION_DIVISOR)
+                * ActionParams.SEND_RESOURCES_OPINION_PER_GOLD;
         opinionGain = Math.max(1, opinionGain);
         house.adjustPlayerOpinion(opinionGain);
         City.debug.Debug.log("realm-action", "send-resources",

@@ -2,7 +2,8 @@ package City.main.barbarians;
 
 import City.main.map.Zone;
 import City.main.map.ZoneManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.BarbarianParams;
+ 
 
 import java.util.*;
 
@@ -28,8 +29,8 @@ public class BarbArmyManager {
     // ─── Spawn ───────────────────────────────────────────────────────────────
 
 public BarbArmy spawnWarboss(String zoneId, int turn) {
-    int size = GameParameters.BARB_WARBOSS_BASE_SIZE
-             + turn * GameParameters.BARB_WARBOSS_SIZE_PER_TURN;
+    int size = BarbarianParams.BARB_WARBOSS_BASE_SIZE
+             + turn * BarbarianParams.BARB_WARBOSS_SIZE_PER_TURN;
     BarbArmy wb = new BarbArmy(BarbArmy.Type.WARBOSS, size, zoneId);
     wb.setDisplayName(BarbTribeNameGenerator.generateWarbossName());
     add(wb);

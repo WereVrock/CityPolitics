@@ -7,7 +7,9 @@ import City.main.barbarians.BarbCombatHandler;
 import City.main.barbarians.RavagedZoneManager;
 import City.main.map.Zone;
 import City.main.map.ZoneManager;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.NobleHouseParams;
+import City.main.parameters.PrestigeXPParams;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -89,14 +91,14 @@ public final class NobleBarbHunter {
 
         double fraction = isLastZone
                 ? 1.0
-                : GameParameters.NOBLE_WARBOSS_DEFENSE_ARMY_FRACTION;
+                : PrestigeXPParams.NOBLE_WARBOSS_DEFENSE_ARMY_FRACTION;
 
         int maxByManpower = house.getNobleManpower();
         int maxByGold     = house.getGold()
-                / Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER);
+                / Math.max(1, NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER);
         int maxAffordable = (int)(Math.min(maxByManpower, maxByGold) * fraction);
 
-        if (maxAffordable < GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+        if (maxAffordable < NobleHouseParams.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
             if (isLastZone && maxAffordable > 0) {
                 // Desperate — recruit whatever we can
                 maxAffordable = Math.min(maxByManpower, maxByGold);
@@ -200,7 +202,7 @@ public final class NobleBarbHunter {
                     if (barb.isPaidOff()) continue;
 
                     double ratio = (double) nobleForce / Math.max(1, barb.getSize());
-                    if (ratio >= GameParameters.NOBLE_BARB_HUNT_STRENGTH_RATIO) {
+                    if (ratio >= PrestigeXPParams.NOBLE_BARB_HUNT_STRENGTH_RATIO) {
                         if (barb.getSize() < bestSize) {
                             bestSize = barb.getSize();
                             best     = barb;
@@ -235,8 +237,8 @@ public final class NobleBarbHunter {
         if (result.attackerWon) {
             // Award prestige
             int prestige = Math.max(
-                    GameParameters.NOBLE_BARB_PRESTIGE_MIN_WIN,
-                    (int)(killed * GameParameters.NOBLE_BARB_PRESTIGE_PER_KILL));
+                    PrestigeXPParams.NOBLE_BARB_PRESTIGE_MIN_WIN,
+                    (int)(killed * PrestigeXPParams.NOBLE_BARB_PRESTIGE_PER_KILL));
             house.addPrestige(prestige);
             log.add(house.getName() + " defeats barbarians at " + target.getZoneId()
                     + "! Prestige +" + prestige + ".");

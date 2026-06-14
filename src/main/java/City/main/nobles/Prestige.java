@@ -1,6 +1,6 @@
 package City.main.nobles;
 
-import City.main.parameters.GameParameters;
+ 
 
 /**
  * Seven prestige levels derived from a hidden 0–100 int.

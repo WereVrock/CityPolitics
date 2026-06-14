@@ -1,7 +1,7 @@
 package City.ui.barbarians;
 
 import City.main.barbarians.BarbArmy;
-import City.main.parameters.GameParameters;
+ 
 import City.main.resources.ResourcePool;
 
 import javax.swing.*;

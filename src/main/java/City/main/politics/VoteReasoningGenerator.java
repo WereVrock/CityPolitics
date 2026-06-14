@@ -1,6 +1,7 @@
 package City.main.politics;
 
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.VotingParams;
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -133,7 +134,7 @@ public class VoteReasoningGenerator {
     }
 
     private static String neutralReasoning(PoliticalParty party, double score) {
-        if (Math.abs(score) < GameParameters.VOTE_INDECISIVE_THRESHOLD) {
+        if (Math.abs(score) < VotingParams.VOTE_INDECISIVE_THRESHOLD) {
             return pick(List.of(
                 "The matter is not clear-cut. " + lastName(party) + " sees arguments on both sides.",
                 "Current conditions offer no strong reason to decide either way. We are weighing it.",

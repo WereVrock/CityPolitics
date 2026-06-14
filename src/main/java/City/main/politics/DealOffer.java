@@ -1,6 +1,8 @@
 package City.main.politics;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
+import City.main.parameters.VotingParams;
 
 /**
  * What a party demands in exchange for switching their vote to YES.
@@ -21,13 +23,13 @@ public class DealOffer {
         int seats = party.getSeats();
         double base = seats * magnitude;
 
-        int rawMoney     = (int)(base * GameParameters.DEAL_MONEY_FACTOR);
-        int rawInfluence = (int)(base * GameParameters.DEAL_INFLUENCE_FACTOR);
-        int rawHappiness = (int)(base * GameParameters.DEAL_HAPPINESS_FACTOR);
+        int rawMoney     = (int)(base * VotingParams.DEAL_MONEY_FACTOR);
+        int rawInfluence = (int)(base * VotingParams.DEAL_INFLUENCE_FACTOR);
+        int rawHappiness = (int)(base * VotingParams.DEAL_HAPPINESS_FACTOR);
 
-        if (magnitude >= GameParameters.DEAL_FAVOUR_THRESHOLD_2) {
+        if (magnitude >= ActionParams.DEAL_FAVOUR_THRESHOLD_2) {
             this.favourCost     = 2;
-        } else if (magnitude >= GameParameters.DEAL_FAVOUR_THRESHOLD_1) {
+        } else if (magnitude >= ActionParams.DEAL_FAVOUR_THRESHOLD_1) {
             this.favourCost     = 1;
         } else {
             this.favourCost     = 0;
@@ -42,8 +44,8 @@ public class DealOffer {
         } else {
             this.favourOnly      = false;
             // Apply minimums only when no favour is involved
-            this.moneyCost       = Math.max(GameParameters.DEAL_MIN_MONEY,     rawMoney);
-            this.influenceCost   = Math.max(GameParameters.DEAL_MIN_INFLUENCE, rawInfluence);
+            this.moneyCost       = Math.max(ActionParams.DEAL_MIN_MONEY,     rawMoney);
+            this.influenceCost   = Math.max(ActionParams.DEAL_MIN_INFLUENCE, rawInfluence);
             this.happinessMalus  = rawHappiness;
         }
     }

@@ -3,7 +3,8 @@ package City.main.actions;
 import City.main.core.CostCalculator;
 import City.main.core.GameState;
 import City.main.effects.ActiveEffect;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.politics.PolitcalView;
 import City.main.politics.VoteCondition;
 import City.main.resources.ResourcePool;
@@ -43,13 +44,13 @@ public class OrganizeFestivalAction extends AbstractFormalAction {
 
     @Override
     public String getDescription() {
-        return "Spend " + GameParameters.FESTIVAL_MONEY_COST
-            + " money and " + GameParameters.FESTIVAL_INFLUENCE_COST
-            + " influence. Grants +" + GameParameters.FESTIVAL_HAPPINESS_BOOST
-            + " happiness decaying over " + GameParameters.FESTIVAL_DURATION_TURNS + " turns. Requires vote.";
+        return "Spend " + ActionParams.FESTIVAL_MONEY_COST
+            + " money and " + ActionParams.FESTIVAL_INFLUENCE_COST
+            + " influence. Grants +" + ActionParams.FESTIVAL_HAPPINESS_BOOST
+            + " happiness decaying over " + ActionParams.FESTIVAL_DURATION_TURNS + " turns. Requires vote.";
     }
 
-    @Override public int getInfluenceCost() { return GameParameters.FESTIVAL_INFLUENCE_COST; }
+    @Override public int getInfluenceCost() { return ActionParams.FESTIVAL_INFLUENCE_COST; }
 
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
@@ -57,7 +58,7 @@ public class OrganizeFestivalAction extends AbstractFormalAction {
 
 
     public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
-        int moneyCost = CostCalculator.apply(GameParameters.FESTIVAL_MONEY_COST, stats.getCorruption());
+        int moneyCost = CostCalculator.apply(ActionParams.FESTIVAL_MONEY_COST, stats.getCorruption());
         if (resources.getMoney() < moneyCost) {
             return ActionResult.fail("Not enough money after vote. Need " + moneyCost + ".");
         }
@@ -65,11 +66,11 @@ public class OrganizeFestivalAction extends AbstractFormalAction {
                 -moneyCost, resources);
         getGameState().getEffectManager().addEffect(new ActiveEffect(
                 ActiveEffect.Type.HAPPINESS_BOOST,
-                GameParameters.FESTIVAL_HAPPINESS_BOOST,
-                GameParameters.FESTIVAL_DURATION_TURNS
+                ActionParams.FESTIVAL_HAPPINESS_BOOST,
+                ActionParams.FESTIVAL_DURATION_TURNS
         ));
-        return ActionResult.ok("Festival declared! +" + GameParameters.FESTIVAL_HAPPINESS_BOOST
-                + " happiness over " + GameParameters.FESTIVAL_DURATION_TURNS + " turns.");
+        return ActionResult.ok("Festival declared! +" + ActionParams.FESTIVAL_HAPPINESS_BOOST
+                + " happiness over " + ActionParams.FESTIVAL_DURATION_TURNS + " turns.");
     }
 
 }

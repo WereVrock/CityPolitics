@@ -1,7 +1,9 @@
 package City.main.barbarians;
 
 import City.main.map.ZoneManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.BarbarianParams;
+import City.main.parameters.CalendarParams;
+ 
 
 import java.util.*;
 
@@ -16,8 +18,8 @@ public class RavagedZoneManager {
     private static class RavagedEntry {
         RavagedLevel level;
         int          turnsRavaged;  // total turns since ravaged
-        static final int FLAT_TURNS  = 7 * GameParameters.PERIODS_PER_YEAR;
-        static final int DECAY_TURNS = 3 * GameParameters.PERIODS_PER_YEAR;
+        static final int FLAT_TURNS  = 7 * CalendarParams.PERIODS_PER_YEAR;
+        static final int DECAY_TURNS = 3 * CalendarParams.PERIODS_PER_YEAR;
 
         RavagedEntry(RavagedLevel level) {
             this.level        = level;
@@ -27,8 +29,8 @@ public class RavagedZoneManager {
         /** Production penalty 0.0–1.0. */
         double getPenalty() {
             double base = level == RavagedLevel.HEAVILY_RAVAGED
-                    ? GameParameters.BARB_HEAVILY_RAVAGED_PENALTY
-                    : GameParameters.BARB_RAVAGED_PENALTY;
+                    ? BarbarianParams.BARB_HEAVILY_RAVAGED_PENALTY
+                    : BarbarianParams.BARB_RAVAGED_PENALTY;
             if (turnsRavaged < FLAT_TURNS) return base;
             int decayTurn = turnsRavaged - FLAT_TURNS;
             if (decayTurn >= DECAY_TURNS) return 0.0;

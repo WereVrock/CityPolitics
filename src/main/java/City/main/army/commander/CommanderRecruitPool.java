@@ -2,7 +2,8 @@
 package City.main.army.commander;
 
 import City.debug.Debug;
-import City.main.parameters.GameParameters;
+import City.main.parameters.CommanderParams;
+ 
 import City.main.resources.ResourcePool;
 
 import java.util.ArrayList;
@@ -39,7 +40,7 @@ public class CommanderRecruitPool {
     }
 
 private void refillBase() {
-        for (int i = 0; i < GameParameters.COMMANDER_POOL_BASE_SIZE; i++) {
+        for (int i = 0; i < CommanderParams.COMMANDER_POOL_BASE_SIZE; i++) {
             pool.add(CommanderFactory.createRandom(partyManager));
         }
     }
@@ -59,16 +60,16 @@ public boolean refreshPool() {
             Debug.log("recruit-pool", "refresh-denied", "Already refreshed this turn.");
             return false;
         }
-        int cost = GameParameters.COMMANDER_POOL_REFRESH_COST;
+        int cost = CommanderParams.COMMANDER_POOL_REFRESH_COST;
         if (!resources.spendInfluence(cost)) {
             Debug.log("recruit-pool", "refresh-denied", "Cannot afford cost=" + cost);
             return false;
         }
         refreshUsedThisTurn = true;
-        for (int i = 0; i < GameParameters.COMMANDER_POOL_REFRESH_SIZE; i++) {
+        for (int i = 0; i < CommanderParams.COMMANDER_POOL_REFRESH_SIZE; i++) {
             pool.add(CommanderFactory.createRandom(partyManager));
         }
-        Debug.log("recruit-pool", "refresh", "Added " + GameParameters.COMMANDER_POOL_REFRESH_SIZE
+        Debug.log("recruit-pool", "refresh", "Added " + CommanderParams.COMMANDER_POOL_REFRESH_SIZE
                 + " candidates. Total pool=" + pool.size());
         return true;
     }

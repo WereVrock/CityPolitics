@@ -1,7 +1,9 @@
 package City.main.mercenaries;
 
 import City.debug.Debug;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.MercenaryParams;
+import City.main.parameters.PlayerArmyParams;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,8 +37,8 @@ public class MercenaryHirePool {
 
         public double getUpkeepPerTurn() {
             return size
-                    * GameParameters.SOLDIER_UPKEEP_GOLD
-                    * GameParameters.MERCENARY_COST_MULTIPLIER;
+                    * PlayerArmyParams.SOLDIER_UPKEEP_GOLD
+                    * MercenaryParams.MERCENARY_COST_MULTIPLIER;
         }
     }
 
@@ -51,9 +53,9 @@ public class MercenaryHirePool {
     /** Called at the start of each turn to generate fresh offers. */
     public void refresh() {
         offers.clear();
-        int count = GameParameters.MERCENARY_POOL_MIN_COUNT
-                + RNG.nextInt(GameParameters.MERCENARY_POOL_MAX_COUNT
-                              - GameParameters.MERCENARY_POOL_MIN_COUNT + 1);
+        int count = MercenaryParams.MERCENARY_POOL_MIN_COUNT
+                + RNG.nextInt(MercenaryParams.MERCENARY_POOL_MAX_COUNT
+                              - MercenaryParams.MERCENARY_POOL_MIN_COUNT + 1);
         for (int i = 0; i < count; i++) {
             offers.add(generateOffer());
         }
@@ -61,14 +63,14 @@ public class MercenaryHirePool {
     }
 
     private MercenaryOffer generateOffer() {
-        int    size     = GameParameters.MERCENARY_POOL_MIN_SIZE
-                + RNG.nextInt(GameParameters.MERCENARY_POOL_MAX_SIZE
-                              - GameParameters.MERCENARY_POOL_MIN_SIZE + 1);
+        int    size     = MercenaryParams.MERCENARY_POOL_MIN_SIZE
+                + RNG.nextInt(MercenaryParams.MERCENARY_POOL_MAX_SIZE
+                              - MercenaryParams.MERCENARY_POOL_MIN_SIZE + 1);
         double baseGold = size
-                * GameParameters.SOLDIER_RECRUIT_GOLD_COST
-                * GameParameters.MERCENARY_COST_MULTIPLIER;
+                * PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST
+                * MercenaryParams.MERCENARY_COST_MULTIPLIER;
         double variance = 1.0 + (RNG.nextDouble() * 2 - 1)
-                * GameParameters.MERCENARY_RECRUIT_COST_VARIANCE;
+                * MercenaryParams.MERCENARY_RECRUIT_COST_VARIANCE;
         int goldCost    = (int) Math.ceil(baseGold * variance);
         String name     = MercenaryNameGenerator.generate();
         return new MercenaryOffer(name, size, goldCost);

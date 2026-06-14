@@ -1,7 +1,8 @@
 package City.main.politics;
 
 import City.debug.Debug;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.PoliticalParams;
 import City.main.pops.Pop;
 import City.main.pops.PopElectoralData;
 import City.main.pops.PopManager;
@@ -54,8 +55,8 @@ public class PropagandaManager {
      * Called when a deal is struck by a party.
      */
     public void convertDealToPropaganda(PoliticalParty party, int gold, int influence) {
-        double total = gold * GameParameters.PROPAGANDA_PER_GOLD
-                + influence * GameParameters.PROPAGANDA_PER_INFLUENCE;
+        double total = gold * PoliticalParams.PROPAGANDA_PER_GOLD
+                + influence * PoliticalParams.PROPAGANDA_PER_INFLUENCE;
         addPropaganda(party, total);
     }
 
@@ -73,7 +74,7 @@ public class PropagandaManager {
 
         for (PoliticalParty party : parties) {
             double budget = spreadPropaganda.getOrDefault(party, 0.0);
-            if (budget < GameParameters.PROPAGANDA_SPREAD_THRESHOLD) continue;
+            if (budget < PoliticalParams.PROPAGANDA_SPREAD_THRESHOLD) continue;
 
             // Pick views to spread (party's FOR or STRONGLY_FOR views)
             List<PolitcalView> spreadViews = new ArrayList<>();
@@ -83,7 +84,7 @@ public class PropagandaManager {
             if (spreadViews.isEmpty()) { spreadPropaganda.put(party, 0.0); continue; }
 
             // Affected pop count scales with budget
-            int maxAffected = (int)(budget * GameParameters.PROPAGANDA_POPS_PER_UNIT);
+            int maxAffected = (int)(budget * PoliticalParams.PROPAGANDA_POPS_PER_UNIT);
             maxAffected = Math.max(1, Math.min(allPops.size(), maxAffected));
             int affected = 1 + rng.nextInt(maxAffected);
 
@@ -99,7 +100,7 @@ public class PropagandaManager {
                 // Intensity decreases with distance from center (index 0)
                 double distanceFactor = 1.0 - ((double) i / targetPops.size());
                 int maxIntensityChange = (int)(budget * distanceFactor
-                        * GameParameters.PROPAGANDA_INTENSITY_PER_UNIT);
+                        * PoliticalParams.PROPAGANDA_INTENSITY_PER_UNIT);
                 maxIntensityChange = Math.max(1, maxIntensityChange);
                 int intensityChange = 1 + rng.nextInt(maxIntensityChange);
 

@@ -1,6 +1,7 @@
 package City.ui.politics;
 
 import City.main.calendar.GameCalendar;
+import City.main.parameters.PoliticalParams;
 import City.main.politics.ElectionRecord;
 import City.main.politics.ElectionRecord.PartyResult;
 import City.ui.UITheme;
@@ -536,7 +537,7 @@ public class ElectionResultsPanel extends JPanel {
     }
 
     private static final int GameParameters_POWER_DRIFT =
-            City.main.parameters.GameParameters.POWER_DRIFT_SEAT_MULTIPLIER;
+            PoliticalParams.POWER_DRIFT_SEAT_MULTIPLIER;
 
     private JPanel buildAdvancedTableRow(String name, String natural, String bought,
                                           String stolen, String total, boolean isHeader) {

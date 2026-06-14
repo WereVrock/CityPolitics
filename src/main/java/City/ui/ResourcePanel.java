@@ -1,6 +1,7 @@
 package City.ui;
 
 import City.main.core.GameState;
+import City.main.parameters.ActionParams;
 import City.main.pops.PopManager;
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
@@ -9,7 +10,7 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
-import City.main.parameters.GameParameters;
+ 
 
 /**
  * Displays current resources and stats.
@@ -126,7 +127,7 @@ public void refresh() {
         int corruption     = stats.getCorruption();
         int baseHappiness  = stats.getHappiness();
         int effectiveHappy = (int) Math.max(0,
-            baseHappiness - corruption * GameParameters.CORRUPTION_HAPPINESS_MALUS);
+            baseHappiness - corruption * ActionParams.CORRUPTION_HAPPINESS_MALUS);
 
         foodLabel.setText("Food:      " + res.getFood());
         moneyLabel.setText("Money:     " + res.getMoney());

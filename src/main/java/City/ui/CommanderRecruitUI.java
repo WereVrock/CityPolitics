@@ -4,7 +4,8 @@ import City.debug.Debug;
 import City.main.army.commander.Commander;
 import City.main.army.commander.CommanderRecruitPool;
 import City.main.army.commander.CommanderRoster;
-import City.main.parameters.GameParameters;
+import City.main.parameters.CommanderParams;
+ 
 import City.main.resources.ResourcePool;
 
 import javax.swing.*;
@@ -86,7 +87,7 @@ private void build() {
         refreshBtn = new JButton(
                 alreadyRefreshed
                 ? "Extra Candidates Already Revealed (once per turn)"
-                : "Reveal 3 More Candidates — " + GameParameters.COMMANDER_POOL_REFRESH_COST + " Influence");
+                : "Reveal 3 More Candidates — " + CommanderParams.COMMANDER_POOL_REFRESH_COST + " Influence");
         refreshBtn.setFont(UITheme.FONT_BUTTON);
         refreshBtn.setEnabled(!alreadyRefreshed);
         refreshBtn.setForeground(alreadyRefreshed ? UITheme.TEXT_SECONDARY : UITheme.TEXT_GOLD);
@@ -166,7 +167,7 @@ private JPanel buildCandidateCard(Commander c) {
         card.add(Box.createVerticalStrut(6));
 
         JButton recruitBtn = new JButton(
-                "Recruit — " + GameParameters.COMMANDER_RECRUIT_BASE_COST + " Influence");
+                "Recruit — " + CommanderParams.COMMANDER_RECRUIT_BASE_COST + " Influence");
         recruitBtn.setFont(UITheme.FONT_SMALL);
         recruitBtn.setForeground(UITheme.TEXT_GOLD);
         recruitBtn.setBackground(new Color(40, 60, 20));

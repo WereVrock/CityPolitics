@@ -92,8 +92,8 @@ public class MapPanel extends JPanel
 
         setBackground(MapRenderer.COLOR_BG);
         setPreferredSize(new Dimension(
-                City.main.parameters.GameParameters.MAP_CANVAS_WIDTH,
-                City.main.parameters.GameParameters.MAP_CANVAS_HEIGHT));
+                City.main.parameters.MapZoneParams.MAP_CANVAS_WIDTH,
+                City.main.parameters.MapZoneParams.MAP_CANVAS_HEIGHT));
         new DropTarget(this, DnDConstants.ACTION_MOVE, this, true);
         DragSource.getDefaultDragSource()
                 .createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_MOVE, this);

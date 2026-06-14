@@ -1,6 +1,7 @@
 package City.main.resources;
 
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.StartingParams;
 
 /**
  * Tracks the two bounded stats: corruption and happiness.
@@ -15,13 +16,13 @@ public class StatBlock {
     private int happiness;
 
     public StatBlock() {
-        this.corruption = GameParameters.STARTING_CORRUPTION;
-        this.happiness  = GameParameters.STARTING_HAPPINESS;
+        this.corruption = StartingParams.STARTING_CORRUPTION;
+        this.happiness  = StartingParams.STARTING_HAPPINESS;
     }
 
     public void reset() {
-        this.corruption = GameParameters.STARTING_CORRUPTION;
-        this.happiness  = GameParameters.STARTING_HAPPINESS;
+        this.corruption = StartingParams.STARTING_CORRUPTION;
+        this.happiness  = StartingParams.STARTING_HAPPINESS;
     }
 
   

@@ -2,7 +2,8 @@
 package City.main.army;
 
 import City.debug.Debug;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.PlayerArmyParams;
 import City.main.resources.ResourcePool;
 
 import java.util.Random;
@@ -32,7 +33,7 @@ public class SoldierUpkeepProcessor {
      * @return the gold cost due this turn for the army's soldiers
      */
     public double computeUpkeepCost() {
-        return army.getSoldierCount() * GameParameters.SOLDIER_UPKEEP_GOLD;
+        return army.getSoldierCount() * PlayerArmyParams.SOLDIER_UPKEEP_GOLD;
     }
 
     /**
@@ -55,8 +56,8 @@ public boolean payUpkeep() {
 public int processDesertion() {
         int soldiers = army.getSize();
         if (soldiers == 0) return 0;
-        double minFrac = GameParameters.SOLDIER_DESERTION_MIN_FRACTION;
-        double maxFrac = GameParameters.SOLDIER_DESERTION_MAX_FRACTION;
+        double minFrac = PlayerArmyParams.SOLDIER_DESERTION_MIN_FRACTION;
+        double maxFrac = PlayerArmyParams.SOLDIER_DESERTION_MAX_FRACTION;
         double frac    = minFrac + RNG.nextDouble() * (maxFrac - minFrac);
         int    lost    = (int) Math.ceil(soldiers * frac);
         army.applyLosses(lost);

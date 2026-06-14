@@ -6,6 +6,9 @@ import City.ui.politics.VoteSessionPanel;
 import City.main.actions.ActionResult;
 import City.main.core.GameState;
 import City.main.Main;
+import City.main.parameters.PoliticalParams;
+import City.main.parameters.PrestigeXPParams;
+import City.main.parameters.ProtectionParams;
 import City.ui.GrantZoneClaimDialog;
 
 import javax.swing.*;
@@ -620,14 +623,14 @@ private void showProtectionDialog(City.main.actions.DeclareProtectionAction acti
 
     JLabel info = new JLabel("<html><body style='width:360px'>"
             + "Declare a noble house under your protection.<br>"
-            + "Costs <b>" + City.main.parameters.GameParameters.PROTECTION_INFLUENCE_COST
+            + "Costs <b>" + ProtectionParams.PROTECTION_INFLUENCE_COST
             + " influence</b>. Target gains <b>+"
-            + City.main.parameters.GameParameters.PROTECTION_TARGET_OPINION_BONUS
+            + ProtectionParams.PROTECTION_TARGET_OPINION_BONUS
             + " opinion</b>. Their rivals get <b>"
-            + City.main.parameters.GameParameters.PROTECTION_RIVAL_OPINION_MALUS
+            + ProtectionParams.PROTECTION_RIVAL_OPINION_MALUS
             + " opinion</b>.<br>"
             + "If they lose a zone, you suffer <b>-"
-            + Math.abs(City.main.parameters.GameParameters.PLAYER_PRESTIGE_PROTECTED_ZONE_LOST)
+            + Math.abs(PrestigeXPParams.PLAYER_PRESTIGE_PROTECTED_ZONE_LOST)
             + " prestige</b>."
             + "</body></html>");
     info.setFont(UITheme.FONT_SMALL);
@@ -830,7 +833,7 @@ private void endTurn() {
         // Show campaign popup if campaign just started
         City.main.politics.ElectionManager elMgr = gameState.getElectionManager();
         if (elMgr.isCampaignPeriod() && elMgr.getTurnsUntilElection()
-                == City.main.parameters.GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS) {
+                == PoliticalParams.ELECTION_CAMPAIGN_WARNING_TURNS) {
             showCampaignDialog();
         }
     }

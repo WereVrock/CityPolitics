@@ -2,7 +2,8 @@ package City.main.politics;
 
 import java.util.List;
 import java.util.Random;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.VotingParams;
 
 /**
  * Generates in-character opening lines for party leaders during negotiations.
@@ -26,8 +27,8 @@ public class PartyDialogueGenerator {
         if (alreadyDealt) return alreadyDealtLine(party);
         if (isOracles)    return oracleLine(party, opinion);
 
-        boolean stronglyFor     = score >  GameParameters.VOTE_DEAL_LOCK_THRESHOLD;
-        boolean stronglyAgainst = score < -GameParameters.VOTE_DEAL_LOCK_THRESHOLD;
+        boolean stronglyFor     = score >  VotingParams.VOTE_DEAL_LOCK_THRESHOLD;
+        boolean stronglyAgainst = score < -VotingParams.VOTE_DEAL_LOCK_THRESHOLD;
 
         if (stronglyFor)     return stronglyForLine(party, opinion, power, action);
         if (stronglyAgainst) return stronglyAgainstLine(party, opinion, power, action);

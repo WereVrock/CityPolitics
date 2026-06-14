@@ -1,6 +1,7 @@
 package City.main.army.commander;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.CommanderParams;
+ 
 import City.main.politics.PoliticalParty;
 
 /**
@@ -44,7 +45,7 @@ public class Commander {
     }
 
     public double getUpkeepCost() {
-        return GameParameters.COMMANDER_UPKEEP_BY_SKILL[commandingSkill];
+        return CommanderParams.COMMANDER_UPKEEP_BY_SKILL[commandingSkill];
     }
 
     // ─── XP & Levelling ──────────────────────────────────────────────────────
@@ -60,7 +61,7 @@ public class Commander {
     }
 
     private boolean checkLevelUp() {
-        int[] thresholds = GameParameters.COMMANDER_XP_THRESHOLDS;
+        int[] thresholds = CommanderParams.COMMANDER_XP_THRESHOLDS;
         if (commandingSkill >= thresholds.length) return false;
         boolean levelled = false;
         while (commandingSkill < thresholds.length && xp >= thresholds[commandingSkill]) {
@@ -75,7 +76,7 @@ public class Commander {
      * XP needed to reach next skill level. Returns -1 if already at max.
      */
     public int xpToNextLevel() {
-        int[] thresholds = GameParameters.COMMANDER_XP_THRESHOLDS;
+        int[] thresholds = CommanderParams.COMMANDER_XP_THRESHOLDS;
         if (commandingSkill >= thresholds.length) return -1;
         return thresholds[commandingSkill] - xp;
     }
@@ -92,9 +93,9 @@ public class Commander {
      */
     public static int rollSkill() {
         int roll = (int)(Math.random() * 100);
-        if (roll < GameParameters.COMMANDER_SKILL_WEIGHT_0) return 0;
-        if (roll < GameParameters.COMMANDER_SKILL_WEIGHT_1) return 1;
-        if (roll < GameParameters.COMMANDER_SKILL_WEIGHT_2) return 2;
+        if (roll < CommanderParams.COMMANDER_SKILL_WEIGHT_0) return 0;
+        if (roll < CommanderParams.COMMANDER_SKILL_WEIGHT_1) return 1;
+        if (roll < CommanderParams.COMMANDER_SKILL_WEIGHT_2) return 2;
         return 3;
     }
 }

@@ -11,9 +11,12 @@ import City.main.nobles.NobleArmy;
 import City.main.nobles.NobleArmyManager;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+ 
 import City.main.resources.ResourcePool;
 import City.debug.Debug;
+import City.main.parameters.BarbarianParams;
+import City.main.parameters.DiplomacyParams;
+import City.main.parameters.NobleAIParams;
 
 import java.util.*;
 
@@ -146,10 +149,10 @@ private List<String> startInvasion(int absoluteTurn, GameCalendar calendar) {
     boolean earlyInvasion = state.isEarlyInvasion();
 
     // Warboss size scaled down for early invasions
-    int warbossSize = GameParameters.BARB_WARBOSS_BASE_SIZE
-             + calendar.getTotalTurnsElapsed() * GameParameters.BARB_WARBOSS_SIZE_PER_TURN;
+    int warbossSize = BarbarianParams.BARB_WARBOSS_BASE_SIZE
+             + calendar.getTotalTurnsElapsed() * BarbarianParams.BARB_WARBOSS_SIZE_PER_TURN;
     if (earlyInvasion) {
-        warbossSize = (int)(warbossSize * GameParameters.BARB_EARLY_WAVE_SIZE_FRACTION);
+        warbossSize = (int)(warbossSize * BarbarianParams.BARB_EARLY_WAVE_SIZE_FRACTION);
         warbossSize = Math.max(30, warbossSize);
     }
 
@@ -187,8 +190,8 @@ private void log(String key, String msg) {
 
 private List<String> spawnWaveHalf(boolean firstHalf) {
     List<String> log = new ArrayList<>();
-    int raidersToSpawn  = GameParameters.BARB_WAVE_RAIDER_COUNT;
-    int ravagersToSpawn = GameParameters.BARB_WAVE_RAVAGER_COUNT;
+    int raidersToSpawn  = BarbarianParams.BARB_WAVE_RAIDER_COUNT;
+    int ravagersToSpawn = BarbarianParams.BARB_WAVE_RAVAGER_COUNT;
 
     int rCount = firstHalf ? (raidersToSpawn + 1) / 2 : raidersToSpawn / 2;
     int vCount = firstHalf ? (ravagersToSpawn + 1) / 2 : ravagersToSpawn / 2;
@@ -198,7 +201,7 @@ private List<String> spawnWaveHalf(boolean firstHalf) {
     boolean earlyWave     = earlyInvasion || state.isEarlyWave();
 
     double sizeFraction = earlyWave
-            ? GameParameters.BARB_EARLY_WAVE_SIZE_FRACTION : 1.0;
+            ? BarbarianParams.BARB_EARLY_WAVE_SIZE_FRACTION : 1.0;
 
     List<String> desolateZones = getDesolateZoneIds();
     if (desolateZones.isEmpty()) return log;
@@ -208,7 +211,7 @@ private List<String> spawnWaveHalf(boolean firstHalf) {
 
     for (int i = 0; i < rCount; i++) {
         String z    = desolateZones.get(rng.nextInt(desolateZones.size()));
-        int    size = (int)(GameParameters.BARB_WAVE_RAIDER_SIZE * sizeFraction);
+        int    size = (int)(BarbarianParams.BARB_WAVE_RAIDER_SIZE * sizeFraction);
         size = Math.max(5, size);
         BarbArmy raider = armyManager.spawnRaider(z, size, earlyWave);
         log.add("☠ " + waveType + " — " + raider.getDisplayName()
@@ -222,7 +225,7 @@ private List<String> spawnWaveHalf(boolean firstHalf) {
 
     for (int i = 0; i < vCount; i++) {
         String z    = desolateZones.get(rng.nextInt(desolateZones.size()));
-        int    size = (int)(GameParameters.BARB_WAVE_RAVAGER_SIZE * sizeFraction);
+        int    size = (int)(BarbarianParams.BARB_WAVE_RAVAGER_SIZE * sizeFraction);
         size = Math.max(10, size);
         BarbArmy ravager = armyManager.spawnRavager(z, size, earlyWave);
         log.add("☠ " + waveType + " — " + ravager.getDisplayName()
@@ -239,8 +242,8 @@ private List<String> splitRaiderFromWarboss(int absoluteTurn) {
         BarbArmy wb = armyManager.getWarboss();
         if (wb == null) return log;
 
-        int splitSize = Math.max(GameParameters.BARB_WARBOSS_RAIDER_MIN,
-                (int) (wb.getSize() * GameParameters.BARB_WARBOSS_RAIDER_FRACTION));
+        int splitSize = Math.max(BarbarianParams.BARB_WARBOSS_RAIDER_MIN,
+                (int) (wb.getSize() * BarbarianParams.BARB_WARBOSS_RAIDER_FRACTION));
         if (splitSize >= wb.getSize()) return log;
 
         wb.setSize(wb.getSize() - splitSize);
@@ -305,7 +308,7 @@ private String pickWarbossNextZone(BarbArmy wb) {
         if (candidates.isEmpty()) return null;
 
         // 50% chance to pick unvisited detour
-        if (rng.nextDouble() < GameParameters.BARB_WARBOSS_DETOUR_CHANCE) {
+        if (rng.nextDouble() < BarbarianParams.BARB_WARBOSS_DETOUR_CHANCE) {
             List<String> unvisited = new ArrayList<>();
             for (String z : candidates) {
                 if (!armyManager.getInvasionVisited().contains(z)) unvisited.add(z);
@@ -448,7 +451,7 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId, ResourceP
         // Noble AI pay-off: only ravagers can be paid off
         if (owner != null && barb.isRavager()) {
             if (shouldNoblePay(owner, barb)) {
-                int goldCost = barb.getSize() * GameParameters.BARB_PAYOFF_GOLD_PER_MAN;
+                int goldCost = barb.getSize() * BarbarianParams.BARB_PAYOFF_GOLD_PER_MAN;
                 owner.addGold(-Math.min(goldCost, owner.getGold()));
                 barb.setPaidOff(true);
                 log.add(owner.getName() + " pays off ravagers at " + zoneId + " (" + goldCost + " gold). They stand down for one turn.");
@@ -544,7 +547,7 @@ private List<String> resolveCombatInZone(BarbArmy barb, String zoneId, ResourceP
         totalDefenderSize += playerContribution;
 
         // Barbarians are always the attacker — apply defender bonus
-        double defBonus       = 1.0 + GameParameters.BARB_DEFENDER_BONUS;
+        double defBonus       = 1.0 + BarbarianParams.BARB_DEFENDER_BONUS;
         int    boostedDefSize = (int) (totalDefenderSize * defBonus);
 
         String defenderLabel = hasNobleDefender ? owner.getId() : "player";
@@ -660,13 +663,13 @@ private void distributeDefenderLosses(int rawLoss, int nobleGarrison, List<Noble
         Zone zone = zoneManager.getZone(zoneId);
         if (zone != null) zoneGold = zone.getGoldProduction();
 
-        int maxByZone = (int) (zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
-        int maxByArmy = (int) (barb.getSize() * GameParameters.RAID_GOLD_PER_SOLDIER);
+        int maxByZone = (int) (zoneGold * DiplomacyParams.RAID_GOLD_ZONE_MULTIPLIER);
+        int maxByArmy = (int) (barb.getSize() * DiplomacyParams.RAID_GOLD_PER_SOLDIER);
         int maxSteal = Math.min(maxByZone, maxByArmy);
 
         if (owner != null) {
             int steal = Math.min(maxSteal,
-                    (int) (owner.getGold() * GameParameters.AI_RAID_GOLD_FRACTION));
+                    (int) (owner.getGold() * NobleAIParams.AI_RAID_GOLD_FRACTION));
             steal = Math.max(0, steal);
             owner.addGold(-steal);
             log.add("☠ Barbarian raiders steal " + steal + " gold from "
@@ -711,8 +714,8 @@ private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previo
     }
 
     int garrisonSize = barb.isWarboss()
-            ? GameParameters.BARB_WARBOSS_GARRISON_SIZE
-            : GameParameters.BARB_RAVAGER_GARRISON_SIZE;
+            ? BarbarianParams.BARB_WARBOSS_GARRISON_SIZE
+            : BarbarianParams.BARB_RAVAGER_GARRISON_SIZE;
     garrisonSize = Math.min(garrisonSize, barb.getSize());
 
     if (garrisonSize > 0) {
@@ -741,8 +744,8 @@ private List<String> conquerZone(BarbArmy barb, String zoneId, NobleHouse previo
             armySize += a.getSize();
         }
 
-        int defTotal = (int) ((garrisonSize + armySize) * (1.0 + GameParameters.BARB_DEFENDER_BONUS));
-        int goldCost = barb.getSize() * GameParameters.BARB_PAYOFF_GOLD_PER_MAN;
+        int defTotal = (int) ((garrisonSize + armySize) * (1.0 + BarbarianParams.BARB_DEFENDER_BONUS));
+        int goldCost = barb.getSize() * BarbarianParams.BARB_PAYOFF_GOLD_PER_MAN;
         boolean canAfford = noble.getGold() >= goldCost;
         boolean canWin = defTotal > barb.getSize();
 

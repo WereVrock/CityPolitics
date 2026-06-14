@@ -7,13 +7,16 @@ import City.main.nobles.NobleCharacter;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.Relationship;
 import City.main.nobles.RelationshipManager;
-import City.main.parameters.GameParameters;
+ 
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import City.main.nobles.Motivation;
+import City.main.parameters.DiplomacyParams;
+import City.main.parameters.NobleAIParams;
+import City.main.parameters.NobleHouseParams;
 
 /** Manages alliance health, threat status, claim decay, and the war-chest target. */
 public final class NobleAIRelations {
@@ -42,12 +45,12 @@ public final class NobleAIRelations {
             int allyPower = NobleAIPower.estimatedPower(actor, ally, armyManager)
                     + (int) (0.7 * ally.getTotalGarrisonSize());
             boolean tooWeak = allyPower < NobleAIPower.exactPotentialFieldArmy(actor, armyManager)
-                    * GameParameters.ALLIANCE_MIN_ARMY_FRACTION;
+                    * DiplomacyParams.ALLIANCE_MIN_ARMY_FRACTION;
             if (tooWeak) {
                 NobleCharacter c   = actor.getActiveCharacter();
                 int            dip = c != null ? c.getDiplomacy() : 0;
-                double cleanChance = GameParameters.ALLIANCE_BREAK_CLEAN_BASE
-                        + dip * GameParameters.ALLIANCE_BREAK_CLEAN_PER_DIPLOMACY;
+                double cleanChance = DiplomacyParams.ALLIANCE_BREAK_CLEAN_BASE
+                        + dip * DiplomacyParams.ALLIANCE_BREAK_CLEAN_PER_DIPLOMACY;
                 Relationship result = NobleAIUtils.RNG.nextDouble() < cleanChance
                         ? Relationship.NEUTRAL : Relationship.HOSTILE;
                 relationships.set(actor.getId(), allyId, result);
@@ -83,7 +86,7 @@ public final class NobleAIRelations {
             int observerZones = observer.getZoneIds().size();
             double chance = (double) (attackerZones - observerZones)
                     / Math.max(1, totalZones)
-                    * GameParameters.THREATENED_BASE_CHANCE_MULTIPLIER
+                    * DiplomacyParams.THREATENED_BASE_CHANCE_MULTIPLIER
                     * multiplier;
             chance = Math.max(0, Math.min(1.0, chance));
 
@@ -97,7 +100,7 @@ public final class NobleAIRelations {
         for (NobleHouse house : allHouses) {
             Set<String> threats = new HashSet<>(house.getThreatenedBy());
             for (String threatId : threats) {
-                if (NobleAIUtils.RNG.nextDouble() < GameParameters.THREATENED_DECAY_CHANCE) {
+                if (NobleAIUtils.RNG.nextDouble() < DiplomacyParams.THREATENED_DECAY_CHANCE) {
                     house.removeThreat(threatId);
                 }
             }
@@ -127,7 +130,7 @@ public final class NobleAIRelations {
                         break;
                     }
                     if (rel == Relationship.ALLIED || rel == Relationship.FRIENDLY) {
-                        if (house.getInfluence() >= GameParameters.CLAIM_DECAY_INFLUENCE_COST * 10) {
+                        if (house.getInfluence() >= DiplomacyParams.CLAIM_DECAY_INFLUENCE_COST * 10) {
                             keep = true;
                         }
                     }
@@ -138,8 +141,8 @@ public final class NobleAIRelations {
                 keep = true;
             }
 
-            if (keep && house.getInfluence() >= GameParameters.CLAIM_DECAY_INFLUENCE_COST) {
-                house.addInfluence(-GameParameters.CLAIM_DECAY_INFLUENCE_COST);
+            if (keep && house.getInfluence() >= DiplomacyParams.CLAIM_DECAY_INFLUENCE_COST) {
+                house.addInfluence(-DiplomacyParams.CLAIM_DECAY_INFLUENCE_COST);
             } else {
                 claimManager.removeClaim(house.getId(), decayed.getZoneId());
             }
@@ -166,12 +169,12 @@ public final class NobleAIRelations {
 
         int myMil = actor.getActiveCharacter() != null
                 ? actor.getActiveCharacter().getMilitary() : 0;
-        double myMult = 1.0 + myMil * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+        double myMult = 1.0 + myMil * DiplomacyParams.MILITARY_SKILL_BONUS_PER_POINT;
         int neededSoldiers = (int) Math.ceil(maxEnemyPower / myMult);
 
-        int recruitCost = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
-        int upkeepCost  = neededSoldiers * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER
-                * GameParameters.WAR_CHEST_UPKEEP_TURNS;
+        int recruitCost = neededSoldiers * NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
+        int upkeepCost  = neededSoldiers * NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER
+                * NobleAIParams.WAR_CHEST_UPKEEP_TURNS;
         int baseGold = recruitCost + upkeepCost;
 
         NobleCharacter ch  = actor.getActiveCharacter();
@@ -181,13 +184,13 @@ public final class NobleAIRelations {
                 + 0.25 * NobleAIMotivation.motivationPriority(sec);
 
         int cunning = ch != null ? ch.getCunning() : 0;
-        double fuzzRange = GameParameters.WAR_CHEST_FUZZ_BASE
-                + (4 - cunning) * GameParameters.WAR_CHEST_FUZZ_PER_MISSING;
+        double fuzzRange = NobleAIParams.WAR_CHEST_FUZZ_BASE
+                + (4 - cunning) * NobleAIParams.WAR_CHEST_FUZZ_PER_MISSING;
         double fuzz = 1.0 + (NobleAIUtils.RNG.nextDouble() * 2 - 1) * fuzzRange;
 
         int target = (int) (baseGold * priority * fuzz);
-        if (target < GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
-            target = GameParameters.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD;
+        if (target < NobleHouseParams.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD) {
+            target = NobleHouseParams.NOBLE_ARMY_RECRUIT_GOLD_THRESHOLD;
         }
         return Math.max(0, target);
     }

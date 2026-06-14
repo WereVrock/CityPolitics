@@ -21,6 +21,8 @@ import City.main.politics.VotingSession;
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 import City.main.effects.EffectManager;
+import City.main.parameters.ActionParams;
+import City.main.parameters.NobleHouseParams;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -140,7 +142,7 @@ public class GameState {
         City.main.pops.PopManager pops = popManager;
         int moneyGained     = pops.getTotalMoneyGeneration();
         int influenceGained = pops.getTotalInfluenceGeneration()
-                            + City.main.parameters.GameParameters.BASE_INFLUENCE_PER_TURN;
+                            + ActionParams.BASE_INFLUENCE_PER_TURN;
         int foodConsumed    = pops.getTotalFoodConsumption();
         ledger.setRecurring(City.main.resources.ResourceType.GOLD,      "pops", "Pop Income",      moneyGained);
         ledger.setRecurring(City.main.resources.ResourceType.INFLUENCE,  "pops", "Pop Influence",   influenceGained);
@@ -148,7 +150,7 @@ public class GameState {
 
         for (City.main.nobles.NobleHouse house : nobleHouseManager.getHouses()) {
             if (house.isEliminated()) continue;
-            double share    = house.getPlayerOpinion() <= City.main.parameters.GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD
+            double share    = house.getPlayerOpinion() <= NobleHouseParams.NOBLE_HOSTILE_OPINION_THRESHOLD
                             ? 0.0
                             : house.getPlayerOpinion() > 50 ? 0.50 : 0.35;
             int sentManpower = house.computeManpowerSentToPlayer();
@@ -158,7 +160,7 @@ public class GameState {
             for (String zoneId : house.getZoneIds()) {
                 City.main.map.Zone zone = zoneManager.getZone(zoneId);
                 totalGold += (zone != null ? zone.getGoldProduction() : 0)
-                           + City.main.parameters.GameParameters.NOBLE_ZONE_GOLD_PER_TURN;
+                           + NobleHouseParams.NOBLE_ZONE_GOLD_PER_TURN;
                 totalFood += (zone != null ? zone.getFoodProduction() : 0);
             }
             int playerGold = (int)(totalGold * share);

@@ -6,7 +6,10 @@ import City.main.map.Zone;
 import City.main.map.ZoneManager;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.CalendarParams;
+ 
+import City.main.parameters.NobleAIParams;
+import City.main.parameters.NobleCouncilParams;
 import City.main.resources.ResourcePool;
 
 import java.util.*;
@@ -47,7 +50,7 @@ public class CouncilSessionManager {
                 null, playerImpression));
 
         // Oracle voter
-        int oracleImpression = GameParameters.COUNCIL_ORACLE_IMPRESSION;
+        int oracleImpression = NobleCouncilParams.COUNCIL_ORACLE_IMPRESSION;
         CouncilVoter oracleVoter = new CouncilVoter("oracle", "Arch Oracle Thessivane",
                 CouncilVoter.VoterType.ORACLE, null, oracleImpression);
         oracleVoter.setStance(oracleOpinion >= 50
@@ -64,7 +67,7 @@ public class CouncilSessionManager {
             if (!CouncilPrestigeEvaluator.isPrestigious(house, totalPrestige)) continue;
             double prestigeFraction = totalPrestigiousPrestige > 0
                     ? (double) house.getPrestige() / totalPrestigiousPrestige : 0;
-            int impression = (int)(GameParameters.COUNCIL_PRESTIGIOUS_TOTAL_IMPRESSION
+            int impression = (int)(NobleCouncilParams.COUNCIL_PRESTIGIOUS_TOTAL_IMPRESSION
                     * prestigeFraction);
             impression = Math.max(1, impression);
             CouncilVoter voter = new CouncilVoter(house.getId(),
@@ -187,10 +190,10 @@ public class CouncilSessionManager {
                                                     ResourcePool resources) {
         List<String> log = new ArrayList<>();
         fortificationSupportTurnsRemaining =
-                GameParameters.COUNCIL_FORTIFICATION_SUPPORT_YEARS
-                * GameParameters.PERIODS_PER_YEAR;
+                NobleCouncilParams.COUNCIL_FORTIFICATION_SUPPORT_YEARS
+                * CalendarParams.PERIODS_PER_YEAR;
         log.add("⚑ Fortification Support declared. Player will pay half of noble fortification costs for "
-                + GameParameters.COUNCIL_FORTIFICATION_SUPPORT_YEARS + " years.");
+                + NobleCouncilParams.COUNCIL_FORTIFICATION_SUPPORT_YEARS + " years.");
         return log;
     }
 
@@ -211,7 +214,7 @@ public class CouncilSessionManager {
                 }
                 if (border) {
                     house.addFortification(zoneId, 1);
-                    totalCost += GameParameters.COUNCIL_BORDER_FORT_COST_PER_ZONE;
+                    totalCost += NobleCouncilParams.COUNCIL_BORDER_FORT_COST_PER_ZONE;
                     log.add("  " + house.getName() + ": " + zoneId.replace("_", " ")
                             + " fortified (+1).");
                 }
@@ -246,7 +249,7 @@ private List<String> applyUnlawfulAcquisition(String zoneId,
     for (City.main.army.Army a : playerArmyManager.getArmies()) playerArmy += a.getSize();
 
     double ratio = playerArmy > 0 ? (double) ownerArmy / playerArmy : 0;
-    if (ratio >= GameParameters.COUNCIL_UNLAWFUL_REFUSE_THRESHOLD) {
+    if (ratio >= NobleCouncilParams.COUNCIL_UNLAWFUL_REFUSE_THRESHOLD) {
         log.add("⚑ " + owner.getName()
                 + " refuses to cede " + zoneId.replace("_", " ")
                 + " — their forces are strong enough to resist.");
@@ -270,7 +273,7 @@ private List<String> applyUnlawfulAcquisition(String zoneId,
     owner.removeZone(zoneId);
     if (recipient != null) {
         recipient.addZone(zoneId);
-        recipient.adjustPlayerOpinion(GameParameters.COUNCIL_UNLAWFUL_RECIPIENT_OPINION);
+        recipient.adjustPlayerOpinion(NobleCouncilParams.COUNCIL_UNLAWFUL_RECIPIENT_OPINION);
         log.add("⚑ Unlawful Acquisition declared. "
                 + zoneId.replace("_", " ") + " ceded from "
                 + owner.getName() + " to " + recipient.getName() + ".");
@@ -279,7 +282,7 @@ private List<String> applyUnlawfulAcquisition(String zoneId,
                 + zoneId.replace("_", " ") + " stripped from "
                 + owner.getName() + " — no claimant found, zone is ungoverned.");
     }
-    owner.adjustPlayerOpinion(GameParameters.COUNCIL_UNLAWFUL_OWNER_OPINION);
+    owner.adjustPlayerOpinion(NobleCouncilParams.COUNCIL_UNLAWFUL_OWNER_OPINION);
     return log;
 }
 
@@ -296,7 +299,7 @@ public List<String> processTurn(NobleHouseManager houseManager,
             int subsidy = 0;
             for (NobleHouse house : houseManager.getHouses()) {
                 if (house.isEliminated()) continue;
-                int houseFortCost = GameParameters.AI_FORTIFY_GOLD_COST / 2;
+                int houseFortCost = NobleAIParams.AI_FORTIFY_GOLD_COST / 2;
                 if (house.getGold() >= houseFortCost) {
                     subsidy += houseFortCost;
                 }
@@ -319,11 +322,11 @@ public List<String> processTurn(NobleHouseManager houseManager,
                 pendingUnlawfulTurns   = 0;
             } else {
                 pendingUnlawfulTurns--;
-                playerPrestige.addPrestige(GameParameters.COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN);
+                playerPrestige.addPrestige(NobleCouncilParams.COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN);
                 log.add("⚠ " + owner.getName() + " still holds "
                         + pendingUnlawfulZoneId.replace("_", " ")
                         + " in defiance. Prestige "
-                        + GameParameters.COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN + ".");
+                        + NobleCouncilParams.COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN + ".");
                 if (pendingUnlawfulTurns <= 0) {
                     log.addAll(forceTransfer(pendingUnlawfulZoneId, owner, houseManager));
                     pendingUnlawfulZoneId  = null;

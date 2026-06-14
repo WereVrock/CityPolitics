@@ -3,6 +3,7 @@ package City.main.actions;
 import City.main.core.GameState;
 import City.main.legislation.LegislationManager;
 import City.main.legislation.LegislationType;
+import City.main.parameters.ActionParams;
 import City.main.politics.PolitcalView;
 import City.main.politics.VoteCondition;
 import City.main.resources.ResourcePool;
@@ -43,14 +44,14 @@ public class AllowSendResourcesAction extends AbstractFormalAction {
     @Override
     public String getDescription() {
         return "Vote to allow sending resources to noble houses for "
-                + City.main.parameters.GameParameters.SEND_RESOURCES_WINDOW_TURNS + " turns. "
-                + "Costs " + City.main.parameters.GameParameters.ALLOW_SEND_RESOURCES_INFLUENCE_COST
+                + ActionParams.SEND_RESOURCES_WINDOW_TURNS + " turns. "
+                + "Costs " + ActionParams.ALLOW_SEND_RESOURCES_INFLUENCE_COST
                 + " influence.";
     }
 
     @Override
     public int getInfluenceCost() {
-        return City.main.parameters.GameParameters.ALLOW_SEND_RESOURCES_INFLUENCE_COST;
+        return ActionParams.ALLOW_SEND_RESOURCES_INFLUENCE_COST;
     }
 
     @Override
@@ -60,6 +61,6 @@ public class AllowSendResourcesAction extends AbstractFormalAction {
     public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
         legislationManager.grantSendResourcesWindow();
         return ActionResult.ok("Sending resources to nobles authorised for "
-                + City.main.parameters.GameParameters.SEND_RESOURCES_WINDOW_TURNS + " turns.");
+                + ActionParams.SEND_RESOURCES_WINDOW_TURNS + " turns.");
     }
 }

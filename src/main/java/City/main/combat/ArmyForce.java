@@ -1,6 +1,7 @@
 package City.main.combat;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
 
 /**
  * One side in a combat engagement.
@@ -28,7 +29,7 @@ public class ArmyForce {
 
     /** Combat power used for casualty resolution. */
     public int getEffectivePower() {
-        return (int)(rawSize * (1.0 + militarySkill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
+        return (int)(rawSize * (1.0 + militarySkill * DiplomacyParams.MILITARY_SKILL_BONUS_PER_POINT));
     }
 
     /** Legacy getter kept for combat log display. Returns effective power. */

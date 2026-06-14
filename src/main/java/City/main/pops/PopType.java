@@ -1,6 +1,8 @@
 package City.main.pops;
 
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.PopulationStatsParams;
+import City.main.parameters.StartingParams;
 import City.main.politics.PolitcalView;
 
 import java.util.List;
@@ -12,11 +14,11 @@ public enum PopType {
 
     HUMAN(
         "Human",
-        GameParameters.STARTING_HUMANS,
-        GameParameters.HUMAN_FOOD_CONSUMPTION,
-        GameParameters.HUMAN_MONEY_GENERATION,
-        GameParameters.HUMAN_INFLUENCE_GENERATION,
-        GameParameters.HUMAN_MANPOWER_CONTRIBUTION,
+        StartingParams.STARTING_HUMANS,
+        PopulationStatsParams.HUMAN_FOOD_CONSUMPTION,
+        PopulationStatsParams.HUMAN_MONEY_GENERATION,
+        PopulationStatsParams.HUMAN_INFLUENCE_GENERATION,
+        PopulationStatsParams.HUMAN_MANPOWER_CONTRIBUTION,
         List.of(PolitcalView.HUMAN_SUPREMACIST,
             PolitcalView.ENVIRONMENTALIST,
             PolitcalView.WARMONGERING
@@ -25,22 +27,22 @@ public enum PopType {
 
     DWARF(
         "Dwarf",
-        GameParameters.STARTING_DWARVES,
-        GameParameters.DWARF_FOOD_CONSUMPTION,
-        GameParameters.DWARF_MONEY_GENERATION,
-        GameParameters.DWARF_INFLUENCE_GENERATION,
-        GameParameters.DWARF_MANPOWER_CONTRIBUTION,
+        StartingParams.STARTING_DWARVES,
+        PopulationStatsParams.DWARF_FOOD_CONSUMPTION,
+        PopulationStatsParams.DWARF_MONEY_GENERATION,
+        PopulationStatsParams.DWARF_INFLUENCE_GENERATION,
+        PopulationStatsParams.DWARF_MANPOWER_CONTRIBUTION,
         List.of(PolitcalView.WARMONGERING
         )
     ),
 
     ORC(
         "Orc",
-        GameParameters.STARTING_ORCS,
-        GameParameters.ORC_FOOD_CONSUMPTION,
-        GameParameters.ORC_MONEY_GENERATION,
-        GameParameters.ORC_INFLUENCE_GENERATION,
-        GameParameters.ORC_MANPOWER_CONTRIBUTION,
+        StartingParams.STARTING_ORCS,
+        PopulationStatsParams.ORC_FOOD_CONSUMPTION,
+        PopulationStatsParams.ORC_MONEY_GENERATION,
+        PopulationStatsParams.ORC_INFLUENCE_GENERATION,
+        PopulationStatsParams.ORC_MANPOWER_CONTRIBUTION,
         List.of(PolitcalView. WARMONGERING,
             PolitcalView. ENVIRONMENTALIST
         )
@@ -48,11 +50,11 @@ public enum PopType {
 
     ELF(
         "Elf",
-        GameParameters.STARTING_ELVES,
-        GameParameters.ELF_FOOD_CONSUMPTION,
-        GameParameters.ELF_MONEY_GENERATION,
-        GameParameters.ELF_INFLUENCE_GENERATION,
-        GameParameters.ELF_MANPOWER_CONTRIBUTION,
+        StartingParams.STARTING_ELVES,
+        PopulationStatsParams.ELF_FOOD_CONSUMPTION,
+        PopulationStatsParams.ELF_MONEY_GENERATION,
+        PopulationStatsParams.ELF_INFLUENCE_GENERATION,
+        PopulationStatsParams.ELF_MANPOWER_CONTRIBUTION,
         List.of(PolitcalView. ENVIRONMENTALIST
         )
     );

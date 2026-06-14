@@ -2,7 +2,8 @@ package City.main.actions;
 
 import City.main.core.CostCalculator;
 import City.main.core.GameState;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.politics.PolitcalView;
 import City.main.politics.VoteCondition;
 import City.main.resources.ResourcePool;
@@ -45,12 +46,12 @@ public class RoyalLevyAction extends AbstractFormalAction {
 
     @Override
     public String getDescription() {
-        return "Spend " + GameParameters.LEVY_INFLUENCE_COST
-            + " influence. Collect " + GameParameters.LEVY_MONEY_GAINED
-            + " money. Happiness -" + GameParameters.LEVY_HAPPINESS_COST + ". Requires vote.";
+        return "Spend " + ActionParams.LEVY_INFLUENCE_COST
+            + " influence. Collect " + ActionParams.LEVY_MONEY_GAINED
+            + " money. Happiness -" + ActionParams.LEVY_HAPPINESS_COST + ". Requires vote.";
     }
 
-    @Override public int getInfluenceCost() { return GameParameters.LEVY_INFLUENCE_COST; }
+    @Override public int getInfluenceCost() { return ActionParams.LEVY_INFLUENCE_COST; }
 
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
@@ -59,10 +60,10 @@ public class RoyalLevyAction extends AbstractFormalAction {
 
     public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
         getLedger().applyOneTime(City.main.resources.ResourceType.GOLD, "action", getName(),
-                GameParameters.LEVY_MONEY_GAINED, resources);
-        stats.reduceHappiness(GameParameters.LEVY_HAPPINESS_COST);
-        return ActionResult.ok("Royal Levy collected. +" + GameParameters.LEVY_MONEY_GAINED
-                + " money. Happiness -" + GameParameters.LEVY_HAPPINESS_COST + ".");
+                ActionParams.LEVY_MONEY_GAINED, resources);
+        stats.reduceHappiness(ActionParams.LEVY_HAPPINESS_COST);
+        return ActionResult.ok("Royal Levy collected. +" + ActionParams.LEVY_MONEY_GAINED
+                + " money. Happiness -" + ActionParams.LEVY_HAPPINESS_COST + ".");
     }
 
 }

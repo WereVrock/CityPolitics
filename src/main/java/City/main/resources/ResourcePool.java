@@ -1,6 +1,7 @@
 package City.main.resources;
 
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.StartingParams;
 
 /**
  * Holds and mutates the four core resources.
@@ -13,17 +14,17 @@ public class ResourcePool {
     private int influence;
 
     public ResourcePool() {
-        this.food      = GameParameters.STARTING_FOOD;
-        this.money     = GameParameters.STARTING_MONEY;
-        this.manpower  = GameParameters.STARTING_MANPOWER;
-        this.influence = GameParameters.STARTING_INFLUENCE;
+        this.food      = StartingParams.STARTING_FOOD;
+        this.money     = StartingParams.STARTING_MONEY;
+        this.manpower  = StartingParams.STARTING_MANPOWER;
+        this.influence = StartingParams.STARTING_INFLUENCE;
     }
 
     public void reset() {
-        this.food      = GameParameters.STARTING_FOOD;
-        this.money     = GameParameters.STARTING_MONEY;
-        this.manpower  = GameParameters.STARTING_MANPOWER;
-        this.influence = GameParameters.STARTING_INFLUENCE;
+        this.food      = StartingParams.STARTING_FOOD;
+        this.money     = StartingParams.STARTING_MONEY;
+        this.manpower  = StartingParams.STARTING_MANPOWER;
+        this.influence = StartingParams.STARTING_INFLUENCE;
     }
 
    

@@ -1,7 +1,8 @@
 // ===== CommanderDeathResolver.java =====
 package City.main.army.commander;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.CombatParams;
+ 
 
 import java.util.Random;
 
@@ -34,15 +35,15 @@ public class CommanderDeathResolver {
         if (!commander.isAlive() || soldiersBefore <= 0) return false;
 
         double casualtyPct = (double) soldiersLost / soldiersBefore * 100.0;
-        double lower = GameParameters.COMMANDER_DEATH_CASUALTY_LOWER * 100; // 30
-        double upper = GameParameters.COMMANDER_DEATH_CASUALTY_UPPER * 100; // 80
+        double lower = CombatParams.COMMANDER_DEATH_CASUALTY_LOWER * 100; // 30
+        double upper = CombatParams.COMMANDER_DEATH_CASUALTY_UPPER * 100; // 80
 
         double deathChancePct;
         if      (casualtyPct < lower) return false;
         else if (casualtyPct < upper) deathChancePct = casualtyPct - lower;
         else                          deathChancePct = casualtyPct;
 
-        if (playerWon) deathChancePct *= GameParameters.COMMANDER_DEATH_WIN_MODIFIER;
+        if (playerWon) deathChancePct *= CombatParams.COMMANDER_DEATH_WIN_MODIFIER;
 
         boolean dies = RNG.nextDouble() * 100.0 < deathChancePct;
         if (dies) commander.kill();

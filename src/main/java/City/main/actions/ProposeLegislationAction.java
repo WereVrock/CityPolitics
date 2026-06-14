@@ -3,6 +3,7 @@ package City.main.actions;
 import City.main.core.GameState;
 import City.main.legislation.LegislationManager;
 import City.main.legislation.LegislationType;
+import City.main.parameters.ActionParams;
 import City.main.politics.PolitcalView;
 import City.main.politics.VoteCondition;
 import City.main.resources.ResourcePool;
@@ -36,7 +37,7 @@ public class ProposeLegislationAction extends AbstractFormalAction {
 
     @Override
     public int getInfluenceCost() {
-        return City.main.parameters.GameParameters.PROPOSE_LEGISLATION_INFLUENCE_COST;
+        return ActionParams.PROPOSE_LEGISLATION_INFLUENCE_COST;
     }
 
     @Override

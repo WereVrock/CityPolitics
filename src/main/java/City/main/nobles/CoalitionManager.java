@@ -2,7 +2,10 @@ package City.main.nobles;
 
 import City.main.nobles.ai.NobleAI;
 import City.main.map.ZoneManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
+import City.main.parameters.NobleAIParams;
+import City.main.parameters.NobleHouseParams;
 
 import java.util.*;
 
@@ -46,7 +49,7 @@ List<String> log = new ArrayList<>();
 // Snapshot to avoid modification during iteration
 for (NobleHouse threat : new ArrayList<>(allHouses)) {
 if (threat.isEliminated()) continue;
-if (threat.getZoneIds().size() < GameParameters.COALITION_ZONE_THRESHOLD) continue;
+if (threat.getZoneIds().size() < DiplomacyParams.COALITION_ZONE_THRESHOLD) continue;
 log.addAll(tryFormCoalition(threat, allHouses));
 }
 return log;
@@ -93,7 +96,7 @@ if (m == coordinator) continue;
 totalPower += NobleAI.estimateMemberPower(m, armyManager);
 }
 int defenderPower = NobleAI.estimateDefenderCombatPower(coordinator, threat, targetZone, allHouses, armyManager, relationships);
-double needed = defenderPower * GameParameters.COALITION_STRENGTH_THRESHOLD;
+double needed = defenderPower * NobleAIParams.COALITION_STRENGTH_THRESHOLD;
 City.debug.Debug.log("noble", "coalition-strength", "Coalition against " + threat.getName() + " totalPower=" + totalPower + " needed=" + needed);
 if (totalPower < needed) {
 City.debug.Debug.log("noble", "coalition-strength", "Coalition too weak -> skip");
@@ -274,14 +277,14 @@ NobleCharacter c = h.getActiveCharacter();
 int cunning   = c != null ? c.getCunning()   : 0;
 int diplomacy = c != null ? c.getDiplomacy() : 0;
 double w = 1.0
-+ cunning   * GameParameters.COALITION_CUNNING_WEIGHT
-+ diplomacy * GameParameters.COALITION_DIPLOMACY_WEIGHT
-+ h.getPrestige() * GameParameters.COALITION_PRESTIGE_WEIGHT
++ cunning   * DiplomacyParams.COALITION_CUNNING_WEIGHT
++ diplomacy * DiplomacyParams.COALITION_DIPLOMACY_WEIGHT
++ h.getPrestige() * DiplomacyParams.COALITION_PRESTIGE_WEIGHT
 + (totalArmy > 0
 ? ((double) h.getTotalArmySize() / totalArmy)
-* GameParameters.COALITION_ARMY_PARTICIPATION_WEIGHT
+* DiplomacyParams.COALITION_ARMY_PARTICIPATION_WEIGHT
 : 0);
-if (h == coordinator) w += GameParameters.COALITION_COORDINATOR_BONUS;
+if (h == coordinator) w += DiplomacyParams.COALITION_COORDINATOR_BONUS;
 weights[i] = w;
 total += w;
 }
@@ -352,9 +355,9 @@ if (!a.hasPendingOrder() && a.getSize() > 0) return a;
 // Try to recruit – max affordable, no fraction gating
 int manpower = house.getNobleManpower();
 int gold     = house.getGold();
-int minSize  = GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE;
+int minSize  = NobleHouseParams.NOBLE_ARMY_MIN_RECRUIT_SIZE;
 int maxByManpower = manpower;
-int maxByGold     = gold / GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER; // recruit cost = upkeep cost per your design
+int maxByGold     = gold / NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER; // recruit cost = upkeep cost per your design
 int maxAffordable = Math.min(maxByManpower, maxByGold);
 if (maxAffordable < minSize) return null;
 return armyManager.recruit(house, maxAffordable);

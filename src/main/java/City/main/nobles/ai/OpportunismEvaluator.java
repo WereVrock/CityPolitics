@@ -1,7 +1,7 @@
 package City.main.nobles.ai;
 
 import City.debug.Debug;
-import City.main.parameters.GameParameters;
+ 
 import City.main.map.Zone;
 import City.main.nobles.Claim;
 import City.main.nobles.ClaimManager;
@@ -11,6 +11,7 @@ import City.main.nobles.NobleCharacter;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.Relationship;
 import City.main.nobles.RelationshipManager;
+import City.main.parameters.NobleAIParams;
 
 import java.util.*;
 
@@ -69,13 +70,13 @@ public class OpportunismEvaluator {
         int myPower = NobleAI.exactPotentialFieldArmy(actor, armyManager);
 
         if (expansionMinor) {
-            double requiredRatio = GameParameters.OPPORTUNISM_STRENGTH_RATIO_HOSTILE;
+            double requiredRatio = NobleAIParams.OPPORTUNISM_STRENGTH_RATIO_HOSTILE;
             for (NobleHouse other : allHouses) {
                 if (other == actor || other.isEliminated()) continue;
                 Relationship rel = relationships.get(actor.getId(), other.getId());
                 if (rel == Relationship.HOSTILE || rel == Relationship.RIVAL || rel == Relationship.NEUTRAL) {
                     double ratio = (rel == Relationship.NEUTRAL)
-                            ? GameParameters.OPPORTUNISM_STRENGTH_RATIO_NEUTRAL
+                            ? NobleAIParams.OPPORTUNISM_STRENGTH_RATIO_NEUTRAL
                             : requiredRatio;
                     int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
                                     + other.getTotalGarrisonSize();
@@ -93,7 +94,7 @@ public class OpportunismEvaluator {
                 if (rel != Relationship.RIVAL) continue;
                 int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
                                 + other.getTotalGarrisonSize();
-                if (targetPower > 0 && myPower >= targetPower * GameParameters.OPPORTUNISM_PRESTIGE_STRENGTH_RATIO) {
+                if (targetPower > 0 && myPower >= targetPower * NobleAIParams.OPPORTUNISM_PRESTIGE_STRENGTH_RATIO) {
                     eligible.add(other);
                 }
             }
@@ -124,7 +125,7 @@ public class OpportunismEvaluator {
                 if (!hasRichZone) continue;
                 int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
                                 + other.getTotalGarrisonSize();
-                if (targetPower > 0 && myPower >= targetPower * GameParameters.OPPORTUNISM_WEALTH_STRENGTH_RATIO) {
+                if (targetPower > 0 && myPower >= targetPower * NobleAIParams.OPPORTUNISM_WEALTH_STRENGTH_RATIO) {
                     eligible.add(other);
                 }
             }
@@ -145,7 +146,7 @@ public class OpportunismEvaluator {
                 if (!hasClaimOnActor) continue;
                 int targetPower = NobleAI.estimatedPower(actor, other, armyManager)
                                 + other.getTotalGarrisonSize();
-                if (targetPower > 0 && myPower >= targetPower * GameParameters.OPPORTUNISM_SECURITY_STRENGTH_RATIO) {
+                if (targetPower > 0 && myPower >= targetPower * NobleAIParams.OPPORTUNISM_SECURITY_STRENGTH_RATIO) {
                     eligible.add(other);
                 }
             }

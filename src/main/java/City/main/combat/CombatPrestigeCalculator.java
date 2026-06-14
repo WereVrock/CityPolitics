@@ -2,7 +2,8 @@
 package City.main.combat;
 
 import City.main.army.commander.Commander;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.PrestigeXPParams;
 
 import java.util.List;
 
@@ -43,7 +44,7 @@ public class CombatPrestigeCalculator {
         double bonusFactor = 1.0 + (enemyBonusPercent / 100.0);
         int    smallerSide = Math.min(attackerSize, defenderSize);
         double rawScore    = Math.sqrt(smallerSide) * difficulty * bonusFactor;
-        if (playerWon) rawScore *= GameParameters.COMBAT_WIN_PRESTIGE_MULTIPLIER;
+        if (playerWon) rawScore *= PrestigeXPParams.COMBAT_WIN_PRESTIGE_MULTIPLIER;
         return rawScore;
     }
 
@@ -51,7 +52,7 @@ public class CombatPrestigeCalculator {
      * Prestige gained for the affiliated party.
      */
     public static int computePrestige(double rawScore) {
-        return (int) Math.ceil(rawScore * GameParameters.PRESTIGE_COEFFICIENT);
+        return (int) Math.ceil(rawScore * PrestigeXPParams.PRESTIGE_COEFFICIENT);
     }
 
     /**
@@ -69,7 +70,7 @@ public class CombatPrestigeCalculator {
         int[] xpGrants  = new int[n];
         if (n == 0) return xpGrants;
 
-        double totalXpPool = rawScore * GameParameters.XP_COEFFICIENT;
+        double totalXpPool = rawScore * PrestigeXPParams.XP_COEFFICIENT;
         int    totalForce  = 0;
         for (int s : forceSizes) totalForce += s;
 

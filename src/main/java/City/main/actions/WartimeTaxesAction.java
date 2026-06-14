@@ -3,7 +3,8 @@ package City.main.actions;
 import City.main.core.GameState;
 import City.main.legislation.LegislationManager;
 import City.main.legislation.LegislationType;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.politics.PolitcalView;
 import City.main.politics.VoteCondition;
 import City.main.pops.PopManager;
@@ -60,13 +61,13 @@ public String getDescription() {
     if (!warStateChecker.isAtWar())
         return "Only available during wartime. Would yield +" + gold
                 + " gold, -" + happiness + " happiness.";
-    return "Each pop pays " + GameParameters.WARTIME_TAXES_GOLD_PER_POP
+    return "Each pop pays " + ActionParams.WARTIME_TAXES_GOLD_PER_POP
             + " gold. Yields +" + gold + " gold, -" + happiness + " happiness. Requires vote.";
 }
 
 @Override
     public int getInfluenceCost() {
-        return GameParameters.WARTIME_TAXES_INFLUENCE_COST;
+        return ActionParams.WARTIME_TAXES_INFLUENCE_COST;
     }
 
     @Override
@@ -109,12 +110,12 @@ public String getUnavailableReason() {
     public int computeGold() {
         int total = 0;
         for (City.main.pops.Pop pop : popManager.getPops()) {
-            total += pop.getCount() * GameParameters.WARTIME_TAXES_GOLD_PER_POP;
+            total += pop.getCount() * ActionParams.WARTIME_TAXES_GOLD_PER_POP;
         }
         return total;
     }
 
     public int computeHappinessCost() {
-        return GameParameters.WARTIME_TAXES_HAPPINESS_COST;
+        return ActionParams.WARTIME_TAXES_HAPPINESS_COST;
     }
 }

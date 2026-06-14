@@ -1,7 +1,9 @@
 package City.main.politics;
 
 import City.debug.Debug;
-import City.main.parameters.GameParameters;
+import City.main.parameters.CalendarParams;
+ 
+import City.main.parameters.PoliticalParams;
 import City.main.pops.Pop;
 import City.main.pops.PopElectoralData;
 import City.main.pops.PopManager;
@@ -29,7 +31,7 @@ public List<String> tick(List<PoliticalParty> parties,
                               int corruption) {
         turnsSinceLastElection++;
         List<String> log = new ArrayList<>();
-        if (turnsSinceLastElection >= GameParameters.ELECTION_PERIOD_TURNS) {
+        if (turnsSinceLastElection >= CalendarParams.ELECTION_PERIOD_TURNS) {
             turnsSinceLastElection = 0;
             log.addAll(runElection(parties, popManager, propagandaManager, corruption));
         }
@@ -37,24 +39,24 @@ public List<String> tick(List<PoliticalParty> parties,
     }
 
 public boolean isElectionImminent() {
-        return turnsSinceLastElection >= GameParameters.ELECTION_PERIOD_TURNS - 1;
+        return turnsSinceLastElection >= CalendarParams.ELECTION_PERIOD_TURNS - 1;
     }
 
 public int getTurnsUntilElection() {
-        return Math.max(0, GameParameters.ELECTION_PERIOD_TURNS - turnsSinceLastElection);
+        return Math.max(0, CalendarParams.ELECTION_PERIOD_TURNS - turnsSinceLastElection);
     }
 
 public ElectionRecord getLastRecord() { return lastRecord; }
 
 /** True when the election campaign period has started (2 turns before). */
     public boolean isCampaignPeriod() {
-        return getTurnsUntilElection() <= GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS
+        return getTurnsUntilElection() <= PoliticalParams.ELECTION_CAMPAIGN_WARNING_TURNS
                 && getTurnsUntilElection() > 0;
     }
 
     /** True exactly when campaign just started this tick. */
     public boolean justEnteredCampaign() {
-        return getTurnsUntilElection() == GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS;
+        return getTurnsUntilElection() == PoliticalParams.ELECTION_CAMPAIGN_WARNING_TURNS;
     }
 
     // ─── Election support (player backs a party) ─────────────────────────────
@@ -74,7 +76,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
         supportedSeatsBefore     = party.getSeats();
         supportUsedThisElection  = true;
         // Bonus: party gets half player prestige as propaganda-like boost
-        int bonus = (int)(playerPrestige * GameParameters.ELECTION_SUPPORT_PRESTIGE_FACTOR);
+        int bonus = (int)(playerPrestige * PoliticalParams.ELECTION_SUPPORT_PRESTIGE_FACTOR);
         party.addPrestige(bonus);
         City.debug.Debug.log("election", "support",
                 party.getName() + " supported. prestige bonus=" + bonus);
@@ -91,11 +93,11 @@ public ElectionRecord getLastRecord() { return lastRecord; }
         for (PoliticalParty party : parties) {
             if (party.getName().equals(supportedPartyName)) {
                 int seatDelta = party.getSeats() - supportedSeatsBefore;
-                if (seatDelta <= -GameParameters.ELECTION_SUPPORT_SEAT_LOSS_THRESHOLD) {
-                    playerPrestige.addPrestige(GameParameters.ELECTION_SUPPORT_PRESTIGE_PENALTY);
+                if (seatDelta <= -PoliticalParams.ELECTION_SUPPORT_SEAT_LOSS_THRESHOLD) {
+                    playerPrestige.addPrestige(PoliticalParams.ELECTION_SUPPORT_PRESTIGE_PENALTY);
                     log.add("⚠ Your supported party (" + party.getName()
                             + ") lost " + Math.abs(seatDelta) + " seats — prestige "
-                            + GameParameters.ELECTION_SUPPORT_PRESTIGE_PENALTY + ".");
+                            + PoliticalParams.ELECTION_SUPPORT_PRESTIGE_PENALTY + ".");
                 } else {
                     log.add("✓ Your supported party (" + party.getName()
                             + ") held or gained seats.");
@@ -125,7 +127,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
     public void applyPowerDrift(List<PoliticalParty> parties) {
         for (PoliticalParty party : parties) {
             if (isFixedSeat(party)) continue;
-            int threshold = party.getSeats() * GameParameters.POWER_DRIFT_SEAT_MULTIPLIER;
+            int threshold = party.getSeats() * PoliticalParams.POWER_DRIFT_SEAT_MULTIPLIER;
             if (party.getPower() > threshold) {
                 party.setPower(party.getPower() - 1);
             }
@@ -212,7 +214,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
             PopElectoralData data = pop.getElectoralData();
             data.recordVote(affiliatedParty.getName(), overridden);
 
-            if (data.getConsecutiveOverrides() >= GameParameters.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
+            if (data.getConsecutiveOverrides() >= PoliticalParams.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
                 String oldAff = pop.getAffiliation().getDisplayName();
                 pop.setAffiliation(PolitcalView.NONE);
                 data.setConsecutiveOverrides(0);
@@ -239,7 +241,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
             }
 
             if (data.getConsecutiveVotesForAffiliated()
-                    >= GameParameters.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
+                    >= PoliticalParams.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
                 PolitcalView newAffiliation = getDominantView(voted);
                 if (newAffiliation != PolitcalView.NONE) {
                     String oldAff = pop.getAffiliation().getDisplayName();
@@ -361,8 +363,8 @@ public ElectionRecord getLastRecord() { return lastRecord; }
         for (PoliticalParty party : electable) {
             double score = computeViewMatchScore(pop, party);
             double propaganda = propagandaManager.getElectionPropaganda(party);
-            score += propaganda * GameParameters.PROPAGANDA_VOTE_BONUS_PER_UNIT;
-            score += party.getPrestige() * GameParameters.ELECTION_PRESTIGE_WEIGHT;
+            score += propaganda * PoliticalParams.PROPAGANDA_VOTE_BONUS_PER_UNIT;
+            score += party.getPrestige() * PoliticalParams.ELECTION_PRESTIGE_WEIGHT;
             scores.put(party, Math.max(0, score));
         }
 

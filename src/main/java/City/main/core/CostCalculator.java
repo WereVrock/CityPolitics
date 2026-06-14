@@ -1,6 +1,6 @@
 package City.main.core;
 
-import City.main.parameters.GameParameters;
+ 
 
 /**
  * Applies the corruption cost multiplier to any base cost.

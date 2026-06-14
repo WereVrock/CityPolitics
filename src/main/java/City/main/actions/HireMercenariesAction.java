@@ -2,7 +2,9 @@ package City.main.actions;
 
 import City.main.legislation.LegislationManager;
 import City.main.legislation.LegislationType;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.MercenaryParams;
+import City.main.parameters.PlayerArmyParams;
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -47,8 +49,8 @@ public String getDescription() {
     int remaining = legislationManager.getMercenaryHireActionsRemaining();
     if (legislationManager.isMercenaryHireAuthorized()) {
         return "Hire a player army as mercenaries. Cost: "
-                + (int)(City.main.parameters.GameParameters.SOLDIER_RECRUIT_GOLD_COST
-                        * City.main.parameters.GameParameters.MERCENARY_COST_MULTIPLIER)
+                + (int)(PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST
+                        * MercenaryParams.MERCENARY_COST_MULTIPLIER)
                 + "× normal rates (±15%).";
     }
     return "Hire an army as mercenaries (" + remaining + " use(s) remaining).";

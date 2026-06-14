@@ -2,6 +2,7 @@ package City.main.army;
 
 import City.main.army.commander.Commander;
 import City.debug.Debug;
+import City.main.parameters.PlayerArmyParams;
 
 /**
  * Represents a player-controlled army.
@@ -31,8 +32,8 @@ public class Army {
         this.displayName  = displayName;
         this.zoneId       = HEARTLAND_ID;
         this.dragging     = false;
-        this.size         = City.main.parameters.GameParameters.PLAYER_ARMY_STARTING_SIZE;
-        this.soldierCount = City.main.parameters.GameParameters.PLAYER_ARMY_STARTING_SIZE;
+        this.size         = PlayerArmyParams.PLAYER_ARMY_STARTING_SIZE;
+        this.soldierCount = PlayerArmyParams.PLAYER_ARMY_STARTING_SIZE;
     }
 
     public Army(String id, String displayName, Commander commander) {

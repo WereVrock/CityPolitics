@@ -5,10 +5,14 @@ import City.main.combat.CombatResolver;
 import City.main.combat.CombatResult;
 import City.main.map.ZoneManager;
 import City.main.map.ZoneState;
-import City.main.parameters.GameParameters;
+ 
 
 import java.util.*;
 import City.main.map.Zone;
+import City.main.parameters.DiplomacyParams;
+import City.main.parameters.MapZoneParams;
+import City.main.parameters.NobleAIParams;
+import City.main.parameters.NobleHouseParams;
 
 public class NobleArmyManager {
 
@@ -50,7 +54,7 @@ public class NobleArmyManager {
         }
 
         int manpowerCost = size;
-        int goldCost     = size * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+        int goldCost     = size * NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
         if (house.getNobleManpower() < manpowerCost) {
             City.debug.Debug.log("noble", "recruit", house.getName() + " insufficient manpower: have " + house.getNobleManpower() + ", need " + manpowerCost);
             return null;
@@ -74,7 +78,7 @@ public class NobleArmyManager {
     public boolean reinforceArmy(NobleHouse house, NobleArmy army, int additionalSize) {
         if (additionalSize <= 0) return false;
         int manpowerCost = additionalSize;
-        int goldCost     = additionalSize * GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+        int goldCost     = additionalSize * NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
         if (house.getNobleManpower() < manpowerCost) {
             City.debug.Debug.log("noble", "reinforce", house.getName() + " cannot reinforce: need " + manpowerCost + " manpower, have " + house.getNobleManpower());
             return false;
@@ -101,9 +105,9 @@ public class NobleArmyManager {
                 continue;
             }
             boolean isDefending = isArmyDefending(army, house);
-            int upkeepPerSoldier = GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+            int upkeepPerSoldier = NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
             if (isDefending) {
-                upkeepPerSoldier = (int)(upkeepPerSoldier * (1.0 - GameParameters.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
+                upkeepPerSoldier = (int)(upkeepPerSoldier * (1.0 - NobleHouseParams.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
                 if (upkeepPerSoldier < 1) upkeepPerSoldier = 1;
             }
             int cost = army.getSize() * upkeepPerSoldier;
@@ -450,10 +454,10 @@ private void applyInterventionOpinions(
         RelationshipManager relationships,
         List<String> log) {
 
-    int joinBonus   = City.main.parameters.GameParameters.INTERVENTION_JOIN_ATTACKER_SELF_OPINION;
-    int joinPenalty = City.main.parameters.GameParameters.INTERVENTION_JOIN_ATTACKER_VICTIM_OPINION;
-    int stopPenalty = City.main.parameters.GameParameters.INTERVENTION_STOP_ATTACKER_OPINION;
-    int stopBonus   = City.main.parameters.GameParameters.INTERVENTION_STOP_DEFENDER_OPINION;
+    int joinBonus   = City.main.parameters.NobleCouncilParams.INTERVENTION_JOIN_ATTACKER_SELF_OPINION;
+    int joinPenalty = City.main.parameters.NobleCouncilParams.INTERVENTION_JOIN_ATTACKER_VICTIM_OPINION;
+    int stopPenalty = City.main.parameters.NobleCouncilParams.INTERVENTION_STOP_ATTACKER_OPINION;
+    int stopBonus   = City.main.parameters.NobleCouncilParams.INTERVENTION_STOP_DEFENDER_OPINION;
 
     switch (choice) {
         case JOIN_ATTACKER -> {
@@ -506,8 +510,8 @@ private int defMilitary(NobleHouse house) {
         List<NobleArmy> defArmies = getArmiesInZone(zoneId, defender.getId());
         if (!defArmies.isEmpty()) {
             int defMilitary = militarySkill(defender);
-            double interceptChance = GameParameters.RAID_INTERCEPT_BASE_CHANCE
-                    + defMilitary * GameParameters.RAID_INTERCEPT_MILITARY_BONUS;
+            double interceptChance = DiplomacyParams.RAID_INTERCEPT_BASE_CHANCE
+                    + defMilitary * DiplomacyParams.RAID_INTERCEPT_MILITARY_BONUS;
             if (Math.random() < interceptChance) {
                 log.add(defender.getName() + "'s army intercepts the raid on " + zoneId + "!");
                 int attMilitary = militarySkill(attacker);
@@ -532,11 +536,11 @@ private int defMilitary(NobleHouse house) {
         }
 
         Zone zone    = zoneManager.getZone(zoneId);
-        int zoneGold = zone != null ? zone.getGoldProduction() : GameParameters.ZONE_VILLAGE_GOLD;
-        int maxByZone = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
-        int maxByArmy = (int)(attArmy.getSize() * GameParameters.RAID_GOLD_PER_SOLDIER);
+        int zoneGold = zone != null ? zone.getGoldProduction() : MapZoneParams.ZONE_VILLAGE_GOLD;
+        int maxByZone = (int)(zoneGold * DiplomacyParams.RAID_GOLD_ZONE_MULTIPLIER);
+        int maxByArmy = (int)(attArmy.getSize() * DiplomacyParams.RAID_GOLD_PER_SOLDIER);
         int maxSteal  = Math.min(maxByZone, maxByArmy);
-        int stolen    = Math.min(maxSteal, (int)(defender.getGold() * GameParameters.AI_RAID_GOLD_FRACTION));
+        int stolen    = Math.min(maxSteal, (int)(defender.getGold() * NobleAIParams.AI_RAID_GOLD_FRACTION));
         stolen = Math.max(0, stolen);
 
         defender.addGold(-stolen);
@@ -714,6 +718,6 @@ private int defMilitary(NobleHouse house) {
     }
 
     private double militaryMult(int skill) {
-        return 1.0 + skill * GameParameters.MILITARY_SKILL_BONUS_PER_POINT;
+        return 1.0 + skill * DiplomacyParams.MILITARY_SKILL_BONUS_PER_POINT;
     }
 }

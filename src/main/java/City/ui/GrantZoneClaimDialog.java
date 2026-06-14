@@ -5,7 +5,8 @@ import City.main.map.Zone;
 import City.main.map.ZoneManager;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.resources.ResourcePool;
 
 import javax.swing.*;
@@ -78,10 +79,10 @@ public class GrantZoneClaimDialog {
         gc.gridy = 1;
         JLabel info = new JLabel("<html>"
                 + "Grant a claim on a zone to a noble house. Costs "
-                + GameParameters.GRANT_CLAIM_INFLUENCE_COST + " influence.<br>"
-                + "Owner: " + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion.  "
-                + "Target: +" + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS + " opinion.  "
-                + "Other claimants: " + GameParameters.GRANT_CLAIM_OTHER_CLAIMANT_MALUS + " opinion."
+                + ActionParams.GRANT_CLAIM_INFLUENCE_COST + " influence.<br>"
+                + "Owner: " + ActionParams.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion.  "
+                + "Target: +" + ActionParams.GRANT_CLAIM_TARGET_OPINION_BONUS + " opinion.  "
+                + "Other claimants: " + ActionParams.GRANT_CLAIM_OTHER_CLAIMANT_MALUS + " opinion."
                 + "</html>");
         info.setFont(UITheme.FONT_SMALL);
         info.setForeground(UITheme.TEXT_SECONDARY);
@@ -89,9 +90,9 @@ public class GrantZoneClaimDialog {
 
         gc.gridy = 2;
         JLabel influenceLabel = new JLabel("Influence available: " + resources.getInfluence()
-                + "  (need " + GameParameters.GRANT_CLAIM_INFLUENCE_COST + ")");
+                + "  (need " + ActionParams.GRANT_CLAIM_INFLUENCE_COST + ")");
         influenceLabel.setFont(UITheme.FONT_SMALL);
-        influenceLabel.setForeground(resources.getInfluence() >= GameParameters.GRANT_CLAIM_INFLUENCE_COST
+        influenceLabel.setForeground(resources.getInfluence() >= ActionParams.GRANT_CLAIM_INFLUENCE_COST
                 ? UITheme.TEXT_GREEN : UITheme.TEXT_RED);
         content.add(influenceLabel, gc);
 
@@ -154,7 +155,7 @@ public class GrantZoneClaimDialog {
         btnRow.setBackground(UITheme.BG_PANEL);
 
         boolean canAffordInfluence = resources.getInfluence()
-                >= GameParameters.GRANT_CLAIM_INFLUENCE_COST;
+                >= ActionParams.GRANT_CLAIM_INFLUENCE_COST;
 
         JButton grantBtn = new JButton("GRANT CLAIM");
         grantBtn.setFont(UITheme.FONT_BUTTON);
@@ -226,10 +227,10 @@ public class GrantZoneClaimDialog {
         NobleHouse owner  = nhm.getOwnerOfZone(z.getId());
         String ownerText = owner != null
                 ? stripHousePrefix(owner.getName()) + " ("
-                  + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion)"
+                  + ActionParams.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion)"
                 : "none";
         preview.setText("<html>Owner: " + ownerText
                 + "  →  " + stripHousePrefix(target.getName())
-                + " (+" + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS + " opinion)</html>");
+                + " (+" + ActionParams.GRANT_CLAIM_TARGET_OPINION_BONUS + " opinion)</html>");
     }
 }

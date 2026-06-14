@@ -15,7 +15,10 @@ import static City.main.nobles.council.CouncilVoter.VoterType.MINOR_NOBLE;
 import static City.main.nobles.council.CouncilVoter.VoterType.ORACLE;
 import static City.main.nobles.council.CouncilVoter.VoterType.PLAYER;
 import static City.main.nobles.council.CouncilVoter.VoterType.PRESTIGIOUS_NOBLE;
-import City.main.parameters.GameParameters;
+import City.main.parameters.NobleCouncilParams;
+ 
+import City.main.parameters.PrestigeXPParams;
+import City.main.parameters.ProtectionParams;
 import City.ui.UITheme;
 
 import javax.swing.*;
@@ -99,8 +102,8 @@ public class CouncilPanel extends JPanel {
         totalLabel = new JLabel();
         totalLabel.setFont(UITheme.FONT_BODY);
 
-        boostBtn = new JButton("Spend " + GameParameters.COUNCIL_PLAYER_BOOST_INFLUENCE_COST
-                + " Influence for +" + GameParameters.COUNCIL_PLAYER_BOOST_IMPRESSION
+        boostBtn = new JButton("Spend " + NobleCouncilParams.COUNCIL_PLAYER_BOOST_INFLUENCE_COST
+                + " Influence for +" + NobleCouncilParams.COUNCIL_PLAYER_BOOST_IMPRESSION
                 + " Impression");
         boostBtn.setFont(UITheme.FONT_BUTTON);
         boostBtn.setForeground(UITheme.TEXT_GOLD);
@@ -111,16 +114,16 @@ public class CouncilPanel extends JPanel {
         boostBtn.addActionListener(e -> {
             if (session.isPlayerBoostUsed()) return;
             if (gameState.getResources().getInfluence()
-                    < GameParameters.COUNCIL_PLAYER_BOOST_INFLUENCE_COST) {
+                    < NobleCouncilParams.COUNCIL_PLAYER_BOOST_INFLUENCE_COST) {
                 JOptionPane.showMessageDialog(this, "Not enough influence.");
                 return;
             }
             gameState.getResources().spendInfluence(
-                    GameParameters.COUNCIL_PLAYER_BOOST_INFLUENCE_COST);
+                    NobleCouncilParams.COUNCIL_PLAYER_BOOST_INFLUENCE_COST);
             CouncilVoter pv = session.getPlayerVoter();
             if (pv != null) {
                 pv.setImpression(pv.getImpression()
-                        + GameParameters.COUNCIL_PLAYER_BOOST_IMPRESSION);
+                        + NobleCouncilParams.COUNCIL_PLAYER_BOOST_IMPRESSION);
             }
             session.markPlayerBoostUsed();
             refresh();
@@ -235,10 +238,10 @@ public class CouncilPanel extends JPanel {
 
         JLabel desc = new JLabel("<html><body style='width:440px'>"
                 + "Declare a noble house under your protection. Costs "
-                + GameParameters.PROTECTION_INFLUENCE_COST + " influence. "
-                + "Grants +" + GameParameters.PROTECTION_TARGET_OPINION_BONUS
-                + " opinion to target, " + GameParameters.PROTECTION_RIVAL_OPINION_MALUS
-                + " to rivals. You suffer -" + Math.abs(GameParameters.PLAYER_PRESTIGE_PROTECTED_ZONE_LOST)
+                + ProtectionParams.PROTECTION_INFLUENCE_COST + " influence. "
+                + "Grants +" + ProtectionParams.PROTECTION_TARGET_OPINION_BONUS
+                + " opinion to target, " + ProtectionParams.PROTECTION_RIVAL_OPINION_MALUS
+                + " to rivals. You suffer -" + Math.abs(PrestigeXPParams.PLAYER_PRESTIGE_PROTECTED_ZONE_LOST)
                 + " prestige if they lose a zone.</body></html>");
         desc.setFont(UITheme.FONT_SMALL);
         desc.setForeground(UITheme.TEXT_SECONDARY);
@@ -270,7 +273,7 @@ public class CouncilPanel extends JPanel {
                 btn.setForeground(UITheme.TEXT_SECONDARY);
                 btn.setBackground(UITheme.BUTTON_DISABLED);
             } else {
-                btn = new JButton("PROTECT (" + GameParameters.PROTECTION_INFLUENCE_COST + " inf)");
+                btn = new JButton("PROTECT (" + ProtectionParams.PROTECTION_INFLUENCE_COST + " inf)");
                 btn.setForeground(UITheme.TEXT_GOLD);
                 btn.setBackground(UITheme.BUTTON_BG);
                 btn.addActionListener(ev -> declareProtection(house));
@@ -289,14 +292,14 @@ public class CouncilPanel extends JPanel {
     }
 
     private void declareProtection(City.main.nobles.NobleHouse house) {
-        if (gameState.getResources().getInfluence() < GameParameters.PROTECTION_INFLUENCE_COST) {
+        if (gameState.getResources().getInfluence() < ProtectionParams.PROTECTION_INFLUENCE_COST) {
             JOptionPane.showMessageDialog(this,
-                    "Not enough influence. Need " + GameParameters.PROTECTION_INFLUENCE_COST + ".");
+                    "Not enough influence. Need " + ProtectionParams.PROTECTION_INFLUENCE_COST + ".");
             return;
         }
-        gameState.getResources().spendInfluence(GameParameters.PROTECTION_INFLUENCE_COST);
+        gameState.getResources().spendInfluence(ProtectionParams.PROTECTION_INFLUENCE_COST);
         gameState.getProtectionManager().declareProtection(house.getId());
-        house.adjustPlayerOpinion(GameParameters.PROTECTION_TARGET_OPINION_BONUS);
+        house.adjustPlayerOpinion(ProtectionParams.PROTECTION_TARGET_OPINION_BONUS);
 
         // Opinion malus for rivals
         City.main.nobles.RelationshipManager rm =
@@ -305,7 +308,7 @@ public class CouncilPanel extends JPanel {
             if (other == house || other.isEliminated()) continue;
             if (rm.get(house.getId(), other.getId()) == City.main.nobles.Relationship.RIVAL
                     || rm.get(house.getId(), other.getId()) == City.main.nobles.Relationship.HOSTILE) {
-                other.adjustPlayerOpinion(GameParameters.PROTECTION_RIVAL_OPINION_MALUS);
+                other.adjustPlayerOpinion(ProtectionParams.PROTECTION_RIVAL_OPINION_MALUS);
             }
         }
         JOptionPane.showMessageDialog(this,
@@ -420,7 +423,7 @@ public void refresh() {
 
         boolean canBoost = !session.isPlayerBoostUsed()
                 && gameState.getResources().getInfluence()
-                >= GameParameters.COUNCIL_PLAYER_BOOST_INFLUENCE_COST;
+                >= NobleCouncilParams.COUNCIL_PLAYER_BOOST_INFLUENCE_COST;
         boostBtn.setEnabled(canBoost);
         if (session.isPlayerBoostUsed()) {
             boostBtn.setText("Impression boost used");
@@ -557,7 +560,7 @@ private void openDealDialog(CouncilSession session, CouncilVoter voter) {
                 NobleHouse house = offer.getVoter().getHouse();
                 if (house != null) {
                     gameState.getProtectionManager().declareProtection(house.getId());
-                    house.adjustPlayerOpinion(GameParameters.PROTECTION_TARGET_OPINION_BONUS);
+                    house.adjustPlayerOpinion(ProtectionParams.PROTECTION_TARGET_OPINION_BONUS);
                 }
             }
         }

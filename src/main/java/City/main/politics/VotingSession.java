@@ -1,8 +1,10 @@
 package City.main.politics;
 
 import City.main.actions.FormalAction;
+import City.main.parameters.ActionParams;
 import java.util.*;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.VotingParams;
 
 /**
  * Holds the state of a pending assembly vote.
@@ -63,8 +65,8 @@ public class VotingSession {
     }
 
     private PartyVoteIntent resolveIntent(double score) {
-        if (score > GameParameters.VOTE_INDECISIVE_THRESHOLD)  return PartyVoteIntent.YES;
-        if (score < -GameParameters.VOTE_INDECISIVE_THRESHOLD) return PartyVoteIntent.NO;
+        if (score > VotingParams.VOTE_INDECISIVE_THRESHOLD)  return PartyVoteIntent.YES;
+        if (score < -VotingParams.VOTE_INDECISIVE_THRESHOLD) return PartyVoteIntent.NO;
         return PartyVoteIntent.UNKNOWN;
     }
 
@@ -107,12 +109,12 @@ public SideDealResult applySideDeal(PoliticalParty party,
     int goldCost;
     int influenceCost;
     if (mainOffer.isFavourOnly()) {
-        goldCost      = GameParameters.DEAL_MIN_MONEY;
-        influenceCost = GameParameters.DEAL_MIN_INFLUENCE;
+        goldCost      = ActionParams.DEAL_MIN_MONEY;
+        influenceCost = ActionParams.DEAL_MIN_INFLUENCE;
     } else {
-        goldCost      = Math.max(GameParameters.DEAL_MIN_MONEY / 2 + 1,
+        goldCost      = Math.max(ActionParams.DEAL_MIN_MONEY / 2 + 1,
                                   mainOffer.getMoneyCost() / 2);
-        influenceCost = Math.max(GameParameters.DEAL_MIN_INFLUENCE / 2 + 1,
+        influenceCost = Math.max(ActionParams.DEAL_MIN_INFLUENCE / 2 + 1,
                                   mainOffer.getInfluenceCost() / 2);
     }
 
@@ -164,7 +166,7 @@ public boolean hasSideDealt(PoliticalParty party) {
 
     public boolean canDeal(PoliticalParty party) {
         double score = scores.getOrDefault(party, 0.0);
-        return Math.abs(score) < GameParameters.VOTE_DEAL_LOCK_THRESHOLD;
+        return Math.abs(score) < VotingParams.VOTE_DEAL_LOCK_THRESHOLD;
     }
 
     public boolean hasDealt(PoliticalParty party) {

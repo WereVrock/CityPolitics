@@ -1,6 +1,8 @@
 package City.main.barbarians;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.BarbarianParams;
+import City.main.parameters.CalendarParams;
+ 
 
 import java.util.Random;
 
@@ -29,10 +31,10 @@ public class BarbInvasionState {
     // ─── Lifecycle ───────────────────────────────────────────────────────────
 
 public void resetCountdown() {
-        int years = GameParameters.BARB_COUNTDOWN_MIN_YEARS
-                  + rng.nextInt(GameParameters.BARB_COUNTDOWN_MAX_YEARS
-                              - GameParameters.BARB_COUNTDOWN_MIN_YEARS + 1);
-        countdownTurns         = years * GameParameters.PERIODS_PER_YEAR;
+        int years = CalendarParams.BARB_COUNTDOWN_MIN_YEARS
+                  + rng.nextInt(CalendarParams.BARB_COUNTDOWN_MAX_YEARS
+                              - CalendarParams.BARB_COUNTDOWN_MIN_YEARS + 1);
+        countdownTurns         = years * CalendarParams.PERIODS_PER_YEAR;
         phase                  = Phase.COUNTDOWN;
         turnsSinceInvasionStart = 0;
         waveHalfPending         = 0;
@@ -67,9 +69,9 @@ public void markDestroyed() {
     // ─── Wave scheduling ─────────────────────────────────────────────────────
 
     public void scheduleNextWave(int absoluteTurn) {
-        int interval = GameParameters.BARB_WAVE_MIN_TURNS
-                     + rng.nextInt(GameParameters.BARB_WAVE_MAX_TURNS
-                                 - GameParameters.BARB_WAVE_MIN_TURNS + 1);
+        int interval = BarbarianParams.BARB_WAVE_MIN_TURNS
+                     + rng.nextInt(BarbarianParams.BARB_WAVE_MAX_TURNS
+                                 - BarbarianParams.BARB_WAVE_MIN_TURNS + 1);
         nextWaveTurn    = absoluteTurn + interval;
         waveHalfPending = 0;
     }
@@ -104,12 +106,12 @@ public void markDestroyed() {
  * During an early invasion, ALL armies including the warboss spawn at reduced size.
  */
 public boolean isEarlyInvasion() {
-    return invasionCount < GameParameters.BARB_EARLY_INVASION_COUNT;
+    return invasionCount < BarbarianParams.BARB_EARLY_INVASION_COUNT;
 }
 
 /** Returns true for the first N waves within the current invasion. */
 public boolean isEarlyWave() {
-    return wavesSpawned < GameParameters.BARB_EARLY_WAVE_COUNT;
+    return wavesSpawned < BarbarianParams.BARB_EARLY_WAVE_COUNT;
 }
 
 public int getInvasionCount() { return invasionCount; }

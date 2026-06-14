@@ -9,7 +9,8 @@ import City.main.nobles.NobleArmyManager;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.Relationship;
 import City.main.nobles.RelationshipManager;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.NobleAIParams;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -178,7 +179,7 @@ final class NobleAITargeting {
                 int defPower = NobleAIPower.estimateDefenderCombatPower(
                         actor, other, zid, allHouses, armyManager, relationships);
                 if (defPower <= 0) continue;
-                double neededPower  = defPower * GameParameters.RECKLESS_MIN_STRENGTH;
+                double neededPower  = defPower * NobleAIParams.RECKLESS_MIN_STRENGTH;
                 boolean strongEnough = myPower >= neededPower;
                 City.main.map.Zone z = zoneManager.getZone(zid);
                 if (z == null) continue;
@@ -206,7 +207,7 @@ final class NobleAITargeting {
             return null;
         }
 
-        double requiredValue = bestClaimedValue * GameParameters.RECKLESS_VALUE_MULTIPLIER;
+        double requiredValue = bestClaimedValue * NobleAIParams.RECKLESS_VALUE_MULTIPLIER;
         boolean passes = bestValue >= requiredValue;
         Debug.log("noble", "reckless-scan", actor.getName()
                 + " bestValue=" + bestValue + " requiredValue=" + requiredValue

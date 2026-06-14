@@ -1,6 +1,7 @@
 package City.main.map;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
 
 /**
  * Mutable runtime state for a zone.
@@ -32,14 +33,14 @@ public class ZoneState {
         if (recentlyRaidedTurns > 0) recentlyRaidedTurns--;
         if (conquestMalusPercent > 0) {
             conquestMalusPercent = Math.max(0,
-                conquestMalusPercent - GameParameters.CONQUEST_MALUS_DECAY_PER_TURN);
+                conquestMalusPercent - DiplomacyParams.CONQUEST_MALUS_DECAY_PER_TURN);
         }
     }
 
     // ─── Raid ────────────────────────────────────────────────────────────────
 
     public boolean isRecentlyRaided()  { return recentlyRaidedTurns > 0; }
-    public void    markRaided()        { recentlyRaidedTurns = GameParameters.RAID_COOLDOWN_TURNS; }
+    public void    markRaided()        { recentlyRaidedTurns = DiplomacyParams.RAID_COOLDOWN_TURNS; }
     public int     getRaidedTurns()    { return recentlyRaidedTurns; }
 
     // ─── Conquest ────────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ public int  getConquestMalus()     { return conquestMalusPercent; }
     public double getProductionMultiplier(double ravagedMultiplier) {
         double multiplier = ravagedMultiplier;
         if (isRecentlyRaided()) {
-            multiplier *= (1.0 - GameParameters.RAID_PRODUCTION_MALUS);
+            multiplier *= (1.0 - DiplomacyParams.RAID_PRODUCTION_MALUS);
         }
         if (hasConquestMalus()) {
             multiplier *= (1.0 - conquestMalusPercent / 100.0);

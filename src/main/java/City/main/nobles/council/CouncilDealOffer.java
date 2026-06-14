@@ -1,7 +1,8 @@
 package City.main.nobles.council;
 
 import City.main.nobles.NobleHouse;
-import City.main.parameters.GameParameters;
+import City.main.parameters.NobleCouncilParams;
+ 
 
 import java.util.Random;
 
@@ -83,9 +84,9 @@ public class CouncilDealOffer {
         int impression   = voter.getImpression();
 
         // Scale cost to impression weight
-        int baseGold      = (int)(impression * GameParameters.COUNCIL_DEAL_GOLD_PER_IMPRESSION);
-        int baseInfluence = (int)(impression * GameParameters.COUNCIL_DEAL_INF_PER_IMPRESSION);
-        int baseManpower  = (int)(impression * GameParameters.COUNCIL_DEAL_MP_PER_IMPRESSION);
+        int baseGold      = (int)(impression * NobleCouncilParams.COUNCIL_DEAL_GOLD_PER_IMPRESSION);
+        int baseInfluence = (int)(impression * NobleCouncilParams.COUNCIL_DEAL_INF_PER_IMPRESSION);
+        int baseManpower  = (int)(impression * NobleCouncilParams.COUNCIL_DEAL_MP_PER_IMPRESSION);
 
         if (voter.getType() == CouncilVoter.VoterType.PRESTIGIOUS_NOBLE && house != null) {
             int roll = rng.nextInt(3);

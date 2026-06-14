@@ -6,7 +6,10 @@ import City.main.army.commander.CommanderRoster;
 import City.debug.Debug;
 import City.main.army.Army;
 import City.main.army.ArmyManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.CommanderParams;
+ 
+import City.main.parameters.MercenaryParams;
+import City.main.parameters.PlayerArmyParams;
 import City.main.politics.PartyManager;
 import City.main.resources.ResourcePool;
 
@@ -232,8 +235,8 @@ private JPanel buildMercenaryCard(City.main.mercenaries.MercenaryArmy merc) {
     addInfoLabel(info, "Size: " + merc.getSize(),
             UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
     double upkeep = merc.getSize()
-            * City.main.parameters.GameParameters.SOLDIER_UPKEEP_GOLD
-            * City.main.parameters.GameParameters.MERCENARY_COST_MULTIPLIER;
+            * PlayerArmyParams.SOLDIER_UPKEEP_GOLD
+            * MercenaryParams.MERCENARY_COST_MULTIPLIER;
     addInfoLabel(info, String.format("Upkeep: %.1f gold/turn", upkeep),
             UITheme.FONT_SMALL, UITheme.TEXT_SECONDARY);
     addInfoLabel(info, "Location: " + merc.getZoneId(),
@@ -461,13 +464,13 @@ private JPanel buildCommanderCard(Commander c) {
         if (c.isAlive()) {
             JButton dismissBtn = makeCardButton("Dismiss");
             dismissBtn.setForeground(new Color(200, 80, 80));
-            dismissBtn.setToolTipText("Costs " + City.main.parameters.GameParameters.COMMANDER_DISMISS_COST
+            dismissBtn.setToolTipText("Costs " + CommanderParams.COMMANDER_DISMISS_COST
                     + " influence; lowers " + partyName + " opinion");
             dismissBtn.addActionListener(e -> {
                 int confirm = JOptionPane.showConfirmDialog(this,
                         "Dismiss " + c.getName() + "?\n"
-                        + "Cost: " + City.main.parameters.GameParameters.COMMANDER_DISMISS_COST + " influence\n"
-                        + partyName + " opinion −" + City.main.parameters.GameParameters.COMMANDER_DISMISS_OPINION_LOSS,
+                        + "Cost: " + CommanderParams.COMMANDER_DISMISS_COST + " influence\n"
+                        + partyName + " opinion −" + CommanderParams.COMMANDER_DISMISS_OPINION_LOSS,
                         "Confirm Dismiss", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     boolean ok = roster.dismiss(c);
@@ -634,15 +637,15 @@ private void openCreateArmyDialog() {
     // ─── Recruit soldiers ─────────────────────────────────────────────────────
 
 private void openRecruitSoldiersDialog(Army army) {
-        int maxByGold     = (int)(resources.getMoney()  / City.main.parameters.GameParameters.SOLDIER_RECRUIT_GOLD_COST);
-        int maxByManpower = resources.getManpower()     / City.main.parameters.GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
+        int maxByGold     = (int)(resources.getMoney()  / PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST);
+        int maxByManpower = resources.getManpower()     / PlayerArmyParams.SOLDIER_RECRUIT_MANPOWER_COST;
         int maxRecruit    = Math.max(0, Math.min(maxByGold, maxByManpower));
 
         if (maxRecruit <= 0) {
             JOptionPane.showMessageDialog(this,
                     "Cannot recruit — need at least "
-                    + City.main.parameters.GameParameters.SOLDIER_RECRUIT_GOLD_COST + " gold and "
-                    + City.main.parameters.GameParameters.SOLDIER_RECRUIT_MANPOWER_COST
+                    + PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST + " gold and "
+                    + PlayerArmyParams.SOLDIER_RECRUIT_MANPOWER_COST
                     + " manpower per soldier.",
                     "Recruit Soldiers", JOptionPane.WARNING_MESSAGE);
             return;
@@ -756,8 +759,8 @@ private void openRecruitSoldiersDialog(Army army) {
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) return;
 
-        int goldCost = amount[0] * City.main.parameters.GameParameters.SOLDIER_RECRUIT_GOLD_COST;
-        int manCost  = amount[0] * City.main.parameters.GameParameters.SOLDIER_RECRUIT_MANPOWER_COST;
+        int goldCost = amount[0] * PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST;
+        int manCost  = amount[0] * PlayerArmyParams.SOLDIER_RECRUIT_MANPOWER_COST;
 
         if (!resources.spendMoney(goldCost)) {
             JOptionPane.showMessageDialog(this, "Not enough gold."); return;
@@ -786,9 +789,9 @@ private int resolveStep(MouseEvent e) {
 
     private String buildCostString(int n) {
         return String.format("Cost: %d gold  +  %d manpower  |  Upkeep: %.1f gold/turn",
-                n * GameParameters.SOLDIER_RECRUIT_GOLD_COST,
-                n * GameParameters.SOLDIER_RECRUIT_MANPOWER_COST,
-                n * GameParameters.SOLDIER_UPKEEP_GOLD);
+                n * PlayerArmyParams.SOLDIER_RECRUIT_GOLD_COST,
+                n * PlayerArmyParams.SOLDIER_RECRUIT_MANPOWER_COST,
+                n * PlayerArmyParams.SOLDIER_UPKEEP_GOLD);
     }
 
     // ─── Recruitment pool dialog ──────────────────────────────────────────────

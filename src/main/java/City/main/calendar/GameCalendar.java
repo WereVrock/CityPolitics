@@ -1,6 +1,7 @@
 package City.main.calendar;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.CalendarParams;
+ 
 
 /**
  * Tracks in-game time.
@@ -29,7 +30,7 @@ public class GameCalendar {
     private int totalTurnsElapsed;
 
     public GameCalendar() {
-        this.year              = GameParameters.START_YEAR;
+        this.year              = CalendarParams.START_YEAR;
         this.period            = Period.THAW;
         this.totalTurnsElapsed = 0;
     }
@@ -48,12 +49,12 @@ public class GameCalendar {
     }
 
     public boolean isFrostGiantYear() {
-        return year >= GameParameters.FROST_GIANT_ARRIVAL_YEAR;
+        return year >= CalendarParams.FROST_GIANT_ARRIVAL_YEAR;
     }
 
     public int getTurnsUntilFrostGiants() {
-        int yearsLeft    = GameParameters.FROST_GIANT_ARRIVAL_YEAR - year;
-        int periodsLeft  = yearsLeft * GameParameters.PERIODS_PER_YEAR;
+        int yearsLeft    = CalendarParams.FROST_GIANT_ARRIVAL_YEAR - year;
+        int periodsLeft  = yearsLeft * CalendarParams.PERIODS_PER_YEAR;
         if (period == Period.FROST) periodsLeft--;
         return Math.max(0, periodsLeft);
     }
@@ -63,7 +64,7 @@ public class GameCalendar {
     public int getTotalTurnsElapsed()   { return totalTurnsElapsed; }
 
     public void reset() {
-        this.year              = GameParameters.START_YEAR;
+        this.year              = CalendarParams.START_YEAR;
         this.period            = Period.THAW;
         this.totalTurnsElapsed = 0;
     }

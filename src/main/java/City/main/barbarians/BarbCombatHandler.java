@@ -7,7 +7,8 @@ import City.main.nobles.NobleArmyManager;
 import City.main.combat.ArmyForce;
 import City.main.combat.CombatResolver;
 import City.main.combat.CombatResult;
-import City.main.parameters.GameParameters;
+import City.main.parameters.BarbarianParams;
+ 
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +51,7 @@ public class BarbCombatHandler {
                 + " vs " + totalDefSize + " defenders)");
 
         // Defender bonus: treat their effective power as 30% higher
-        double defBonus = 1.0 + GameParameters.BARB_DEFENDER_BONUS;
+        double defBonus = 1.0 + BarbarianParams.BARB_DEFENDER_BONUS;
         int boostedDefSize = (int)(totalDefSize * defBonus);
 
         ArmyForce atkForce = new ArmyForce("barbarians", attacker.getSize(), 0, 0);
@@ -97,7 +98,7 @@ public class BarbCombatHandler {
         log.add("☠ Barbarians attack " + zoneId + " (" + attacker.getSize()
                 + " vs " + totalPlayerSize + " player defenders)");
 
-        double defBonus      = 1.0 + GameParameters.BARB_DEFENDER_BONUS;
+        double defBonus      = 1.0 + BarbarianParams.BARB_DEFENDER_BONUS;
         int    boostedSize   = (int)(totalPlayerSize * defBonus);
 
         ArmyForce atkForce = new ArmyForce("barbarians", attacker.getSize(), 0, 0);

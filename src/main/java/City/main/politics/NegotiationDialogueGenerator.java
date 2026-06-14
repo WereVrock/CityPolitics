@@ -1,6 +1,7 @@
 package City.main.politics;
 
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.VotingParams;
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -231,7 +232,7 @@ public class NegotiationDialogueGenerator {
     }
 
     private static String noConditionsBlock(double score) {
-        if (Math.abs(score) < GameParameters.VOTE_INDECISIVE_THRESHOLD) {
+        if (Math.abs(score) < VotingParams.VOTE_INDECISIVE_THRESHOLD) {
             return pick(List.of(
                 "Current conditions give us no strong signal either way. We are genuinely undecided.",
                 "The numbers pull in different directions. Nothing is settled.",
@@ -330,7 +331,7 @@ public class NegotiationDialogueGenerator {
 
     private static String noDealBlock(PoliticalParty party, double score) {
         String leader = lastName(party);
-        if (score > GameParameters.VOTE_DEAL_LOCK_THRESHOLD) {
+        if (score > VotingParams.VOTE_DEAL_LOCK_THRESHOLD) {
             return pick(List.of(
                 "There is nothing to negotiate here. " + leader + " supports this outright. No deal needed.",
                 "We are already voting yes. Keep your coin.",

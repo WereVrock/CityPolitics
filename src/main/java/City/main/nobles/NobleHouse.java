@@ -1,7 +1,10 @@
 // NobleHouse.java
 package City.main.nobles;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
+import City.main.parameters.NobleHouseParams;
+import City.main.parameters.StartingParams;
 
 import java.util.*;
 
@@ -52,8 +55,8 @@ public class NobleHouse {
         this.gold                 = startingGold;
         this.food                 = 0;
         this.nobleManpower        = 0;
-        this.influence            = GameParameters.NOBLE_HOUSE_STARTING_INFLUENCE;
-        this.playerOpinion        = GameParameters.NOBLE_HOUSE_STARTING_OPINION;
+        this.influence            = StartingParams.NOBLE_HOUSE_STARTING_INFLUENCE;
+        this.playerOpinion        = StartingParams.NOBLE_HOUSE_STARTING_OPINION;
         this.prestige             = startingPrestige;
         
 
@@ -136,8 +139,8 @@ public class NobleHouse {
         fortifications.put(zoneId, Math.max(0, Math.min(100, current + amount)));
         if (amount > 0) {
             int bonus    = garrisonMaxBonus.getOrDefault(zoneId, 0);
-            int newBonus = Math.min(bonus + GameParameters.FORTIFY_GARRISON_GAIN,
-                                    GameParameters.FORTIFY_GARRISON_MAX_BONUS);
+            int newBonus = Math.min(bonus + NobleHouseParams.FORTIFY_GARRISON_GAIN,
+                                    NobleHouseParams.FORTIFY_GARRISON_MAX_BONUS);
             garrisonMaxBonus.put(zoneId, newBonus);
         }
         recalculateCapital();
@@ -150,10 +153,10 @@ public class NobleHouse {
      * others get GARRISON_OTHER_MULTIPLIER × manpower/turn.
      */
     public int getMaxGarrisonFor(String zoneId) {
-        int manpowerPerTurn = GameParameters.NOBLE_ZONE_MANPOWER_PER_TURN;
+        int manpowerPerTurn = NobleHouseParams.NOBLE_ZONE_MANPOWER_PER_TURN;
         int base = zoneId.equals(capitalZoneId)
-            ? manpowerPerTurn * GameParameters.GARRISON_CAPITAL_MULTIPLIER
-            : manpowerPerTurn * GameParameters.GARRISON_OTHER_MULTIPLIER;
+            ? manpowerPerTurn * NobleHouseParams.GARRISON_CAPITAL_MULTIPLIER
+            : manpowerPerTurn * NobleHouseParams.GARRISON_OTHER_MULTIPLIER;
         return base + garrisonMaxBonus.getOrDefault(zoneId, 0);
     }
 
@@ -205,12 +208,12 @@ public class NobleHouse {
      * Player receives a fraction based on opinion — handled in NobleHouseManager.
      */
     public int getManpowerPerTurn() {
-        return zoneIds.size() * GameParameters.NOBLE_ZONE_MANPOWER_PER_TURN;
+        return zoneIds.size() * NobleHouseParams.NOBLE_ZONE_MANPOWER_PER_TURN;
     }
 
     public double getManpowerSendFraction() {
-        if (playerOpinion <= GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD) return 0.0;
-        return (playerOpinion / 100.0) * GameParameters.NOBLE_MAX_MANPOWER_SEND_FRACTION;
+        if (playerOpinion <= NobleHouseParams.NOBLE_HOSTILE_OPINION_THRESHOLD) return 0.0;
+        return (playerOpinion / 100.0) * NobleHouseParams.NOBLE_MAX_MANPOWER_SEND_FRACTION;
     }
 
     public int computeManpowerSentToPlayer() {
@@ -222,7 +225,7 @@ public class NobleHouse {
     }
 
     public boolean sendsResourcesToPlayer() {
-        return playerOpinion > GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD;
+        return playerOpinion > NobleHouseParams.NOBLE_HOSTILE_OPINION_THRESHOLD;
     }
 
     // ─── Elimination ─────────────────────────────────────────────────────────
@@ -244,7 +247,7 @@ public class NobleHouse {
         NobleCharacter c = getActiveCharacter();
         int skill = c != null ? c.getMilitary() : 0;
         return (int)(getTotalGarrisonSize() * (1.0 + skill
-            * GameParameters.MILITARY_SKILL_BONUS_PER_POINT));
+            * DiplomacyParams.MILITARY_SKILL_BONUS_PER_POINT));
     }
 
     public int getTotalGarrisonSize() {
@@ -275,10 +278,10 @@ public class NobleHouse {
     // ─── Influence ───────────────────────────────────────────────────────────
 
     public int getInfluencePerTurn() {
-        int prestigeBonus = (int)(prestige * GameParameters.NOBLE_INFLUENCE_PRESTIGE_FACTOR);
+        int prestigeBonus = (int)(prestige * NobleHouseParams.NOBLE_INFLUENCE_PRESTIGE_FACTOR);
         return (int) Math.floor(
-            GameParameters.NOBLE_INFLUENCE_BASE_PER_TURN
-            + GameParameters.NOBLE_INFLUENCE_PER_ZONE * zoneIds.size()
+            NobleHouseParams.NOBLE_INFLUENCE_BASE_PER_TURN
+            + NobleHouseParams.NOBLE_INFLUENCE_PER_ZONE * zoneIds.size()
             + prestigeBonus
         );
     }
@@ -304,8 +307,8 @@ public void addZone(String zoneId) {
         zoneIds.add(zoneId);
         int newFort = Math.max(0, previousFortification / 2);
         fortifications.put(zoneId, newFort);
-        int newBonus = Math.min(GameParameters.FORTIFY_GARRISON_MAX_BONUS,
-                                (newFort / GameParameters.NOBLE_FORTIFY_GAIN) * GameParameters.FORTIFY_GARRISON_GAIN);
+        int newBonus = Math.min(NobleHouseParams.FORTIFY_GARRISON_MAX_BONUS,
+                                (newFort / NobleHouseParams.NOBLE_FORTIFY_GAIN) * NobleHouseParams.FORTIFY_GARRISON_GAIN);
         garrisonMaxBonus.put(zoneId, newBonus);
         garrisons.put(zoneId, 0);
         recalculateCapital();
@@ -346,8 +349,8 @@ public void removeZone(String zoneId) {
     public void addInfluence(int v) { influence = Math.max(0, influence + v); }
 
     public void setPlayerOpinion(int v) {
-        playerOpinion = Math.max(GameParameters.NOBLE_OPINION_MIN,
-                        Math.min(GameParameters.NOBLE_OPINION_MAX, v));
+        playerOpinion = Math.max(NobleHouseParams.NOBLE_OPINION_MIN,
+                        Math.min(NobleHouseParams.NOBLE_OPINION_MAX, v));
     }
 
     public void adjustPlayerOpinion(int delta) {

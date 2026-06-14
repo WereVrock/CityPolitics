@@ -2,7 +2,8 @@ package City.main.actions;
 
 import City.main.core.CostCalculator;
 import City.main.core.GameState;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.politics.PolitcalView;
 import City.main.politics.VoteCondition;
 import City.main.resources.ResourcePool;
@@ -45,27 +46,27 @@ public class CrackdownCorruptionAction extends AbstractFormalAction {
 
     @Override
     public String getDescription() {
-        return "Spend " + GameParameters.CRACKDOWN_MONEY_COST
-            + " money and " + GameParameters.CRACKDOWN_INFLUENCE_COST
-            + " influence. Reduces corruption by " + GameParameters.CRACKDOWN_CORRUPTION_REDUCTION
+        return "Spend " + ActionParams.CRACKDOWN_MONEY_COST
+            + " money and " + ActionParams.CRACKDOWN_INFLUENCE_COST
+            + " influence. Reduces corruption by " + ActionParams.CRACKDOWN_CORRUPTION_REDUCTION
             + ". Requires vote.";
     }
 
-    @Override public int getInfluenceCost() { return GameParameters.CRACKDOWN_INFLUENCE_COST; }
+    @Override public int getInfluenceCost() { return ActionParams.CRACKDOWN_INFLUENCE_COST; }
 
     @Override public List<VoteCondition> getVoteConditions() { return CONDITIONS; }
 
     @Override
 
 public ActionResult applyEffect(ResourcePool resources, StatBlock stats) {
-        int moneyCost = CostCalculator.apply(GameParameters.CRACKDOWN_MONEY_COST, stats.getCorruption());
+        int moneyCost = CostCalculator.apply(ActionParams.CRACKDOWN_MONEY_COST, stats.getCorruption());
         if (resources.getMoney() < moneyCost) {
             return ActionResult.fail("Not enough money after vote. Need " + moneyCost + ".");
         }
         getLedger().applyOneTime(City.main.resources.ResourceType.GOLD, "action", getName(),
                 -moneyCost, resources);
-        stats.reduceCorruption(GameParameters.CRACKDOWN_CORRUPTION_REDUCTION);
-        return ActionResult.ok("Crackdown executed. Corruption -" + GameParameters.CRACKDOWN_CORRUPTION_REDUCTION + ".");
+        stats.reduceCorruption(ActionParams.CRACKDOWN_CORRUPTION_REDUCTION);
+        return ActionResult.ok("Crackdown executed. Corruption -" + ActionParams.CRACKDOWN_CORRUPTION_REDUCTION + ".");
     }
 
 }

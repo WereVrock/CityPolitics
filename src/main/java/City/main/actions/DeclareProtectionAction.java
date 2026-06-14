@@ -6,7 +6,8 @@ import City.main.nobles.NobleHouseManager;
 import City.main.nobles.ProtectionManager;
 import City.main.nobles.RelationshipManager;
 import City.main.nobles.Relationship;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.ProtectionParams;
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -44,9 +45,9 @@ public class DeclareProtectionAction extends AbstractAction {
     @Override
     public String getDescription() {
         return "Place a noble house under your protection. Costs "
-                + GameParameters.PROTECTION_INFLUENCE_COST + " influence. "
-                + "+" + GameParameters.PROTECTION_TARGET_OPINION_BONUS + " target opinion, "
-                + GameParameters.PROTECTION_RIVAL_OPINION_MALUS + " rival opinion. "
+                + ProtectionParams.PROTECTION_INFLUENCE_COST + " influence. "
+                + "+" + ProtectionParams.PROTECTION_TARGET_OPINION_BONUS + " target opinion, "
+                + ProtectionParams.PROTECTION_RIVAL_OPINION_MALUS + " rival opinion. "
                 + "You suffer prestige loss if they lose a zone.";
     }
 
@@ -73,26 +74,26 @@ public class DeclareProtectionAction extends AbstractAction {
         if (protectionManager.isUnderProtection(target.getId())) {
             return ActionResult.fail(target.getName() + " is already under your protection.");
         }
-        if (resources.getInfluence() < GameParameters.PROTECTION_INFLUENCE_COST) {
+        if (resources.getInfluence() < ProtectionParams.PROTECTION_INFLUENCE_COST) {
             return ActionResult.fail("Not enough influence. Need "
-                    + GameParameters.PROTECTION_INFLUENCE_COST + ".");
+                    + ProtectionParams.PROTECTION_INFLUENCE_COST + ".");
         }
         ledger.applyOneTime(City.main.resources.ResourceType.INFLUENCE, "realm", getName(),
-                -GameParameters.PROTECTION_INFLUENCE_COST, resources);
+                -ProtectionParams.PROTECTION_INFLUENCE_COST, resources);
         protectionManager.declareProtection(target.getId());
-        target.adjustPlayerOpinion(GameParameters.PROTECTION_TARGET_OPINION_BONUS);
+        target.adjustPlayerOpinion(ProtectionParams.PROTECTION_TARGET_OPINION_BONUS);
 
         RelationshipManager rm = nobleHouseManager.getRelationships();
         for (NobleHouse other : nobleHouseManager.getHouses()) {
             if (other == target || other.isEliminated()) continue;
             if (rm.get(target.getId(), other.getId()) == Relationship.RIVAL
                     || rm.get(target.getId(), other.getId()) == Relationship.HOSTILE) {
-                other.adjustPlayerOpinion(GameParameters.PROTECTION_RIVAL_OPINION_MALUS);
+                other.adjustPlayerOpinion(ProtectionParams.PROTECTION_RIVAL_OPINION_MALUS);
             }
         }
         City.debug.Debug.log("realm-action", "declare-protection",
                 target.getName() + " now under protection");
         return ActionResult.ok(target.getName() + " is now under your protection. Opinion +"
-                + GameParameters.PROTECTION_TARGET_OPINION_BONUS + ".");
+                + ProtectionParams.PROTECTION_TARGET_OPINION_BONUS + ".");
     }
 }

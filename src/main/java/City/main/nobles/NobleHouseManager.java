@@ -7,7 +7,10 @@ import City.main.map.ZoneManager;
 import City.main.map.ZoneState;
 import City.main.nobles.ai.NobleAI;
 import City.main.nobles.NobleArmyManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
+import City.main.parameters.NobleAIParams;
+import City.main.parameters.NobleHouseParams;
 import City.main.resources.ResourcePool;
 
 import java.util.*;
@@ -159,10 +162,10 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
         for (NobleHouse house : allHouses) {
             if (house.isEliminated()) continue;
             int cunning = house.getActiveCharacter() != null ? house.getActiveCharacter().getCunning() : 0;
-            int capacity = cunning + GameParameters.ADMIN_CAPACITY_BASE;
+            int capacity = cunning + NobleAIParams.ADMIN_CAPACITY_BASE;
             int extraZones = Math.max(0, house.getZoneIds().size() - capacity);
-            double increaseChance = GameParameters.REBELLION_BASE_CHANCE + extraZones * GameParameters.REBELLION_OVEREXTENSION_PER_ZONE;
-            double decayChance = GameParameters.REBELLION_DECAY_BASE_CHANCE + cunning * GameParameters.REBELLION_DECAY_CUNNING_PER_POINT;
+            double increaseChance = NobleAIParams.REBELLION_BASE_CHANCE + extraZones * NobleAIParams.REBELLION_OVEREXTENSION_PER_ZONE;
+            double decayChance = NobleAIParams.REBELLION_DECAY_BASE_CHANCE + cunning * NobleAIParams.REBELLION_DECAY_CUNNING_PER_POINT;
 
             for (String zoneId : house.getZoneIds()) {
                 // Only zones with claims can rebel
@@ -179,7 +182,7 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
                     // But we still allow decay even without overextension.
                     if (extraZones == 0 && zoneManager.getState(zoneId).getRebellionPower() > 0) {
                         if (rng.nextDouble() < decayChance) {
-                            zoneManager.getState(zoneId).addRebellionPower(-GameParameters.REBELLION_POWER_DECREASE);
+                            zoneManager.getState(zoneId).addRebellionPower(-NobleAIParams.REBELLION_POWER_DECREASE);
                         }
                     }
                     continue;
@@ -192,9 +195,9 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
                         + " rebellionPower=" + state.getRebellionPower());
                 if (extraZones > 0) {
                     if (rng.nextDouble() < increaseChance) {
-                        state.addRebellionPower(GameParameters.REBELLION_POWER_INCREASE);
+                        state.addRebellionPower(NobleAIParams.REBELLION_POWER_INCREASE);
                         Debug.log("noble", "rebellion", house.getName() + " zone=" + zoneId
-                                + " REBELLION +" + GameParameters.REBELLION_POWER_INCREASE
+                                + " REBELLION +" + NobleAIParams.REBELLION_POWER_INCREASE
                                 + " → " + state.getRebellionPower()
                                 + " (extraZones=" + extraZones + ", chance=" + increaseChance + ")");
                     }
@@ -202,9 +205,9 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
                     // Not overextended, decay
                     if (state.getRebellionPower() > 0 && rng.nextDouble() < decayChance) {
                         int oldPower = state.getRebellionPower();
-                        state.addRebellionPower(-GameParameters.REBELLION_POWER_DECREASE);
+                        state.addRebellionPower(-NobleAIParams.REBELLION_POWER_DECREASE);
                         Debug.log("noble", "rebellion", house.getName() + " zone=" + zoneId
-                                + " REBELLION -" + GameParameters.REBELLION_POWER_DECREASE
+                                + " REBELLION -" + NobleAIParams.REBELLION_POWER_DECREASE
                                 + " → " + state.getRebellionPower()
                                 + " (cunning=" + cunning + ", decayChance=" + decayChance + ")");
                     }
@@ -222,7 +225,7 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
 
                 int garrison = house.getGarrisonFor(zoneId);
                 int idleArmies = armyManager.getTotalIdleArmySize(house.getId(), zoneId);
-                double threshold = (garrison + idleArmies) * GameParameters.REBELLION_FLIP_MULTIPLIER;
+                double threshold = (garrison + idleArmies) * NobleAIParams.REBELLION_FLIP_MULTIPLIER;
                 if (rebellion <= threshold) continue;
 
                 // 3. Select claimant
@@ -327,8 +330,8 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
             ZoneState state = zoneManager.getState(zoneId);
             if (state == null || !state.hasConquestMalus()) continue;
             int malus         = state.getConquestMalus();
-            int goldCost      = (int)(malus * GameParameters.CONQUEST_MALUS_GOLD_COST_PER_PERCENT);
-            int influenceCost = (int)(malus * GameParameters.CONQUEST_MALUS_INFLUENCE_COST_PER_PERCENT);
+            int goldCost      = (int)(malus * DiplomacyParams.CONQUEST_MALUS_GOLD_COST_PER_PERCENT);
+            int influenceCost = (int)(malus * DiplomacyParams.CONQUEST_MALUS_INFLUENCE_COST_PER_PERCENT);
             if (goldCost > 0)      house.addGold(-Math.min(goldCost, house.getGold()));
             if (influenceCost > 0) house.addInfluence(-Math.min(influenceCost, house.getInfluence()));
         }
@@ -388,7 +391,7 @@ private int computeHouseGold(NobleHouse house) {
                     ? state.getProductionMultiplier(ravagedMult) : ravagedMult;
             Zone zone = zoneManager.getZone(zoneId);
             int base = zone != null ? zone.getGoldProduction() : 0;
-            total += (int)((base + GameParameters.NOBLE_ZONE_GOLD_PER_TURN) * mult);
+            total += (int)((base + NobleHouseParams.NOBLE_ZONE_GOLD_PER_TURN) * mult);
         }
         return total;
     }
@@ -606,7 +609,7 @@ private int computeHouseFood(NobleHouse house) {
     }
 
 private double getPlayerShareFraction(int opinion) {
-        if (opinion <= GameParameters.NOBLE_HOSTILE_OPINION_THRESHOLD) return 0.0;
+        if (opinion <= NobleHouseParams.NOBLE_HOSTILE_OPINION_THRESHOLD) return 0.0;
         if (opinion > 50) return 0.50;
         return 0.35;
     }

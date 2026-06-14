@@ -6,17 +6,18 @@ import City.main.resources.StatBlock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.VotingParams;
 
 /**
 * Calculates vote scores for all parties and resolves seat splits.
 */
 public class VotingEngine {
 
-private static final double INDECISIVE_THRESHOLD     = GameParameters.VOTE_INDECISIVE_THRESHOLD;
-private static final double OPINION_NEUTRAL          = GameParameters.VOTE_OPINION_NEUTRAL;
-private static final double OPINION_MAX_CONTRIBUTION = GameParameters.VOTE_OPINION_MAX_CONTRIBUTION;
-private static final int    SEATS_NEEDED             = GameParameters.SEATS_NEEDED;
+private static final double INDECISIVE_THRESHOLD     = VotingParams.VOTE_INDECISIVE_THRESHOLD;
+private static final double OPINION_NEUTRAL          = VotingParams.VOTE_OPINION_NEUTRAL;
+private static final double OPINION_MAX_CONTRIBUTION = VotingParams.VOTE_OPINION_MAX_CONTRIBUTION;
+private static final int    SEATS_NEEDED             = VotingParams.SEATS_NEEDED;
 private static final Random RANDOM                   = new Random();
 
 public VoteResult process(List<PoliticalParty> parties,

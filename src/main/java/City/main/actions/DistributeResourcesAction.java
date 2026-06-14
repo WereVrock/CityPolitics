@@ -1,6 +1,7 @@
 package City.main.actions;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -10,7 +11,7 @@ import City.main.resources.StatBlock;
 public class DistributeResourcesAction extends AbstractAction {
 
     public DistributeResourcesAction() {
-        super(GameParameters.DISTRIBUTE_MAX_USES);
+        super(ActionParams.DISTRIBUTE_MAX_USES);
     }
 
     @Override
@@ -20,8 +21,8 @@ public class DistributeResourcesAction extends AbstractAction {
 
     @Override
     public String getDescription() {
-        return "Spend " + GameParameters.DISTRIBUTE_MONEY_COST
-            + " money to gain " + GameParameters.DISTRIBUTE_HAPPINESS_GAIN + " happiness.";
+        return "Spend " + ActionParams.DISTRIBUTE_MONEY_COST
+            + " money to gain " + ActionParams.DISTRIBUTE_HAPPINESS_GAIN + " happiness.";
     }
 
     @Override
@@ -31,14 +32,14 @@ public class DistributeResourcesAction extends AbstractAction {
         if (!isAvailable()) {
             return ActionResult.fail("Distribute Resources already used this turn.");
         }
-        if (resources.getMoney() < GameParameters.DISTRIBUTE_MONEY_COST) {
-            return ActionResult.fail("Not enough money. Need " + GameParameters.DISTRIBUTE_MONEY_COST + ".");
+        if (resources.getMoney() < ActionParams.DISTRIBUTE_MONEY_COST) {
+            return ActionResult.fail("Not enough money. Need " + ActionParams.DISTRIBUTE_MONEY_COST + ".");
         }
         getLedger().applyOneTime(City.main.resources.ResourceType.GOLD, "action", getName(),
-                -GameParameters.DISTRIBUTE_MONEY_COST, resources);
-        stats.addHappiness(GameParameters.DISTRIBUTE_HAPPINESS_GAIN);
+                -ActionParams.DISTRIBUTE_MONEY_COST, resources);
+        stats.addHappiness(ActionParams.DISTRIBUTE_HAPPINESS_GAIN);
         recordUse();
-        return ActionResult.ok("Distributed resources. Happiness +" + GameParameters.DISTRIBUTE_HAPPINESS_GAIN + ".");
+        return ActionResult.ok("Distributed resources. Happiness +" + ActionParams.DISTRIBUTE_HAPPINESS_GAIN + ".");
     }
 
 }

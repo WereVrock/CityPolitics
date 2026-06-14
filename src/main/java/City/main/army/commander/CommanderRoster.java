@@ -3,7 +3,8 @@ package City.main.army.commander;
 
 import City.debug.Debug;
 import City.main.army.commander.Commander;
-import City.main.parameters.GameParameters;
+import City.main.parameters.CommanderParams;
+ 
 import City.main.politics.PartyManager;
 import City.main.politics.PoliticalParty;
 import City.main.resources.ResourcePool;
@@ -42,12 +43,12 @@ public class CommanderRoster {
      */
 
 public boolean recruit(Commander c) {
-        int cost = GameParameters.COMMANDER_RECRUIT_BASE_COST;
+        int cost = CommanderParams.COMMANDER_RECRUIT_BASE_COST;
         if (resources.getInfluence() < cost) return false;
         resources.spendInfluence(cost);
         commanders.add(c);
         if (c.getParty() != null) {
-            c.getParty().adjustPlayerOpinion(GameParameters.COMMANDER_RECRUIT_OPINION_GAIN);
+            c.getParty().adjustPlayerOpinion(CommanderParams.COMMANDER_RECRUIT_OPINION_GAIN);
         }
         Debug.log("commander-roster", "recruit",
                 c.getName() + " party=" + c.getPartyName() + " influence spent=" + cost);
@@ -62,12 +63,12 @@ public boolean recruit(Commander c) {
 
 public boolean dismiss(Commander c) {
         if (!commanders.contains(c)) return false;
-        int cost = GameParameters.COMMANDER_DISMISS_COST;
+        int cost = CommanderParams.COMMANDER_DISMISS_COST;
         if (resources.getInfluence() < cost) return false;
         resources.spendInfluence(cost);
         commanders.remove(c);
         if (c.getParty() != null) {
-            c.getParty().adjustPlayerOpinion(-GameParameters.COMMANDER_DISMISS_OPINION_LOSS);
+            c.getParty().adjustPlayerOpinion(-CommanderParams.COMMANDER_DISMISS_OPINION_LOSS);
         }
         Debug.log("commander-roster", "dismiss",
                 c.getName() + " party=" + c.getPartyName() + " influence spent=" + cost);
@@ -86,10 +87,10 @@ public boolean dismiss(Commander c) {
 public List<String> processTurnUpkeep() {
         List<String> log = new ArrayList<>();
         long alive = commanders.stream().filter(Commander::isAlive).count();
-        int  cap   = GameParameters.COMMANDER_FREE_CAP;
+        int  cap   = CommanderParams.COMMANDER_FREE_CAP;
         if (alive > cap) {
             long over  = alive - cap;
-            int  drain = (int) Math.ceil(over * GameParameters.COMMANDER_OVERCAP_INFLUENCE_COST);
+            int  drain = (int) Math.ceil(over * CommanderParams.COMMANDER_OVERCAP_INFLUENCE_COST);
             resources.spendInfluence(drain);
             log.add("Over commander cap by " + over + ": -" + drain + " influence.");
             Debug.log("commander-roster", "overcap", "over=" + over + " drain=" + drain);
@@ -120,7 +121,7 @@ public int getPartyPowerContribution(City.main.politics.PoliticalParty party) {
         int count = (int) commanders.stream()
                 .filter(c -> c.isAlive() && c.getParty() == party)
                 .count();
-        return count * GameParameters.COMMANDER_PARTY_POWER_PER_ALIVE;
+        return count * CommanderParams.COMMANDER_PARTY_POWER_PER_ALIVE;
     }
 
 /**

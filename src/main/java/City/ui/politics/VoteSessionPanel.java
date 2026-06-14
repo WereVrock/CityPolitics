@@ -12,7 +12,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.util.List;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.VotingParams;
 import City.ui.UITheme;
 
 /**
@@ -357,7 +358,7 @@ public class VoteSessionPanel extends JPanel {
             }
         }
 
-        int needed = GameParameters.SEATS_NEEDED;
+        int needed = VotingParams.SEATS_NEEDED;
         String status = yes >= needed ? "PASS ✓" : yes + unknown < needed ? "FAIL ✗" : "UNCERTAIN";
         Color  color  = yes >= needed ? UITheme.TEXT_GREEN
                       : yes + unknown < needed ? UITheme.TEXT_RED

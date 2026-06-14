@@ -2,7 +2,10 @@ package City.main.mercenaries;
 
 import City.debug.Debug;
 import City.main.army.Army;
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
+import City.main.parameters.MercenaryParams;
+import City.main.parameters.PlayerArmyParams;
 import City.main.resources.ResourcePool;
 
 import java.util.*;
@@ -43,8 +46,8 @@ public class MercenaryManager {
         for (MercenaryArmy army : new ArrayList<>(armies)) {
             if (!army.isAlive()) continue;
             int upkeep = (int)Math.ceil(army.getSize()
-                    * GameParameters.SOLDIER_UPKEEP_GOLD
-                    * GameParameters.MERCENARY_COST_MULTIPLIER);
+                    * PlayerArmyParams.SOLDIER_UPKEEP_GOLD
+                    * MercenaryParams.MERCENARY_COST_MULTIPLIER);
             if (resources.getMoney() >= upkeep) {
                 resources.spendMoney(upkeep);
                 Debug.log("mercenaries", "upkeep", army.getId() + " paid=" + upkeep);
@@ -96,16 +99,16 @@ public class MercenaryManager {
             }
 
             // Raiding condition: allied NOT greater than 3/2 of merc size
-            double threshold = GameParameters.MERCENARY_RAID_ALLY_THRESHOLD * merc.getSize();
+            double threshold = MercenaryParams.MERCENARY_RAID_ALLY_THRESHOLD * merc.getSize();
             boolean unsupervised = alliedSize <= threshold;
 
             if (!unsupervised) continue;
 
-            if (rng.nextDouble() < GameParameters.MERCENARY_RAID_CHANCE) {
+            if (rng.nextDouble() < MercenaryParams.MERCENARY_RAID_CHANCE) {
                 // Raid zone — money goes to nobody
                 City.main.map.Zone zone = zoneManager.getZone(zoneId);
                 int zoneGold = zone != null ? zone.getGoldProduction() : 0;
-                int stolen = (int)(zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
+                int stolen = (int)(zoneGold * DiplomacyParams.RAID_GOLD_ZONE_MULTIPLIER);
                 if (owner != null) {
                     int ownerLoss = Math.min(stolen, owner.getGold());
                     owner.addGold(-ownerLoss);
@@ -144,8 +147,8 @@ public class MercenaryManager {
         for (MercenaryArmy a : armies) {
             if (a.isAlive()) {
                 total += a.getSize()
-                        * GameParameters.SOLDIER_UPKEEP_GOLD
-                        * GameParameters.MERCENARY_COST_MULTIPLIER;
+                        * PlayerArmyParams.SOLDIER_UPKEEP_GOLD
+                        * MercenaryParams.MERCENARY_COST_MULTIPLIER;
             }
         }
         return total;

@@ -1,7 +1,7 @@
 package City.main.nobles.council;
 
 import City.main.nobles.NobleHouse;
-import City.main.parameters.GameParameters;
+ 
 
 import java.util.ArrayList;
 import java.util.Collections;

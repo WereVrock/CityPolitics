@@ -1,7 +1,8 @@
 package City.main.nobles;
 
 import City.debug.Debug;
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
 
 import java.util.*;
 
@@ -101,7 +102,7 @@ public class RelationshipManager {
                 if (get(a, b) == Relationship.HOSTILE) {
                     int turns = peaceTurns.getOrDefault(k, 0) + 1;
                     peaceTurns.put(k, turns);
-                    if (turns >= GameParameters.HOSTILE_DECAY_TURNS) {
+                    if (turns >= DiplomacyParams.HOSTILE_DECAY_TURNS) {
                         set(a, b, Relationship.NEUTRAL);
                         peaceTurns.put(k, 0);
                     }

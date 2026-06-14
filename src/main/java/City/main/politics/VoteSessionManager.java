@@ -8,7 +8,8 @@ import City.main.save.SaveData;
 import City.debug.Debug;
 
 import java.util.*;
-import City.main.parameters.GameParameters;
+ 
+import City.main.parameters.VotingParams;
 
 /**
  * Creates voting sessions and resolves them into VoteResults.
@@ -108,12 +109,12 @@ public class VoteSessionManager {
         }
 
         VoteResult result = new VoteResult(voteScores, totalYes, totalNo, totalAbstain,
-                                           GameParameters.SEATS_NEEDED);
+                                           VotingParams.SEATS_NEEDED);
         Debug.log("voting", "finalize-result",
                 session.getAction().getName()
                 + " YES=" + totalYes + " NO=" + totalNo
                 + " ABSTAIN=" + totalAbstain
-                + " needed=" + GameParameters.SEATS_NEEDED
+                + " needed=" + VotingParams.SEATS_NEEDED
                 + " passed=" + result.isPassed());
         return result;
     }

@@ -13,7 +13,7 @@ import City.main.nobles.RelationshipManager;
 import City.main.combat.ArmyForce;
 import City.main.combat.CombatResolver;
 import City.main.combat.CombatResult;
-import City.main.parameters.GameParameters;
+ 
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +22,10 @@ import static City.main.nobles.Motivation.EXPANSION;
 import static City.main.nobles.Motivation.PRESTIGE;
 import static City.main.nobles.Motivation.SECURITY;
 import static City.main.nobles.Motivation.WEALTH;
+import City.main.parameters.DiplomacyParams;
+import City.main.parameters.MapZoneParams;
+import City.main.parameters.NobleAIParams;
+import City.main.parameters.NobleHouseParams;
 
 /** Executes the action chosen by {@link NobleAIMotivation} for a given noble house. */
 final class NobleAIActions {
@@ -37,27 +41,27 @@ final class NobleAIActions {
                                           List<String> allIds,
                                           int requesterDiplomacy,
                                           NobleArmyManager armyManager) {
-        double score = GameParameters.DEMAND_BASE_SCORE;
+        double score = DiplomacyParams.DEMAND_BASE_SCORE;
         score += (requester.getPrestige() - target.getPrestige())
-                * GameParameters.DEMAND_PRESTIGE_WEIGHT;
+                * DiplomacyParams.DEMAND_PRESTIGE_WEIGHT;
 
         int requesterPower = NobleAIPower.exactPotentialFieldArmy(requester, armyManager);
         int targetPower    = NobleAIPower.estimatedPower(requester, target, armyManager)
                 + target.getTotalGarrisonSize();
-        score += (requesterPower - targetPower) * GameParameters.DEMAND_ARMY_WEIGHT;
+        score += (requesterPower - targetPower) * DiplomacyParams.DEMAND_ARMY_WEIGHT;
 
         score += switch (relationships.get(requester.getId(), target.getId())) {
-            case ALLIED, FRIENDLY -> GameParameters.DEMAND_ALLIED_BONUS;
+            case ALLIED, FRIENDLY -> DiplomacyParams.DEMAND_ALLIED_BONUS;
             case NEUTRAL          -> 0;
-            case HOSTILE          -> GameParameters.DEMAND_RIVAL_PENALTY / 2.0;
-            case RIVAL            -> GameParameters.DEMAND_RIVAL_PENALTY;
+            case HOSTILE          -> DiplomacyParams.DEMAND_RIVAL_PENALTY / 2.0;
+            case RIVAL            -> DiplomacyParams.DEMAND_RIVAL_PENALTY;
         };
         if (relationships.shareRival(requester.getId(), target.getId(), allIds)) {
-            score += GameParameters.DEMAND_SHARED_RIVAL_BONUS;
+            score += DiplomacyParams.DEMAND_SHARED_RIVAL_BONUS;
         }
-        score += requesterDiplomacy * GameParameters.DEMAND_DIPLOMACY_BONUS_PER_POINT;
-        score += (NobleAIUtils.RNG.nextDouble() - 0.5) * 2 * GameParameters.DEMAND_RANDOM_RANGE;
-        return score >= GameParameters.DEMAND_ACCEPT_THRESHOLD;
+        score += requesterDiplomacy * DiplomacyParams.DEMAND_DIPLOMACY_BONUS_PER_POINT;
+        score += (NobleAIUtils.RNG.nextDouble() - 0.5) * 2 * DiplomacyParams.DEMAND_RANDOM_RANGE;
+        return score >= DiplomacyParams.DEMAND_ACCEPT_THRESHOLD;
     }
 
     // -------------------------------------------------------------------------
@@ -83,7 +87,7 @@ final class NobleAIActions {
         switch (action) {
 
             case FABRICATE_CLAIM -> {
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_FABRICATE, log)) break;
+                if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_FABRICATE, log)) break;
                 String targetZone = NobleAITargeting.findClaimTarget(actor, allHouses, claimManager);
                 if (targetZone == null) break;
 
@@ -121,7 +125,7 @@ final class NobleAIActions {
                 NobleHouse raidTarget = NobleAITargeting.findRaidTarget(
                         actor, allHouses, relationships, zoneManager);
                 if (raidTarget == null) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_RAID, log)) break;
+                if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_RAID, log)) break;
 
                 String raidedZone = NobleAITargeting.pickRaidableZone(raidTarget, zoneManager);
                 if (raidedZone == null) {
@@ -132,14 +136,14 @@ final class NobleAIActions {
 
                 City.main.map.Zone targetZoneObj = zoneManager.getZone(raidedZone);
                 int zoneGold = targetZoneObj != null
-                        ? targetZoneObj.getGoldProduction() : GameParameters.ZONE_VILLAGE_GOLD;
-                int maxStealFromZone = (int) (zoneGold * GameParameters.RAID_GOLD_ZONE_MULTIPLIER);
+                        ? targetZoneObj.getGoldProduction() : MapZoneParams.ZONE_VILLAGE_GOLD;
+                int maxStealFromZone = (int) (zoneGold * DiplomacyParams.RAID_GOLD_ZONE_MULTIPLIER);
                 int maxAffordable    = Math.min(actor.getNobleManpower(),
-                        actor.getGold() / Math.max(1, GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER));
+                        actor.getGold() / Math.max(1, NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER));
                 int desiredSize = Math.min(maxStealFromZone, maxAffordable);
 
                 NobleArmy raidArmy = firstIdleArmy(actor, armyManager);
-                if (raidArmy == null && desiredSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+                if (raidArmy == null && desiredSize >= NobleHouseParams.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
                     raidArmy = armyManager.recruit(actor, desiredSize);
                     if (raidArmy != null) {
                         log.add(actor.getName() + " raises a raiding party of "
@@ -169,11 +173,11 @@ final class NobleAIActions {
                     NobleHouse supTarget = NobleAITargeting.findSuperiorityTarget(
                             actor, allHouses, relationships);
                     if (supTarget == null) break;
-                    if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_DEMAND, log)) break;
+                    if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_DEMAND, log)) break;
                     boolean accepted = evaluateAcknowledgeSuperiority(actor, supTarget);
                     if (accepted) {
-                        supTarget.addPrestige(-GameParameters.DEMAND_PRESTIGE_AMOUNT);
-                        actor.addPrestige(GameParameters.DEMAND_PRESTIGE_AMOUNT);
+                        supTarget.addPrestige(-DiplomacyParams.DEMAND_PRESTIGE_AMOUNT);
+                        actor.addPrestige(DiplomacyParams.DEMAND_PRESTIGE_AMOUNT);
                         log.add(supTarget.getName() + " acknowledges the superiority of "
                                 + actor.getName() + ". Prestige transferred.");
                     } else {
@@ -186,7 +190,7 @@ final class NobleAIActions {
                 NobleHouse demTarget = NobleAITargeting.findDemandTarget(
                         actor, allHouses, relationships);
                 if (demTarget == null) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_DEMAND, log)) break;
+                if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_DEMAND, log)) break;
                 DemandType type     = demandTypeForMotivation(motivation);
                 boolean accepted    = evaluateDemand(actor, demTarget, relationships,
                         allIds, diplomacy, armyManager);
@@ -202,16 +206,16 @@ final class NobleAIActions {
                 List<String> rivals = relationships.getAll(
                         actor.getId(), Relationship.RIVAL, allIds);
                 if (rivals.isEmpty()) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SCHEME, log)) break;
+                if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_SCHEME, log)) break;
                 String targetId = rivals.get(NobleAIUtils.RNG.nextInt(rivals.size()));
                 NobleHouse schemeTarget = NobleAIUtils.findById(targetId, allHouses);
                 if (schemeTarget == null) break;
 
-                double successChance = GameParameters.SCHEME_BASE_SUCCESS_CHANCE
-                        + cunning * GameParameters.SCHEME_CUNNING_BONUS_PER_POINT;
+                double successChance = DiplomacyParams.SCHEME_BASE_SUCCESS_CHANCE
+                        + cunning * DiplomacyParams.SCHEME_CUNNING_BONUS_PER_POINT;
                 if (NobleAIUtils.RNG.nextDouble() < successChance) {
-                    schemeTarget.addPrestige(-GameParameters.AI_SCHEME_PRESTIGE_LOSS);
-                    actor.addPrestige(GameParameters.AI_SCHEME_PRESTIGE_GAIN);
+                    schemeTarget.addPrestige(-NobleAIParams.AI_SCHEME_PRESTIGE_LOSS);
+                    actor.addPrestige(NobleAIParams.AI_SCHEME_PRESTIGE_GAIN);
                     log.add(actor.getName() + " schemes against " + schemeTarget.getName()
                             + ". Their prestige suffers.");
                 } else {
@@ -222,26 +226,26 @@ final class NobleAIActions {
             }
 
             case FORTIFY -> {
-                int cost = GameParameters.AI_FORTIFY_GOLD_COST;
+                int cost = NobleAIParams.AI_FORTIFY_GOLD_COST;
                 if (actor.getGold() < cost) break;
                 if (actor.getGold() - cost < NobleAIRelations.getWarChestTarget(
                         actor, allHouses, relationships, armyManager)) break;
                 actor.addGold(-cost);
-                actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
+                actor.addDefense(NobleAIParams.AI_FORTIFY_DEFENSE_GAIN);
                 String fortZone = actor.getCapitalZoneId();
                 if (fortZone != null) {
-                    actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
+                    actor.addGarrison(fortZone, NobleHouseParams.FORTIFY_GARRISON_GAIN);
                 }
                 log.add(actor.getName() + " fortifies. Defense +"
-                        + GameParameters.AI_FORTIFY_DEFENSE_GAIN
-                        + ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
+                        + NobleAIParams.AI_FORTIFY_DEFENSE_GAIN
+                        + ", Garrison +" + NobleHouseParams.FORTIFY_GARRISON_GAIN + ".");
             }
 
             case ALLY -> {
                 List<String> currentAllies = relationships.getAll(
                         actor.getId(), Relationship.ALLIED, allIds);
-                if (currentAllies.size() >= GameParameters.ALLIANCE_MAX_PER_HOUSE) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_ALLY, log)) break;
+                if (currentAllies.size() >= DiplomacyParams.ALLIANCE_MAX_PER_HOUSE) break;
+                if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_ALLY, log)) break;
 
                 NobleHouse allyTarget = NobleAITargeting.findAllyTarget(
                         actor, allHouses, relationships);
@@ -253,14 +257,14 @@ final class NobleAIActions {
                         + allyTarget.getTotalGarrisonSize();
                 int myStrength = NobleAIPower.exactPotentialFieldArmy(actor, armyManager)
                         + actor.getTotalGarrisonSize();
-                if (candidateStrength < myStrength * GameParameters.ALLIANCE_MIN_ARMY_FRACTION) {
+                if (candidateStrength < myStrength * DiplomacyParams.ALLIANCE_MIN_ARMY_FRACTION) {
                     log.add(actor.getName() + " considers alliance with "
                             + allyTarget.getName() + " but deems them too weak.");
                     break;
                 }
 
-                double acceptChance = GameParameters.ALLY_BASE_ACCEPT_CHANCE
-                        + diplomacy * GameParameters.ALLY_DIPLOMACY_BONUS_PER_POINT;
+                double acceptChance = DiplomacyParams.ALLY_BASE_ACCEPT_CHANCE
+                        + diplomacy * DiplomacyParams.ALLY_DIPLOMACY_BONUS_PER_POINT;
                 if (NobleAIUtils.RNG.nextDouble() < acceptChance) {
                     relationships.set(actor.getId(), allyTarget.getId(), Relationship.ALLIED);
                     log.add(actor.getName() + " and " + allyTarget.getName()
@@ -287,14 +291,14 @@ final class NobleAIActions {
                     log.add(actor.getName() + " forfeits claim on "
                             + claimOnTarget.getZoneId() + " as gift to "
                             + giftTarget.getName() + ". Relations improve.");
-                } else if (actor.getGold() >= GameParameters.GIFT_MONEY_AMOUNT
-                        && actor.getGold() - GameParameters.GIFT_MONEY_AMOUNT
+                } else if (actor.getGold() >= DiplomacyParams.GIFT_MONEY_AMOUNT
+                        && actor.getGold() - DiplomacyParams.GIFT_MONEY_AMOUNT
                         >= NobleAIRelations.getWarChestTarget(
                                 actor, allHouses, relationships, armyManager)) {
-                    actor.addGold(-GameParameters.GIFT_MONEY_AMOUNT);
-                    giftTarget.addGold(GameParameters.GIFT_MONEY_AMOUNT);
+                    actor.addGold(-DiplomacyParams.GIFT_MONEY_AMOUNT);
+                    giftTarget.addGold(DiplomacyParams.GIFT_MONEY_AMOUNT);
                     relationships.improve(actor.getId(), giftTarget.getId());
-                    log.add(actor.getName() + " gifts " + GameParameters.GIFT_MONEY_AMOUNT
+                    log.add(actor.getName() + " gifts " + DiplomacyParams.GIFT_MONEY_AMOUNT
                             + " gold to " + giftTarget.getName() + ". Relations improve.");
                 }
             }
@@ -303,11 +307,11 @@ final class NobleAIActions {
                 List<String> allies = relationships.getAll(
                         actor.getId(), Relationship.ALLIED, allIds);
                 if (allies.isEmpty()) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SUPPORT, log)) break;
+                if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_SUPPORT, log)) break;
                 String allyId = allies.get(NobleAIUtils.RNG.nextInt(allies.size()));
                 NobleHouse ally = NobleAIUtils.findById(allyId, allHouses);
                 if (ally == null) break;
-                int support = (int) (actor.getGold() * GameParameters.AI_SUPPORT_GOLD_FRACTION);
+                int support = (int) (actor.getGold() * NobleAIParams.AI_SUPPORT_GOLD_FRACTION);
                 actor.addGold(-support);
                 ally.addGold(support);
                 log.add(actor.getName() + " sends " + support
@@ -318,15 +322,15 @@ final class NobleAIActions {
                 NobleHouse sabTarget = NobleAITargeting.findSabotageTarget(
                         actor, allHouses, relationships);
                 if (sabTarget == null) break;
-                if (actor.getGold() < GameParameters.AI_SABOTAGE_GOLD_COST) break;
-                if (actor.getGold() - GameParameters.AI_SABOTAGE_GOLD_COST
+                if (actor.getGold() < NobleAIParams.AI_SABOTAGE_GOLD_COST) break;
+                if (actor.getGold() - NobleAIParams.AI_SABOTAGE_GOLD_COST
                         < NobleAIRelations.getWarChestTarget(
                                 actor, allHouses, relationships, armyManager)) break;
-                if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_SABOTAGE, log)) break;
-                actor.addGold(-GameParameters.AI_SABOTAGE_GOLD_COST);
+                if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_SABOTAGE, log)) break;
+                actor.addGold(-NobleAIParams.AI_SABOTAGE_GOLD_COST);
 
-                double successChance = GameParameters.SABOTAGE_BASE_SUCCESS_CHANCE
-                        + cunning * GameParameters.SABOTAGE_CUNNING_BONUS_PER_POINT;
+                double successChance = NobleAIParams.SABOTAGE_BASE_SUCCESS_CHANCE
+                        + cunning * NobleAIParams.SABOTAGE_CUNNING_BONUS_PER_POINT;
                 if (NobleAIUtils.RNG.nextDouble() < successChance) {
                     List<String> validZones = new ArrayList<>();
                     for (String zid : sabTarget.getZoneIds()) {
@@ -446,7 +450,7 @@ final class NobleAIActions {
         boolean    isClaimless = false;
 
         if (recklessTarget != null
-                && recklessValue >= bestClaimValue * GameParameters.RECKLESS_VALUE_MULTIPLIER) {
+                && recklessValue >= bestClaimValue * NobleAIParams.RECKLESS_VALUE_MULTIPLIER) {
             target      = recklessTarget;
             attackZone  = recklessZone;
             isClaimless = true;
@@ -464,7 +468,7 @@ final class NobleAIActions {
         if (target != null) {
             int defPower    = NobleAIPower.estimateDefenderCombatPower(
                     actor, target, attackZone, allHouses, armyManager, relationships);
-            double threshold = defPower * GameParameters.NORMAL_ATTACK_STRENGTH_THRESHOLD;
+            double threshold = defPower * NobleAIParams.NORMAL_ATTACK_STRENGTH_THRESHOLD;
             boolean feasible = myPower >= threshold;
             Debug.log("noble", "attack-feasibility", actor.getName()
                     + " target=" + target.getName() + " zone=" + attackZone
@@ -488,13 +492,13 @@ final class NobleAIActions {
 
         Debug.log("noble", "attack-exec", actor.getName()
                 + " attacking " + attackZone + " isClaimless=" + isClaimless);
-        if (!canSpendInfluence(actor, GameParameters.AI_INFLUENCE_COST_ATTACK, log)) return;
+        if (!canSpendInfluence(actor, NobleAIParams.AI_INFLUENCE_COST_ATTACK, log)) return;
 
         // Raise or reuse army
         NobleArmy army = firstIdleArmy(actor, armyManager);
         if (army == null) {
             int recruitSize = NobleAIPower.maxRecruitableSize(actor);
-            if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+            if (recruitSize >= NobleHouseParams.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
                 army = armyManager.recruit(actor, recruitSize);
                 if (army != null) {
                     log.add(actor.getName() + " raises an army of "
@@ -518,7 +522,7 @@ final class NobleAIActions {
                     : actor.getName() + " marches on " + attackZone + ".");
 
             NobleAIRelations.updateThreatenedStatus(actor, allHouses, relationships,
-                    isClaimless ? GameParameters.THREATENED_CLAIMLESS_MULTIPLIER : 1.0);
+                    isClaimless ? DiplomacyParams.THREATENED_CLAIMLESS_MULTIPLIER : 1.0);
             triggerAllyDefense(target, actor, allHouses, relationships, armyManager, log);
         }
     }
@@ -541,7 +545,7 @@ final class NobleAIActions {
         if (motivation == Motivation.EXPANSION) {
             // Try fabricate
             if (claimManager.getClaimsFor(actor.getId()).isEmpty()
-                    && actor.getInfluence() >= GameParameters.AI_INFLUENCE_COST_FABRICATE) {
+                    && actor.getInfluence() >= NobleAIParams.AI_INFLUENCE_COST_FABRICATE) {
                 String targetZone = NobleAITargeting.findClaimTarget(actor, allHouses, claimManager);
                 if (targetZone != null) {
                     List<String> myZones = new ArrayList<>(actor.getZoneIds());
@@ -579,13 +583,13 @@ final class NobleAIActions {
             NobleHouse raidTarget = NobleAITargeting.findRaidTarget(
                     actor, allHouses, relationships, zoneManager);
             if (raidTarget != null
-                    && actor.getInfluence() >= GameParameters.AI_INFLUENCE_COST_RAID) {
+                    && actor.getInfluence() >= NobleAIParams.AI_INFLUENCE_COST_RAID) {
                 String raidedZone = NobleAITargeting.pickRaidableZone(raidTarget, zoneManager);
                 if (raidedZone != null) {
                     NobleArmy raidArmy = firstIdleArmy(actor, armyManager);
                     if (raidArmy == null) {
                         int recruitSize = NobleAIPower.maxRecruitableSize(actor);
-                        if (recruitSize >= GameParameters.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
+                        if (recruitSize >= NobleHouseParams.NOBLE_ARMY_MIN_RECRUIT_SIZE) {
                             raidArmy = armyManager.recruit(actor, recruitSize);
                             if (raidArmy != null) {
                                 log.add(actor.getName() + " raises a raiding party of "
@@ -622,16 +626,16 @@ final class NobleAIActions {
                                       RelationshipManager relationships,
                                       NobleArmyManager armyManager,
                                       List<String> log) {
-        if (actor.getGold() < GameParameters.AI_FORTIFY_GOLD_COST) return;
-        actor.addGold(-GameParameters.AI_FORTIFY_GOLD_COST);
-        actor.addDefense(GameParameters.AI_FORTIFY_DEFENSE_GAIN);
+        if (actor.getGold() < NobleAIParams.AI_FORTIFY_GOLD_COST) return;
+        actor.addGold(-NobleAIParams.AI_FORTIFY_GOLD_COST);
+        actor.addDefense(NobleAIParams.AI_FORTIFY_DEFENSE_GAIN);
         String fortZone = actor.getCapitalZoneId();
         if (fortZone != null) {
-            actor.addGarrison(fortZone, GameParameters.FORTIFY_GARRISON_GAIN);
+            actor.addGarrison(fortZone, NobleHouseParams.FORTIFY_GARRISON_GAIN);
         }
         log.add(actor.getName() + " fortifies. Defense +"
-                + GameParameters.AI_FORTIFY_DEFENSE_GAIN
-                + ", Garrison +" + GameParameters.FORTIFY_GARRISON_GAIN + ".");
+                + NobleAIParams.AI_FORTIFY_DEFENSE_GAIN
+                + ", Garrison +" + NobleHouseParams.FORTIFY_GARRISON_GAIN + ".");
     }
 
     private static void triggerAllyDefense(NobleHouse attacked, NobleHouse attacker,
@@ -654,7 +658,7 @@ final class NobleAIActions {
             int allyStrength = NobleAIPower.exactPotentialFieldArmy(ally, armyManager)
                     + ally.getTotalGarrisonSize();
             boolean strongEnough = allyStrength
-                    >= attackerFieldArmy * GameParameters.ALLY_DEFENSE_MIN_STRENGTH_FRACTION;
+                    >= attackerFieldArmy * DiplomacyParams.ALLY_DEFENSE_MIN_STRENGTH_FRACTION;
 
             if (strongEnough) {
                 int allyMilitary = ally.getActiveCharacter() != null
@@ -680,20 +684,20 @@ final class NobleAIActions {
                                      DemandType type, List<String> log) {
         switch (type) {
             case WEALTH -> {
-                int amount = (int) (target.getGold() * GameParameters.DEMAND_WEALTH_FRACTION);
+                int amount = (int) (target.getGold() * DiplomacyParams.DEMAND_WEALTH_FRACTION);
                 target.addGold(-amount);
                 requester.addGold(amount);
                 log.add(target.getName() + " yields " + amount + " gold to "
                         + requester.getName() + ".");
             }
             case ARMY -> {
-                requester.addToRaisedArmy(GameParameters.DEMAND_ARMY_AMOUNT);
-                log.add(target.getName() + " sends " + GameParameters.DEMAND_ARMY_AMOUNT
+                requester.addToRaisedArmy(DiplomacyParams.DEMAND_ARMY_AMOUNT);
+                log.add(target.getName() + " sends " + DiplomacyParams.DEMAND_ARMY_AMOUNT
                         + " soldiers to " + requester.getName() + ".");
             }
             case ACKNOWLEDGE_SUPERIORITY -> {
-                target.addPrestige(-GameParameters.DEMAND_PRESTIGE_AMOUNT);
-                requester.addPrestige(GameParameters.DEMAND_PRESTIGE_AMOUNT);
+                target.addPrestige(-DiplomacyParams.DEMAND_PRESTIGE_AMOUNT);
+                requester.addPrestige(DiplomacyParams.DEMAND_PRESTIGE_AMOUNT);
                 log.add(target.getName() + " acknowledges the superiority of "
                         + requester.getName() + ".");
             }
@@ -714,8 +718,8 @@ final class NobleAIActions {
         int targetMilitary   = target.getActiveCharacter() != null
                 ? target.getActiveCharacter().getMilitary() : 0;
         if (demanderMilitary <= targetMilitary) return false;
-        double base  = GameParameters.SUPERIORITY_BASE_ACCEPT_CHANCE;
-        double noise = (NobleAIUtils.RNG.nextDouble() - 0.5) * GameParameters.SUPERIORITY_RANDOM_RANGE;
+        double base  = DiplomacyParams.SUPERIORITY_BASE_ACCEPT_CHANCE;
+        double noise = (NobleAIUtils.RNG.nextDouble() - 0.5) * DiplomacyParams.SUPERIORITY_RANDOM_RANGE;
         return (base + noise) >= 0.5;
     }
 

@@ -4,6 +4,7 @@ package City.ui.map;
 import City.main.map.Zone;
 import City.main.map.ZoneManager;
 import City.main.map.ZoneState;
+import City.main.parameters.NobleHouseParams;
 import City.ui.GrantZoneClaimDialog;
 
 import javax.swing.*;
@@ -372,11 +373,11 @@ public void showNobleArmy(City.main.nobles.NobleArmy army, ZoneManager zm,
     Zone zone = zm.getZone(army.getZoneId());
     armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
     armySizeLabel.setText("Size: " + army.getSize() + " soldiers");
-    int baseUpkeep = army.getSize() * City.main.parameters.GameParameters.NOBLE_UPKEEP_COST_PER_SOLDIER;
+    int baseUpkeep = army.getSize() * NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
     if (owner != null && owner.getZoneIds().contains(army.getZoneId())
             && !army.hasPendingOrder()) {
         int discounted = (int)(baseUpkeep
-                * (1.0 - City.main.parameters.GameParameters.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
+                * (1.0 - NobleHouseParams.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
         if (discounted < 1) discounted = 1;
         armyUpkeepLabel.setText("Upkeep: " + discounted + " gold/turn (defending discount)");
     } else {

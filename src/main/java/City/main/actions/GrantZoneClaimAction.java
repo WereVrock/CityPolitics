@@ -4,7 +4,8 @@ import City.main.nobles.Claim;
 import City.main.nobles.ClaimManager;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -42,7 +43,7 @@ public class GrantZoneClaimAction extends AbstractAction {
     @Override
     public String getDescription() {
         return "Grant a claim on a zone to a noble house. Costs "
-                + GameParameters.GRANT_CLAIM_INFLUENCE_COST
+                + ActionParams.GRANT_CLAIM_INFLUENCE_COST
                 + " influence. Owner suffers opinion loss; target gains opinion.";
     }
 
@@ -74,38 +75,38 @@ public class GrantZoneClaimAction extends AbstractAction {
      */
     public ActionResult grantClaim(String zoneId, NobleHouse target,
                                     ResourcePool resources, City.main.ledger.Ledger ledger) {
-        if (resources.getInfluence() < GameParameters.GRANT_CLAIM_INFLUENCE_COST) {
+        if (resources.getInfluence() < ActionParams.GRANT_CLAIM_INFLUENCE_COST) {
             return ActionResult.fail("Not enough influence. Need "
-                    + GameParameters.GRANT_CLAIM_INFLUENCE_COST + ".");
+                    + ActionParams.GRANT_CLAIM_INFLUENCE_COST + ".");
         }
         if (claimManager.hasClaim(target.getId(), zoneId)) {
             return ActionResult.fail(target.getName() + " already has a claim on this zone.");
         }
         ledger.applyOneTime(City.main.resources.ResourceType.INFLUENCE, "realm", getName(),
-                -GameParameters.GRANT_CLAIM_INFLUENCE_COST, resources);
+                -ActionParams.GRANT_CLAIM_INFLUENCE_COST, resources);
 
         claimManager.addClaim(target.getId(), zoneId);
 
         NobleHouse owner = nobleHouseManager.getOwnerOfZone(zoneId);
         if (owner != null && owner != target) {
-            owner.adjustPlayerOpinion(GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS);
+            owner.adjustPlayerOpinion(ActionParams.GRANT_CLAIM_OWNER_OPINION_MALUS);
         }
-        target.adjustPlayerOpinion(GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS);
+        target.adjustPlayerOpinion(ActionParams.GRANT_CLAIM_TARGET_OPINION_BONUS);
 
         for (NobleHouse house : nobleHouseManager.getHouses()) {
             if (house == target || house.isEliminated()) continue;
             if (claimManager.hasClaim(house.getId(), zoneId)) {
-                house.adjustPlayerOpinion(GameParameters.GRANT_CLAIM_OTHER_CLAIMANT_MALUS);
+                house.adjustPlayerOpinion(ActionParams.GRANT_CLAIM_OTHER_CLAIMANT_MALUS);
             }
         }
 
         String ownerMsg = owner != null
                 ? " " + owner.getName() + " is displeased ("
-                  + GameParameters.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion)." : "";
+                  + ActionParams.GRANT_CLAIM_OWNER_OPINION_MALUS + " opinion)." : "";
         City.debug.Debug.log("realm-action", "grant-claim",
                 zoneId + " → " + target.getName());
         return ActionResult.ok("Granted claim on " + zoneId + " to "
                 + target.getName() + ". Opinion +"
-                + GameParameters.GRANT_CLAIM_TARGET_OPINION_BONUS + "." + ownerMsg);
+                + ActionParams.GRANT_CLAIM_TARGET_OPINION_BONUS + "." + ownerMsg);
     }
 }

@@ -6,10 +6,12 @@ import City.main.barbarians.BarbInvasionProcessor;
 import City.main.calendar.GameCalendar;
 import City.main.effects.EffectManager;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+ 
 import City.main.pops.PopManager;
 import City.main.resources.ResourcePool;
 import City.debug.Debug;
+import City.main.parameters.ActionParams;
+import City.main.parameters.PrestigeXPParams;
 import City.main.resources.StatBlock;
 
 import java.util.ArrayList;
@@ -111,10 +113,10 @@ public class TurnProcessor {
             }
         }
         if (barbZones > 0) {
-            gameState.getPlayerPrestige().addPrestige(barbZones * City.main.parameters.GameParameters.PLAYER_PRESTIGE_PER_BARB_ZONE);
+            gameState.getPlayerPrestige().addPrestige(barbZones * PrestigeXPParams.PLAYER_PRESTIGE_PER_BARB_ZONE);
             if (barbZones > 0) {
                 log.add("Prestige -" + (barbZones
-                        * Math.abs(City.main.parameters.GameParameters.PLAYER_PRESTIGE_PER_BARB_ZONE))
+                        * Math.abs(PrestigeXPParams.PLAYER_PRESTIGE_PER_BARB_ZONE))
                         + " (" + barbZones + " barbarian-occupied zones).");
             }
         }
@@ -223,7 +225,7 @@ public class TurnProcessor {
     private void applyPopEconomics(PopManager popManager,
                                     List<String> log, City.main.ledger.Ledger ledger) {
         int moneyGained     = popManager.getTotalMoneyGeneration();
-        int influenceGained = popManager.getTotalInfluenceGeneration() + GameParameters.BASE_INFLUENCE_PER_TURN;
+        int influenceGained = popManager.getTotalInfluenceGeneration() + ActionParams.BASE_INFLUENCE_PER_TURN;
         int foodConsumed    = popManager.getTotalFoodConsumption();
 
         ledger.setRecurring(City.main.resources.ResourceType.GOLD,      "pops", "Pop Income",      moneyGained);
@@ -236,10 +238,10 @@ public class TurnProcessor {
 
     private void applyStatDecay(StatBlock stats, List<String> log,
                                  City.main.ledger.Ledger ledger) {
-        stats.reduceHappiness(GameParameters.HAPPINESS_DECAY_PER_TURN);
-        stats.reduceCorruption(GameParameters.CORRUPTION_DECAY_PER_TURN);
-        log.add("Happiness -" + GameParameters.HAPPINESS_DECAY_PER_TURN
-                + ", Corruption -" + GameParameters.CORRUPTION_DECAY_PER_TURN
+        stats.reduceHappiness(ActionParams.HAPPINESS_DECAY_PER_TURN);
+        stats.reduceCorruption(ActionParams.CORRUPTION_DECAY_PER_TURN);
+        log.add("Happiness -" + ActionParams.HAPPINESS_DECAY_PER_TURN
+                + ", Corruption -" + ActionParams.CORRUPTION_DECAY_PER_TURN
                 + " (natural decay).");
     }
 

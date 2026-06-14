@@ -1,6 +1,7 @@
 package City.main.nobles;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.DiplomacyParams;
+ 
 
 import java.util.*;
 
@@ -23,9 +24,9 @@ public class ClaimManager {
     public boolean fabricate(String claimantId, String zoneId, int cunning, int ownerCunning,
                               Random rng, List<String> claimantZones, List<City.main.map.Zone> allZones) {
         if (hasClaim(claimantId, zoneId)) return false;
-        double chance = GameParameters.CLAIM_BASE_SUCCESS_CHANCE
-            + cunning * GameParameters.CLAIM_CUNNING_BONUS_PER_POINT
-            - ownerCunning * GameParameters.CLAIM_OWNER_CUNNING_PENALTY_PER_POINT;
+        double chance = DiplomacyParams.CLAIM_BASE_SUCCESS_CHANCE
+            + cunning * DiplomacyParams.CLAIM_CUNNING_BONUS_PER_POINT
+            - ownerCunning * DiplomacyParams.CLAIM_OWNER_CUNNING_PENALTY_PER_POINT;
         if (chance <= 0) return false;
 
         // Adjacency penalty: halve chance if target not adjacent to any owned zone
@@ -40,7 +41,7 @@ public class ClaimManager {
             }
         }
         if (!adjacent) {
-            chance *= GameParameters.CLAIM_ADJACENCY_PENALTY;
+            chance *= DiplomacyParams.CLAIM_ADJACENCY_PENALTY;
         }
 
         if (rng.nextDouble() < chance) {
@@ -117,7 +118,7 @@ public class ClaimManager {
     public Claim rollClaimDecay(String houseId, Random rng) {
         List<Claim> houseClaims = getClaimsFor(houseId);
         if (houseClaims.isEmpty()) return null;
-        if (rng.nextDouble() >= GameParameters.CLAIM_DECAY_CHANCE) return null;
+        if (rng.nextDouble() >= DiplomacyParams.CLAIM_DECAY_CHANCE) return null;
         return houseClaims.get(rng.nextInt(houseClaims.size()));
     }
 }

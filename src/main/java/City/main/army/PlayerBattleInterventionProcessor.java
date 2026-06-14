@@ -7,7 +7,7 @@ import City.main.combat.CombatResult;
 import City.main.nobles.NobleArmy;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+ 
 
 import java.util.ArrayList;
 import java.util.List;

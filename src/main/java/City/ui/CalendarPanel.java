@@ -2,6 +2,7 @@ package City.ui;
 
 import City.main.calendar.GameCalendar;
 import City.main.core.GameState;
+import City.main.parameters.PoliticalParams;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -106,7 +107,7 @@ public void refresh() {
         if (elTurns == 0) {
             electionLabel.setText("⚑ ELECTION THIS TURN");
             electionLabel.setForeground(new Color(220, 190, 80));
-        } else if (elTurns <= City.main.parameters.GameParameters.ELECTION_CAMPAIGN_WARNING_TURNS) {
+        } else if (elTurns <= PoliticalParams.ELECTION_CAMPAIGN_WARNING_TURNS) {
             electionLabel.setText("⚑ CAMPAIGN — Election in " + elTurns + " turn(s)");
             electionLabel.setForeground(new Color(240, 200, 60));
         } else {

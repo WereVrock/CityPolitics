@@ -1,6 +1,7 @@
 package City.ui.politics;
 
 import City.main.core.GameState;
+import City.main.parameters.ActionParams;
 import City.main.politics.DealOffer;
 import City.main.politics.PoliticalParty;
 import City.main.politics.SideLeader;
@@ -10,7 +11,7 @@ import City.main.politics.SideDealResult;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import City.main.parameters.GameParameters;
+ 
 import City.main.politics.NegotiationDialogueGenerator;
 import City.ui.UITheme;
 
@@ -239,14 +240,14 @@ private JPanel buildSideDealRow(VotingSession session, DealOffer mainOffer) {
     SideLeader sideLeader = party.getSideLeaders().get(0);
 
     // Side deals always use resources (no favour), with minimums applied
-    int halfGold      = Math.max(GameParameters.DEAL_MIN_MONEY,
+    int halfGold      = Math.max(ActionParams.DEAL_MIN_MONEY,
                                   mainOffer.getMoneyCost() / 2);
-    int halfInfluence = Math.max(GameParameters.DEAL_MIN_INFLUENCE,
+    int halfInfluence = Math.max(ActionParams.DEAL_MIN_INFLUENCE,
                                   mainOffer.getInfluenceCost() / 2);
     // If main offer was favour-only, side deal uses flat minimums
     if (mainOffer.isFavourOnly()) {
-        halfGold      = GameParameters.DEAL_MIN_MONEY;
-        halfInfluence = GameParameters.DEAL_MIN_INFLUENCE;
+        halfGold      = ActionParams.DEAL_MIN_MONEY;
+        halfInfluence = ActionParams.DEAL_MIN_INFLUENCE;
     }
 
     final int finalGold      = halfGold;

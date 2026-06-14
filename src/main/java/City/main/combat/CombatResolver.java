@@ -1,6 +1,7 @@
 package City.main.combat;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.CombatParams;
+ 
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,7 @@ public static CombatResult resolve(ArmyForce attacker, ArmyForce defender) {
 List<String> log = new ArrayList<>();
 
 double defenseMultiplier = 1.0 - (defender.getDefense() / 100.0)
-* GameParameters.COMBAT_DEFENSE_REDUCTION;
+* CombatParams.COMBAT_DEFENSE_REDUCTION;
 
 int attackerEffective  = attacker.getEffectivePower();
 int defenderEffective  = (int)(defender.getEffectivePower() * defenseMultiplier);
@@ -95,7 +96,7 @@ totalAttackerRaw       += a.getRawSize();
 }
 
 double defenseMultiplier = 1.0 - (defender.getDefense() / 100.0)
-* GameParameters.COMBAT_DEFENSE_REDUCTION;
+* CombatParams.COMBAT_DEFENSE_REDUCTION;
 int defenderEffective = (int)(defender.getEffectivePower() * defenseMultiplier);
 
 int defenderLosses  = resolveCasualties(totalAttackerEffective, defender.getEffectivePower());
@@ -138,8 +139,8 @@ totalAtkLosses, defenderLosses, log);
 private static int resolveCasualties(int power, int targetSize) {
 if (power <= 0 || targetSize <= 0) return 0;
 double ratio    = Math.min(2.0, (double) power / Math.max(1, targetSize));
-double baseRate = GameParameters.COMBAT_BASE_CASUALTY_RATE;
-double variance = (RNG.nextDouble() - 0.5) * GameParameters.COMBAT_CASUALTY_VARIANCE;
+double baseRate = CombatParams.COMBAT_BASE_CASUALTY_RATE;
+double variance = (RNG.nextDouble() - 0.5) * CombatParams.COMBAT_CASUALTY_VARIANCE;
 double rate     = Math.max(0.05, Math.min(0.6, baseRate * ratio + variance));
 return (int) Math.ceil(targetSize * rate);
 }
@@ -166,7 +167,7 @@ totalAttackerRaw       += a.getRawSize();
 }
 
 double defenseMultiplier = 1.0 - (defenderFortification / 100.0)
-* GameParameters.COMBAT_DEFENSE_REDUCTION;
+* CombatParams.COMBAT_DEFENSE_REDUCTION;
 int totalDefenderEffective = 0;
 int totalDefenderRaw       = 0;
 for (ArmyForce d : defenders) {

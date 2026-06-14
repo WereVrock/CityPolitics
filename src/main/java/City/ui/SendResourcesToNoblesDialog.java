@@ -3,7 +3,8 @@ package City.ui;
 import City.main.actions.SendResourcesToNoblesAction;
 import City.main.nobles.NobleHouse;
 import City.main.nobles.NobleHouseManager;
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.resources.ResourcePool;
 
 import javax.swing.*;
@@ -59,8 +60,8 @@ public class SendResourcesToNoblesDialog {
 
         gc.gridy = 1;
         JLabel info = new JLabel("<html>Send gold to a noble house to improve your standing with them.<br>"
-                + "Every " + GameParameters.SEND_RESOURCES_OPINION_DIVISOR + " gold grants +"
-                + GameParameters.SEND_RESOURCES_OPINION_PER_GOLD + " opinion.</html>");
+                + "Every " + ActionParams.SEND_RESOURCES_OPINION_DIVISOR + " gold grants +"
+                + ActionParams.SEND_RESOURCES_OPINION_PER_GOLD + " opinion.</html>");
         info.setFont(UITheme.FONT_SMALL);
         info.setForeground(UITheme.TEXT_SECONDARY);
         content.add(info, gc);
@@ -155,8 +156,8 @@ public class SendResourcesToNoblesDialog {
     }
 
     private static String buildOpinionString(int gold) {
-        int opinion = (gold / GameParameters.SEND_RESOURCES_OPINION_DIVISOR)
-                * GameParameters.SEND_RESOURCES_OPINION_PER_GOLD;
+        int opinion = (gold / ActionParams.SEND_RESOURCES_OPINION_DIVISOR)
+                * ActionParams.SEND_RESOURCES_OPINION_PER_GOLD;
         opinion = Math.max(1, opinion);
         return "Opinion gain: +" + opinion;
     }

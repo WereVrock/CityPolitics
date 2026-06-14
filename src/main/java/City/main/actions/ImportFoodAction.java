@@ -1,6 +1,7 @@
 package City.main.actions;
 
-import City.main.parameters.GameParameters;
+import City.main.parameters.ActionParams;
+ 
 import City.main.resources.ResourcePool;
 import City.main.resources.StatBlock;
 
@@ -10,7 +11,7 @@ import City.main.resources.StatBlock;
 public class ImportFoodAction extends AbstractAction {
 
     public ImportFoodAction() {
-        super(GameParameters.IMPORT_FOOD_MAX_USES);
+        super(ActionParams.IMPORT_FOOD_MAX_USES);
     }
 
     @Override
@@ -20,8 +21,8 @@ public class ImportFoodAction extends AbstractAction {
 
     @Override
     public String getDescription() {
-        return "Spend " + GameParameters.IMPORT_FOOD_MONEY_COST
-            + " money to gain " + GameParameters.IMPORT_FOOD_GAINED + " food.";
+        return "Spend " + ActionParams.IMPORT_FOOD_MONEY_COST
+            + " money to gain " + ActionParams.IMPORT_FOOD_GAINED + " food.";
     }
 
     @Override
@@ -31,17 +32,17 @@ public class ImportFoodAction extends AbstractAction {
         if (!isAvailable()) {
             return ActionResult.fail("Import Food already used " + getMaxUsesPerTurn() + " time(s) this turn.");
         }
-        if (resources.getMoney() < GameParameters.IMPORT_FOOD_MONEY_COST) {
-            return ActionResult.fail("Not enough money. Need " + GameParameters.IMPORT_FOOD_MONEY_COST + ".");
+        if (resources.getMoney() < ActionParams.IMPORT_FOOD_MONEY_COST) {
+            return ActionResult.fail("Not enough money. Need " + ActionParams.IMPORT_FOOD_MONEY_COST + ".");
         }
         City.main.ledger.Ledger ledger = getLedger();
         ledger.applyOneTime(City.main.resources.ResourceType.GOLD, "action", getName(),
-                -GameParameters.IMPORT_FOOD_MONEY_COST, resources);
+                -ActionParams.IMPORT_FOOD_MONEY_COST, resources);
         ledger.applyOneTime(City.main.resources.ResourceType.FOOD, "action", getName(),
-                GameParameters.IMPORT_FOOD_GAINED, resources);
+                ActionParams.IMPORT_FOOD_GAINED, resources);
         recordUse();
-        return ActionResult.ok("Imported " + GameParameters.IMPORT_FOOD_GAINED + " food for "
-                + GameParameters.IMPORT_FOOD_MONEY_COST + " money.");
+        return ActionResult.ok("Imported " + ActionParams.IMPORT_FOOD_GAINED + " food for "
+                + ActionParams.IMPORT_FOOD_MONEY_COST + " money.");
     }
 
 }

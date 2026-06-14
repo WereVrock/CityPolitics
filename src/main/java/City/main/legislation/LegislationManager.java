@@ -1,5 +1,6 @@
 package City.main.legislation;
 
+import City.main.parameters.ActionParams;
 import java.util.*;
 
 /**
@@ -58,7 +59,7 @@ public class LegislationManager {
     private int sendResourcesWindowRemaining = 0;
 
     public void grantSendResourcesWindow() {
-        sendResourcesWindowRemaining = City.main.parameters.GameParameters.SEND_RESOURCES_WINDOW_TURNS;
+        sendResourcesWindowRemaining = ActionParams.SEND_RESOURCES_WINDOW_TURNS;
         City.debug.Debug.log("legislation", "send-resources-window",
                 "Window granted (" + sendResourcesWindowRemaining + " turns)");
     }
@@ -110,7 +111,7 @@ public class LegislationManager {
     // ─── Wartime taxes cooldown ───────────────────────────────────────────────
 
     public void triggerWartimeTaxesCooldown() {
-        wartimeTaxesCooldown = City.main.parameters.GameParameters.WARTIME_TAXES_COOLDOWN_TURNS;
+        wartimeTaxesCooldown = ActionParams.WARTIME_TAXES_COOLDOWN_TURNS;
         City.debug.Debug.log("legislation", "wartime-tax", "Cooldown set to " + wartimeTaxesCooldown);
     }
 

@@ -18,7 +18,9 @@ import City.main.combat.ArmyForce;
 import City.main.combat.CombatResolver;
 import City.main.combat.CombatResult;
 import City.main.combat.CombatPrestigeCalculator;
-import City.main.parameters.GameParameters;
+import City.main.parameters.BarbarianParams;
+ 
+import City.main.parameters.PrestigeXPParams;
 import City.main.politics.PartyManager;
 
 import java.util.ArrayList;
@@ -203,12 +205,12 @@ public List<String> awardZoneToClaimant(
         chosen.addZone(zoneId);
         chosen.resetGarrison(zoneId);
         claimManager.removeClaim(chosen.getId(), zoneId);
-        chosen.adjustPlayerOpinion(City.main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
+        chosen.adjustPlayerOpinion(PrestigeXPParams.LIBERATED_ZONE_OPINION_BONUS);
         log.add(chosen.getName() + " is grateful for the liberation. (+"
-                + City.main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS + " opinion)");
+                + PrestigeXPParams.LIBERATED_ZONE_OPINION_BONUS + " opinion)");
         Debug.log("player-combat", "zone-award",
                 chosen.getId() + " awarded " + zoneId + " after liberation, opinion +"
-                + City.main.parameters.GameParameters.LIBERATED_ZONE_OPINION_BONUS);
+                + PrestigeXPParams.LIBERATED_ZONE_OPINION_BONUS);
         return log;
     }
 
@@ -318,7 +320,7 @@ private List<String> resolvePlayerAttack(
         for (BarbArmy b : allBarbs) totalBarbRaw += b.getSize();
 
         int barbEffective = isDesolate
-                ? (int)(totalBarbRaw * (1.0 + GameParameters.BARB_DEFENDER_BONUS))
+                ? (int)(totalBarbRaw * (1.0 + BarbarianParams.BARB_DEFENDER_BONUS))
                 : totalBarbRaw;
 
         ArmyForce       barbForce      = new ArmyForce("barbarians", barbEffective, 0, 0);
@@ -351,7 +353,7 @@ private List<String> resolvePlayerAttack(
 
         // Apply barb losses proportionally
         int barbRawLoss = isDesolate
-                ? (int)(result.getDefenderLosses() / (1.0 + GameParameters.BARB_DEFENDER_BONUS))
+                ? (int)(result.getDefenderLosses() / (1.0 + BarbarianParams.BARB_DEFENDER_BONUS))
                 : result.getDefenderLosses();
         distributeBarbLosses(allBarbs, barbRawLoss);
 
@@ -359,7 +361,7 @@ private List<String> resolvePlayerAttack(
                 && result.getWinnerId().startsWith("player_");
 
         // ── Prestige & XP calculation ──────────────────────────────────────────
-        int enemyBonusPct = isDesolate ? (int)(GameParameters.BARB_DEFENDER_BONUS * 100) : 0;
+        int enemyBonusPct = isDesolate ? (int)(BarbarianParams.BARB_DEFENDER_BONUS * 100) : 0;
         double rawScore = CombatPrestigeCalculator.computeRawScore(
                 totalAttackerSize, totalBarbRaw, enemyBonusPct, playerWon);
 
