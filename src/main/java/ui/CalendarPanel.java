@@ -17,6 +17,8 @@ public class CalendarPanel extends JPanel {
     private final GameState         gameState;
     private final JLabel            dateLabel;
     private final JLabel            countdownLabel;
+    private       JLabel            electionLabel;
+    private       main.politics.ElectionManager electionManager;
     private       JButton           endTurnBtn;
     private       Runnable          onEndTurn;
     private       Supplier<Boolean> isBlocked;
@@ -48,10 +50,16 @@ public class CalendarPanel extends JPanel {
             + "They march on a cycle tied to the ancient calendar — when the year turns past 200 A.S.,<br>"
             + "their vanguard reaches the realm's borders. Prepare or perish.</html>");
 
-        JPanel dateBlock = new JPanel(new GridLayout(2, 1, 0, 2));
+        electionLabel = new JLabel();
+        electionLabel.setFont(UITheme.FONT_BODY);
+        electionLabel.setForeground(new Color(180, 160, 220));
+        electionLabel.setToolTipText("Elections occur every 5 years. Parties campaign for seats in the assembly.");
+
+        JPanel dateBlock = new JPanel(new GridLayout(3, 1, 0, 2));
         dateBlock.setBackground(UITheme.BG_PANEL);
         dateBlock.add(dateLabel);
         dateBlock.add(countdownLabel);
+        dateBlock.add(electionLabel);
 
         endTurnBtn = new JButton("END TURN  ▶");
         endTurnBtn.setFont(new Font("Serif", Font.BOLD, 14));
@@ -80,20 +88,35 @@ public class CalendarPanel extends JPanel {
         endTurnBtn.setForeground(hasPendingVote ? UITheme.TEXT_GOLD : UITheme.ACCENT_FROST);
     }
 
-    public void refresh() {
-        GameCalendar cal = gameState.getCalendar();
-        dateLabel.setText(cal.getDisplayString());
-        int turns = cal.getTurnsUntilFrostGiants();
-        if (turns <= 0) {
-            countdownLabel.setText("⚠  THE FROST GIANTS ARE HERE");
-            countdownLabel.setForeground(UITheme.TEXT_RED);
-        } else {
-            countdownLabel.setText("Frost Giants arrive in " + turns + " period(s)");
-            countdownLabel.setForeground(turns <= 4 ? UITheme.TEXT_RED : UITheme.TEXT_SECONDARY);
-        }
+public void refresh() {
+    GameCalendar cal = gameState.getCalendar();
+    dateLabel.setText(cal.getDisplayString());
+    int turns = cal.getTurnsUntilFrostGiants();
+    if (turns <= 0) {
+        countdownLabel.setText("⚠  THE FROST GIANTS ARE HERE");
+        countdownLabel.setForeground(UITheme.TEXT_RED);
+    } else {
+        countdownLabel.setText("Frost Giants arrive in " + turns + " period(s)");
+        countdownLabel.setForeground(turns <= 4 ? UITheme.TEXT_RED : UITheme.TEXT_SECONDARY);
     }
 
-    private String buildCalendarTooltip() {
+    // Election countdown
+    if (electionManager != null) {
+        int elTurns = electionManager.getTurnsUntilElection();
+        if (elTurns == 0) {
+            electionLabel.setText("⚑ ELECTION THIS TURN");
+            electionLabel.setForeground(new Color(220, 190, 80));
+        } else if (elTurns <= 2) {
+            electionLabel.setText("⚑ Election in " + elTurns + " turn(s)");
+            electionLabel.setForeground(new Color(200, 170, 80));
+        } else {
+            electionLabel.setText("⚑ Election in " + elTurns + " turn(s)");
+            electionLabel.setForeground(new Color(140, 120, 180));
+        }
+    }
+}
+
+private String buildCalendarTooltip() {
         return "<html>"
             + "<b>The Calendar of the Sundering</b><br><br>"
             + "Time is measured in years <i>After the Sundering</i> (A.S.) — the cataclysmic event<br>"
@@ -105,4 +128,9 @@ public class CalendarPanel extends JPanel {
             + "the realm's northern borders by Year 200 A.S. You have 32 periods to prepare."
             + "</html>";
     }
+
+public void setElectionManager(main.politics.ElectionManager mgr) {
+    this.electionManager = mgr;
+}
+
 }

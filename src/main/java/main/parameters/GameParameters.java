@@ -141,12 +141,48 @@ public final class GameParameters {
     public static final int    GRANT_CLAIM_INFLUENCE_COST       = 5;
 
     // =========================================================
+    // ELECTION
+    // =========================================================
+    /** How many turns between elections (5 years = 10 turns). */
+    public static final int    ELECTION_PERIOD_TURNS                = 10;
+    /** Consecutive votes FOR affiliated party before affiliation is gained. */
+    public static final int    ELECTION_AFFILIATION_GAIN_THRESHOLD  = 3;
+    /** Consecutive overrides before affiliation is lost. */
+    public static final int    ELECTION_OVERRIDE_LOSS_THRESHOLD     = 3;
+    /** Party prestige contribution per prestige point to election score. */
+    public static final double ELECTION_PRESTIGE_WEIGHT             = 0.01;
+
+    // =========================================================
+    // PROPAGANDA
+    // =========================================================
+    /** Propaganda units per 1 gold paid to party via deal. */
+    public static final double PROPAGANDA_PER_GOLD                  = 0.5;
+    /** Propaganda units per 1 influence paid to party via deal. */
+    public static final double PROPAGANDA_PER_INFLUENCE             = 1.0;
+    /** Minimum propaganda budget before ideology spread fires. */
+    public static final double PROPAGANDA_SPREAD_THRESHOLD          = 5.0;
+    /** Max pops affected per unit of spread propaganda. */
+    public static final double PROPAGANDA_POPS_PER_UNIT             = 0.3;
+    /** Intensity change multiplier per unit of propaganda (centre of circle). */
+    public static final double PROPAGANDA_INTENSITY_PER_UNIT        = 0.5;
+    /** Bonus to election vote score per propaganda unit (election budget). */
+    public static final double PROPAGANDA_VOTE_BONUS_PER_UNIT       = 0.02;
+
+    // =========================================================
+    // POWER DRIFT
+    // =========================================================
+    /** Power drops if it exceeds seats × this multiplier each turn. */
+    public static final int    POWER_DRIFT_SEAT_MULTIPLIER          = 12;
+
+    // =========================================================
     // BARBARIAN TRIBES — first 2 waves (early/fleeing)
     // =========================================================
-    /** Fraction of normal wave size for early fleeing waves. */
+    /** Fraction of normal wave size for early fleeing waves (2/5 of normal). */
     public static final double BARB_EARLY_WAVE_SIZE_FRACTION    = 0.40;
-    /** Number of fast early waves before normal waves begin. */
+    /** Number of fast early waves before normal waves begin (within a single invasion). */
     public static final int    BARB_EARLY_WAVE_COUNT            = 2;
+    /** Number of early invasions (0-indexed). During these, ALL armies are 0.4x size. */
+    public static final int    BARB_EARLY_INVASION_COUNT        = 2;
 
     // =========================================================
     // ACTION: ALLOW MERCENARIES (voted formal action)
@@ -601,4 +637,38 @@ public final class GameParameters {
     public static final double NOBLE_BARB_HUNT_STRENGTH_RATIO     = 1.8;
     public static final double NOBLE_BARB_DESPERATE_DEFENSE_RATIO = 0.5;
     public static final double NOBLE_WARBOSS_DEFENSE_ARMY_FRACTION = 0.90;
+
+    // =========================================================
+    // PLAYER PRESTIGE
+    // =========================================================
+    public static final int    PLAYER_PRESTIGE_BATTLE_WIN          = 15;
+    public static final int    PLAYER_PRESTIGE_BATTLE_LOSS         = -10;
+    public static final int    PLAYER_PRESTIGE_ZONE_REGAINED       = 10;
+    public static final int    PLAYER_PRESTIGE_PER_BARB_ZONE       = -2;
+    public static final int    PLAYER_PRESTIGE_PROTECTED_ZONE_LOST = -20;
+
+    // =========================================================
+    // PROTECTION
+    // =========================================================
+    public static final int    PROTECTION_INFLUENCE_COST           = 15;
+    public static final int    PROTECTION_TARGET_OPINION_BONUS     = 20;
+    public static final int    PROTECTION_RIVAL_OPINION_MALUS      = -10;
+
+    // =========================================================
+    // NOBLE COUNCIL
+    // =========================================================
+    public static final double NOBLE_COUNCIL_PRESTIGE_THRESHOLD    = 0.15;
+    public static final int    COUNCIL_ORACLE_IMPRESSION           = 1000;
+    public static final int    COUNCIL_PRESTIGIOUS_TOTAL_IMPRESSION= 6500;
+    public static final int    COUNCIL_PLAYER_BOOST_INFLUENCE_COST = 10;
+    public static final int    COUNCIL_PLAYER_BOOST_IMPRESSION     = 250;
+    public static final int    COUNCIL_DEAL_GOLD_PER_IMPRESSION    = 3;
+    public static final int    COUNCIL_DEAL_INF_PER_IMPRESSION     = 2;
+    public static final int    COUNCIL_DEAL_MP_PER_IMPRESSION      = 4;
+    public static final int    COUNCIL_FORTIFICATION_SUPPORT_YEARS = 3;
+    public static final int    COUNCIL_BORDER_FORT_COST_PER_ZONE   = 20;
+    public static final double COUNCIL_UNLAWFUL_REFUSE_THRESHOLD   = 0.70;
+    public static final int    COUNCIL_UNLAWFUL_RECIPIENT_OPINION  = 15;
+    public static final int    COUNCIL_UNLAWFUL_OWNER_OPINION      = -20;
+    public static final int    COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN = -5;
 }

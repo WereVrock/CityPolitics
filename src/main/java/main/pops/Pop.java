@@ -11,6 +11,7 @@ public class Pop {
     private final PopType type;
     private int count;
     private PolitcalView affiliation;
+    private final main.pops.PopElectoralData electoralData;
 
     public Pop(PopType type, PolitcalView affiliation) {
         if (!type.getEligibleAffiliations().contains(affiliation)
@@ -19,9 +20,10 @@ public class Pop {
                 type.getDisplayName() + " cannot belong to " + affiliation.getDisplayName()
             );
         }
-        this.type        = type;
-        this.count       = type.getStartingCount();
-        this.affiliation = affiliation;
+        this.type          = type;
+        this.count         = type.getStartingCount();
+        this.affiliation   = affiliation;
+        this.electoralData = new main.pops.PopElectoralData(new java.util.Random());
     }
 
     // ─── Derived economics (per turn) ────────────────────────────────────────
@@ -50,6 +52,7 @@ public class Pop {
 
     public void setCount(int count)                   { this.count = Math.max(0, count); }
     public void setAffiliation(PolitcalView a){ this.affiliation = a; }
+    public main.pops.PopElectoralData getElectoralData() { return electoralData; }
 
     @Override
     public String toString() {

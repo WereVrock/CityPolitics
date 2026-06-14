@@ -15,7 +15,7 @@ import java.util.Map;
 public class PoliticalParty {
 
     private final String           name;
-    private final int              seats;
+    private       int              seats;
     private final String           leaderName;
     private final String           personality;
     private final List<SideLeader> sideLeaders;
@@ -77,6 +77,7 @@ public class PoliticalParty {
 
     public String           getName()          { return name; }
     public int              getSeats()         { return seats; }
+    public void             setSeats(int v)    { this.seats = Math.max(0, v); }
     public String           getLeaderName()    { return leaderName; }
     public String           getPersonality()   { return personality; }
     public List<SideLeader> getSideLeaders()   { return Collections.unmodifiableList(sideLeaders); }

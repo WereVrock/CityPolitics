@@ -18,6 +18,7 @@ public class BarbInvasionState {
     private int    nextWaveTurn;            // absolute turn number of next wave
     private int    waveHalfPending;         // 0 = none, 1 = second half pending next turn
     private int    wavesSpawned;            // incremented each time a full wave completes
+    private int    invasionCount  = 0;      // total invasions that have started (0-indexed)
 
     private final Random rng = new Random();
 
@@ -27,7 +28,7 @@ public class BarbInvasionState {
 
     // ─── Lifecycle ───────────────────────────────────────────────────────────
 
-    public void resetCountdown() {
+public void resetCountdown() {
         int years = GameParameters.BARB_COUNTDOWN_MIN_YEARS
                   + rng.nextInt(GameParameters.BARB_COUNTDOWN_MAX_YEARS
                               - GameParameters.BARB_COUNTDOWN_MIN_YEARS + 1);
@@ -38,18 +39,19 @@ public class BarbInvasionState {
         wavesSpawned            = 0;
     }
 
-    public void startInvasion(int absoluteTurn) {
+public void startInvasion(int absoluteTurn) {
         phase                   = Phase.ACTIVE;
         turnsSinceInvasionStart = 0;
         wavesSpawned            = 0;
         scheduleNextWave(absoluteTurn);
     }
 
-    public void markDestroyed() {
+public void markDestroyed() {
         phase = Phase.DESTROYED;
+        invasionCount++;
     }
 
-    // ─── Per-turn tick ────────────────────────────────────────────────────────
+// ─── Per-turn tick ────────────────────────────────────────────────────────
 
     /** Called each turn. Returns true if countdown just expired. */
     public boolean tickCountdown() {
@@ -97,10 +99,23 @@ public class BarbInvasionState {
     public int     getTurnsSinceInvasionStart(){ return turnsSinceInvasionStart; }
     public int     getNextWaveTurn()           { return nextWaveTurn; }
 
-/** Returns true for the first N waves — early waves spawn smaller, faster fleeing tribes. */
+/**
+ * Returns true for the first N invasions (0-indexed).
+ * During an early invasion, ALL armies including the warboss spawn at reduced size.
+ */
+public boolean isEarlyInvasion() {
+    return invasionCount < GameParameters.BARB_EARLY_INVASION_COUNT;
+}
+
+/** Returns true for the first N waves within the current invasion. */
 public boolean isEarlyWave() {
     return wavesSpawned < GameParameters.BARB_EARLY_WAVE_COUNT;
 }
+
+public int getInvasionCount() { return invasionCount; }
+public void setInvasionCount(int v) { invasionCount = v; }
+
+public int getWavesSpawnedCount() { return wavesSpawned; }
 
 public int getWavesSpawned() { return wavesSpawned; }
 

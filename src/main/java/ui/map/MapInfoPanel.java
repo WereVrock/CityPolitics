@@ -740,7 +740,6 @@ private void updateClaimsPanel(String zoneId) {
         }
     }
 
-    // Grant claim quick button
     JButton grantBtn = new JButton("+ Grant Claim Here");
     grantBtn.setFont(UITheme.FONT_SMALL);
     grantBtn.setForeground(UITheme.TEXT_GOLD);
@@ -751,9 +750,10 @@ private void updateClaimsPanel(String zoneId) {
     grantBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
     grantBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     grantBtn.setMargin(new Insets(2, 6, 2, 6));
+    final String capturedZoneId = zoneId;
     grantBtn.addActionListener(e -> {
         if (grantClaimFromMapCallback != null) {
-            grantClaimFromMapCallback.accept(zoneId, nobleHouseManager);
+            grantClaimFromMapCallback.accept(capturedZoneId, nobleHouseManager);
         }
     });
     claimsPanel.add(Box.createVerticalStrut(3));

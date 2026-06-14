@@ -37,6 +37,14 @@ public BarbArmy spawnWarboss(String zoneId, int turn) {
     return wb;
 }
 
+public BarbArmy spawnWarbossWithSize(String zoneId, int size) {
+    BarbArmy wb = new BarbArmy(BarbArmy.Type.WARBOSS, size, zoneId);
+    wb.setDisplayName(BarbTribeNameGenerator.generateWarbossName());
+    add(wb);
+    invasionVisited.add(zoneId);
+    return wb;
+}
+
 public BarbArmy spawnRaider(String zoneId, int size) {
     return spawnRaider(zoneId, size, false);
 }

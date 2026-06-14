@@ -143,20 +143,38 @@ private List<String> startInvasion(int absoluteTurn, GameCalendar calendar) {
         return log;
     }
 
-    BarbArmy warboss = armyManager.spawnWarboss(spawnZone, calendar.getTotalTurnsElapsed());
+    boolean earlyInvasion = state.isEarlyInvasion();
+
+    // Warboss size scaled down for early invasions
+    int warbossSize = GameParameters.BARB_WARBOSS_BASE_SIZE
+             + calendar.getTotalTurnsElapsed() * GameParameters.BARB_WARBOSS_SIZE_PER_TURN;
+    if (earlyInvasion) {
+        warbossSize = (int)(warbossSize * GameParameters.BARB_EARLY_WAVE_SIZE_FRACTION);
+        warbossSize = Math.max(30, warbossSize);
+    }
+
+    BarbArmy warboss = armyManager.spawnWarbossWithSize(spawnZone, warbossSize);
     log("invasion-start", "Warboss spawned at " + spawnZone + ", size=" + warboss.getSize()
-            + ", name=" + warboss.getDisplayName());
+            + ", name=" + warboss.getDisplayName()
+            + ", earlyInvasion=" + earlyInvasion);
     state.startInvasion(absoluteTurn);
 
-    log.add("☠ THE BARBARIAN HORDE DESCENDS FROM THE NORTH!");
-    log.add("  " + warboss.getDisplayName() + " (" + warboss.getSize()
-            + " warriors) — DRIVEN SOUTH BY THE FROST GIANTS!");
-    log.add("  The barbarians do not come to conquer. They come because something worse follows.");
+    if (earlyInvasion) {
+        log.add("☠ FLEEING TRIBES POUR FROM THE NORTHERN WASTES!");
+        log.add("  " + warboss.getDisplayName() + " (" + warboss.getSize()
+                + " warriors) — DRIVEN SOUTH BY THE FROST GIANTS, MOVING FAST!");
+        log.add("  These are survivors, not conquerors. Desperate and swift.");
+    } else {
+        log.add("☠ THE BARBARIAN HORDE DESCENDS FROM THE NORTH!");
+        log.add("  " + warboss.getDisplayName() + " (" + warboss.getSize()
+                + " warriors) — DRIVEN SOUTH BY THE FROST GIANTS!");
+        log.add("  The barbarians do not come to conquer. They come because something worse follows.");
+    }
 
-    // First wave: fleeing scouts
+    // First wave
     log.addAll(spawnWaveHalf(true));
     state.markFirstHalfSpawned();
-    log("invasion-start", "First early wave spawned");
+    log("invasion-start", "First wave half spawned");
 
     return log;
 }
@@ -175,16 +193,18 @@ private List<String> spawnWaveHalf(boolean firstHalf) {
     int rCount = firstHalf ? (raidersToSpawn + 1) / 2 : raidersToSpawn / 2;
     int vCount = firstHalf ? (ravagersToSpawn + 1) / 2 : ravagersToSpawn / 2;
 
-    boolean earlyWave = state.isEarlyWave();
+    // Early invasion = all armies are small/fast; early wave = same within normal invasion
+    boolean earlyInvasion = state.isEarlyInvasion();
+    boolean earlyWave     = earlyInvasion || state.isEarlyWave();
 
-    // Early waves: flee south in desperation — smaller and faster
     double sizeFraction = earlyWave
             ? GameParameters.BARB_EARLY_WAVE_SIZE_FRACTION : 1.0;
 
     List<String> desolateZones = getDesolateZoneIds();
     if (desolateZones.isEmpty()) return log;
 
-    String waveType = earlyWave ? "Fleeing tribe" : "Warband";
+    String waveType = earlyInvasion ? "Fleeing tribe"
+            : earlyWave ? "Fleeing warband" : "Warband";
 
     for (int i = 0; i < rCount; i++) {
         String z    = desolateZones.get(rng.nextInt(desolateZones.size()));
@@ -193,7 +213,9 @@ private List<String> spawnWaveHalf(boolean firstHalf) {
         BarbArmy raider = armyManager.spawnRaider(z, size, earlyWave);
         log.add("☠ " + waveType + " — " + raider.getDisplayName()
                 + " (" + raider.getSize() + " warriors) emerge at " + z + ".");
-        if (earlyWave) {
+        if (earlyInvasion) {
+            log.add("  (Driven south by the Frost Giants — fast, light, desperate survivors.)");
+        } else if (earlyWave) {
             log.add("  (Driven south by the Frost Giants, these survivors travel fast and light.)");
         }
     }

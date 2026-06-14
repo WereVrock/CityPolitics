@@ -30,6 +30,7 @@ public class MainWindow extends JFrame {
     private final ui.nobles.NobleHousesPanel nobleHousesPanel;
     private  VoteSessionPanel       voteSessionPanel;
     private final MapView                mapView;
+    private       ui.council.CouncilPanel councilPanel;
 
     // version & build info
     private String buildNo = "?";
@@ -76,6 +77,7 @@ public class MainWindow extends JFrame {
         calendarPanel        = new CalendarPanel(gameState);
         calendarPanel.setEndTurnCallback(this::endTurn);
         calendarPanel.setBlockedSupplier(() -> gameState.hasActiveSession());
+        calendarPanel.setElectionManager(gameState.getElectionManager());
         resourcePanel        = new ResourcePanel(gameState);
         popPanel             = new PopPanel(gameState);
         actionsPanel         = new ActionsPanel(gameState, this::handleActionResult);
@@ -85,6 +87,7 @@ public class MainWindow extends JFrame {
         nobleHousesPanel     = new ui.nobles.NobleHousesPanel(gameState, this::showMainView);
         voteSessionPanel     = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
         mapView              = new MapView(gameState, this::showMainView);
+        wireMapViewCallbacks();
 
         // Left sidebar
         JPanel leftSidebar = new JPanel(new BorderLayout());
@@ -182,8 +185,12 @@ private JPanel buildBottomBar() {
     JButton ledgerBtn = makeBottomBarButton("LEDGER");
     ledgerBtn.addActionListener(e -> showLedger());
 
-    JButton militaryBtn = makeBottomBarButton("MILITARY");
-    militaryBtn.addActionListener(e -> showMilitaryView());
+        JButton militaryBtn = makeBottomBarButton("MILITARY");
+        militaryBtn.addActionListener(e -> showMilitaryView());
+
+        JButton councilBtn = makeBottomBarButton("⚑ COUNCIL");
+        councilBtn.setForeground(new Color(200, 170, 80));
+        councilBtn.addActionListener(e -> showCouncilView());
 
     JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
     leftBtns.setBackground(UITheme.BG_DARK);
@@ -192,7 +199,8 @@ private JPanel buildBottomBar() {
     leftBtns.add(mapBtn);
     leftBtns.add(openVoteBtn);
     leftBtns.add(ledgerBtn);
-    leftBtns.add(militaryBtn);
+        leftBtns.add(militaryBtn);
+        leftBtns.add(councilBtn);
 
     JPanel wrapper = new JPanel(new BorderLayout(6, 0));
     wrapper.setBackground(UITheme.BG_DARK);
@@ -485,6 +493,14 @@ private void swapCenter(JPanel panel) {
         mapView.refresh();
         swapCenter(mapView);
     }
+
+private void showCouncilView() {
+    councilPanel = new ui.council.CouncilPanel(gameState, this::showMainView);
+    if (gameState.hasActiveCouncilSession()) {
+        councilPanel.refresh();
+    }
+    swapCenter(councilPanel);
+}
 
 private void showMilitaryView() {
     main.army.commander.CommanderRoster      roster = gameState.getCommanderRoster();
@@ -802,7 +818,13 @@ private main.nobles.NobleHouse showZoneAwardDialog(
      * Must be called after construction and after gameState.reset() (new game).
      */
 
-private void rewireCallbacks() {
+    private void rewireCallbacks() {
+        gameState.getPlayerCombatProcessor().setPlayerPrestige(
+                gameState.getPlayerPrestige());
+        gameState.getPlayerCombatProcessor().setProtectionManager(
+                gameState.getProtectionManager());
+        gameState.getPlayerCombatProcessor().setNobleHouseManagerRef(
+                gameState.getNobleHouseManager());
     gameState.getPlayerCombatProcessor().setZoneAwardCallback(
             (zoneId, claimants) -> showZoneAwardDialog(zoneId, claimants));
 
@@ -866,6 +888,23 @@ private void rewireCallbacks() {
 
     // Recreate vote session panel with new reference after reset
     voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
+}
+
+private void wireMapViewCallbacks() {
+    mapView.getInfoPanel().setGrantClaimFromMapCallback((zoneId, nhm) -> {
+        ui.GrantZoneClaimDialog.show(
+                this,
+                gameState.getActionRegistry().getGrantZoneClaimAction(),
+                gameState.getNobleHouseManager(),
+                gameState.getZoneManager(),
+                gameState.getResources(),
+                gameState.getLedger(),
+                zoneId,
+                () -> {
+                    actionsPanel.refresh();
+                    mapView.refresh();
+                });
+    });
 }
 
 }

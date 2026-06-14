@@ -7,10 +7,10 @@ import main.core.GameState;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.util.List;
 import java.util.Map;
+import main.politics.PartyManager;
 import ui.UITheme;
 
 /**
@@ -68,6 +68,18 @@ public class PartiesOverviewPanel extends JPanel {
 
     public void refresh() {
         listPanel.removeAll();
+
+        // Election countdown banner
+        main.politics.ElectionManager em = gameState.getElectionManager();
+        int elTurns = em.getTurnsUntilElection();
+        JLabel elBanner = new JLabel("⚑ Next election in " + elTurns + " turn(s)"
+                + (elTurns <= 2 ? " — IMMINENT" : ""));
+        elBanner.setFont(UITheme.FONT_HEADER);
+        elBanner.setForeground(elTurns <= 2
+                ? new Color(220, 190, 80) : new Color(160, 140, 200));
+        elBanner.setBorder(new EmptyBorder(0, 0, 10, 0));
+        listPanel.add(elBanner);
+
         List<PoliticalParty> parties = gameState.getPartyManager().getParties();
         for (PoliticalParty party : parties) {
             listPanel.add(buildPartyCard(party));
@@ -78,6 +90,7 @@ public class PartiesOverviewPanel extends JPanel {
     }
 
     private JPanel buildPartyCard(PoliticalParty party) {
+        main.politics.PropagandaManager pm = gameState.getPropagandaManager();
         JPanel card = new JPanel(new BorderLayout(12, 0));
         card.setBackground(UITheme.BG_PANEL);
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -163,7 +176,22 @@ private JPanel buildPartyInfo(PoliticalParty party) {
         panel.add(seats);
         panel.add(Box.createVerticalStrut(2));
         panel.add(favourLabel);
-        panel.add(Box.createVerticalStrut(4));
+        panel.add(Box.createVerticalStrut(2));
+
+        // Propaganda display
+       main.politics.PropagandaManager pm = gameState.getPropagandaManager();
+        {
+            double electionProp = pm.getElectionPropaganda(party);
+            JLabel propLabel = new JLabel(String.format(
+                    "Propaganda (election): %.1f", electionProp));
+            propLabel.setFont(UITheme.FONT_SMALL);
+            propLabel.setForeground(new Color(180, 150, 220));
+            propLabel.setToolTipText("Propaganda banked for the next election. Higher = more vote bonus.");
+            panel.add(propLabel);
+            panel.add(Box.createVerticalStrut(2));
+        }
+
+        panel.add(Box.createVerticalStrut(2));
         panel.add(personality);
         panel.add(Box.createVerticalStrut(6));
 

@@ -55,6 +55,12 @@ public class GameState {
     private LegislationManager    legislationManager;
     private MercenaryManager      mercenaryManager;
     private WarStateChecker       warStateChecker;
+    private main.politics.PropagandaManager      propagandaManager;
+    private main.politics.ElectionManager        electionManager;
+    private main.nobles.PlayerPrestige           playerPrestige;
+    private main.nobles.ProtectionManager        protectionManager;
+    private main.nobles.council.CouncilSessionManager councilSessionManager;
+    private main.nobles.council.CouncilSession   activeCouncilSession;
 
     private final List<VotingSession> activeSessions = new ArrayList<>();
 
@@ -64,6 +70,10 @@ public class GameState {
 
     private void initState() {
         main.nobles.ai.OpportunismEvaluator.reset();
+        if (playerPrestige   != null) playerPrestige   = new main.nobles.PlayerPrestige();
+        if (protectionManager!= null) protectionManager= new main.nobles.ProtectionManager();
+        if (councilSessionManager != null) councilSessionManager.reset();
+        activeCouncilSession = null;
         calendar           = new GameCalendar();
         resources          = new ResourcePool();
         stats              = new StatBlock();
@@ -96,10 +106,18 @@ public class GameState {
         nobleHouseManager.setBarbArmyManager(barbArmyManager);
         playerCombatProcessor        = new main.army.PlayerCombatProcessor();
         playerCombatProcessor.setPartyManager(partyManager);
+        playerCombatProcessor.setPlayerPrestige(playerPrestige);
+        playerCombatProcessor.setProtectionManager(protectionManager);
+        playerCombatProcessor.setNobleHouseManagerRef(nobleHouseManager);
         battleInterventionProcessor  = new main.army.PlayerBattleInterventionProcessor();
         commanderRoster      = new main.army.commander.CommanderRoster(resources, partyManager);
         commanderRecruitPool = new main.army.commander.CommanderRecruitPool(resources, partyManager);
 
+        propagandaManager    = new main.politics.PropagandaManager(partyManager.getParties());
+        electionManager      = new main.politics.ElectionManager();
+        playerPrestige       = new main.nobles.PlayerPrestige();
+        protectionManager    = new main.nobles.ProtectionManager();
+        councilSessionManager= new main.nobles.council.CouncilSessionManager();
         // ActionRegistry depends on legislation+mercenary managers
         actionRegistry = new ActionRegistry(this);
 
@@ -177,9 +195,18 @@ public class GameState {
     public main.army.commander.CommanderRoster       getCommanderRoster()       { return commanderRoster; }
     public main.army.commander.CommanderRecruitPool  getCommanderRecruitPool()  { return commanderRecruitPool; }
 
-    public LegislationManager    getLegislationManager()    { return legislationManager; }
-    public MercenaryManager      getMercenaryManager()      { return mercenaryManager; }
-    public WarStateChecker       getWarStateChecker()       { return warStateChecker; }
+    public LegislationManager            getLegislationManager()   { return legislationManager; }
+    public MercenaryManager              getMercenaryManager()     { return mercenaryManager; }
+    public WarStateChecker               getWarStateChecker()      { return warStateChecker; }
+    public main.politics.PropagandaManager       getPropagandaManager()    { return propagandaManager; }
+    public main.politics.ElectionManager         getElectionManager()      { return electionManager; }
+    public main.nobles.PlayerPrestige            getPlayerPrestige()       { return playerPrestige; }
+    public main.nobles.ProtectionManager         getProtectionManager()    { return protectionManager; }
+    public main.nobles.council.CouncilSessionManager getCouncilSessionManager() { return councilSessionManager; }
+    public main.nobles.council.CouncilSession    getActiveCouncilSession() { return activeCouncilSession; }
+    public boolean hasActiveCouncilSession()      { return activeCouncilSession != null; }
+    public void setActiveCouncilSession(main.nobles.council.CouncilSession s) { activeCouncilSession = s; }
+    public void clearActiveCouncilSession()       { activeCouncilSession = null; }
 
     public void resetBarbarians() {
         barbArmyManager.reset();

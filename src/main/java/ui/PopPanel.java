@@ -2,6 +2,8 @@ package ui;
 
 import main.core.GameState;
 import main.pops.Pop;
+import java.util.Map;
+import java.awt.Font;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -41,29 +43,62 @@ public class PopPanel extends JPanel {
     }
 
 public void refresh() {
-        popListPanel.removeAll();
-        List<Pop> pops = new ArrayList<>(gameState.getPopManager().getPops());
-        for (Pop pop : pops) {
-            JLabel label = new JLabel(pop.toString());
-            label.setFont(UITheme.FONT_BODY);
-            label.setForeground(UITheme.TEXT_PRIMARY);
-            label.setBorder(new EmptyBorder(2, 0, 2, 0));
+    popListPanel.removeAll();
+    List<Pop> pops = new ArrayList<>(gameState.getPopManager().getPops());
+    for (Pop pop : pops) {
+        JLabel label = new JLabel(pop.toString());
+        label.setFont(UITheme.FONT_BODY);
+        label.setForeground(UITheme.TEXT_PRIMARY);
+        label.setBorder(new EmptyBorder(2, 0, 1, 0));
 
-            String tooltip = "<html>"
-                + "<b>" + pop.getType().getDisplayName() + "s</b><br>"
-                + "Count: " + pop.getCount() + "<br>"
-                + "View: " + pop.getAffiliation().getDisplayName() + "<br>"
-                + "Food/turn: " + pop.getFoodConsumption() + "<br>"
-                + "Money/turn: " + pop.getMoneyGeneration() + "<br>"
-                + "Influence/turn: " + pop.getInfluenceGeneration() + "<br>"
-                + "Manpower: " + pop.getManpowerContribution()
-                + "</html>";
-            label.setToolTipText(tooltip);
-
-            popListPanel.add(label);
+        // Build view intensities tooltip
+        StringBuilder viewSb = new StringBuilder("<html><b>Political Views:</b><br>");
+        boolean hasViews = false;
+        for (Map.Entry<main.politics.PolitcalView, Integer> e
+                : pop.getElectoralData().getViewIntensities().entrySet()) {
+            if (e.getValue() > 0) {
+                viewSb.append("&nbsp;&nbsp;")
+                      .append(e.getKey().getDisplayName())
+                      .append(": ").append(e.getValue()).append("<br>");
+                hasViews = true;
+            }
         }
-        popListPanel.revalidate();
-        popListPanel.repaint();
+        if (!hasViews) viewSb.append("&nbsp;&nbsp;None<br>");
+        viewSb.append("</html>");
+
+        String baseTooltip = "<html>"
+            + "<b>" + pop.getType().getDisplayName() + "s</b><br>"
+            + "Count: " + pop.getCount() + "<br>"
+            + "Affiliation: " + pop.getAffiliation().getDisplayName() + "<br>"
+            + "Food/turn: " + pop.getFoodConsumption() + "<br>"
+            + "Money/turn: " + pop.getMoneyGeneration() + "<br>"
+            + "Influence/turn: " + pop.getInfluenceGeneration() + "<br>"
+            + "Manpower: " + pop.getManpowerContribution() + "<br>"
+            + viewSb.toString().replace("<html>","").replace("</html>","")
+            + "</html>";
+        label.setToolTipText(baseTooltip);
+
+        popListPanel.add(label);
+
+        // Compact view intensity bar (dots)
+        if (!pop.getElectoralData().getViewIntensities().isEmpty()) {
+            StringBuilder viewLine = new StringBuilder("  Views: ");
+            for (Map.Entry<main.politics.PolitcalView, Integer> e
+                    : pop.getElectoralData().getViewIntensities().entrySet()) {
+                if (e.getValue() > 0) {
+                    viewLine.append(e.getKey().getDisplayName())
+                            .append("(").append(e.getValue()).append(") ");
+                }
+            }
+            JLabel viewLabel = new JLabel(viewLine.toString().trim());
+            viewLabel.setFont(new Font("Monospaced", Font.PLAIN, UITheme.BASE_SIZE - 2));
+            viewLabel.setForeground(UITheme.TEXT_SECONDARY);
+            viewLabel.setBorder(new EmptyBorder(0, 0, 4, 0));
+            popListPanel.add(viewLabel);
+        }
     }
+    popListPanel.revalidate();
+    popListPanel.repaint();
+}
 
 }

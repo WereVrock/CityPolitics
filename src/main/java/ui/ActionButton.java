@@ -100,12 +100,20 @@ public ActionButton(GameState gameState, PlayerAction action, Consumer<ActionRes
 
 public void refresh() {
     boolean available = action.isAvailable();
+
+    // For formal actions, also disable if the shared vote slot is used or session pending
+    boolean isFormal = action instanceof main.actions.AbstractFormalAction;
+    if (isFormal) {
+        boolean voteUsed = gameState.getActionRegistry().isFormalUsedThisTurn();
+        boolean hasPending = gameState.hasActiveSession();
+        if (voteUsed || hasPending) {
+            available = false;
+        }
+    }
+
     button.setEnabled(available);
     button.setBackground(available ? UITheme.BUTTON_BG : UITheme.BUTTON_DISABLED);
 
-    // Formal actions and legislation-gated actions don't show per-action use counter
-    // (the shared vote counter in ActionsPanel header handles that)
-    boolean isFormal   = action instanceof main.actions.AbstractFormalAction;
     boolean isLegGated = action instanceof main.actions.WartimeTaxesAction
             || action instanceof main.actions.HireMercenariesAction
             || action instanceof main.actions.SendResourcesToNoblesAction
@@ -123,10 +131,10 @@ public void refresh() {
         } else if (action instanceof main.actions.HireMercenariesAction) {
             reason = "Mercenary hiring not currently authorised.";
         } else if (action instanceof main.actions.AbstractFormalAction) {
-            if (gameState.getActionRegistry().isFormalUsedThisTurn()) {
-                reason = "Formal/legislation vote already used this turn.";
-            } else if (gameState.hasActiveSession()) {
+            if (gameState.hasActiveSession()) {
                 reason = "A vote session is already pending.";
+            } else if (gameState.getActionRegistry().isFormalUsedThisTurn()) {
+                reason = "Formal/legislation vote already used this turn.";
             }
         }
         button.setToolTipText(reason != null ? reason : "Not available right now.");

@@ -130,14 +130,14 @@ private void showTab(String tab) {
     Color active   = UITheme.TEXT_GOLD;
     Color inactive = UITheme.TEXT_SECONDARY;
     Color bgActive = new Color(35, 28, 52);
-    tabAuth.setForeground(TAB_AUTH.equals(tab)   ? active : inactive);
+    tabAuth.setForeground(TAB_AUTH.equals(tab)    ? active : inactive);
     tabFormal.setForeground(TAB_FORMAL.equals(tab)? active : inactive);
-    tabLeg.setForeground(TAB_LEG.equals(tab)     ? active : inactive);
-    tabRealm.setForeground(TAB_REALM.equals(tab) ? active : inactive);
-    tabAuth.setBackground(TAB_AUTH.equals(tab)   ? bgActive : UITheme.BUTTON_BG);
+    tabLeg.setForeground(TAB_LEG.equals(tab)      ? active : inactive);
+    tabRealm.setForeground(TAB_REALM.equals(tab)  ? active : inactive);
+    tabAuth.setBackground(TAB_AUTH.equals(tab)    ? bgActive : UITheme.BUTTON_BG);
     tabFormal.setBackground(TAB_FORMAL.equals(tab)? bgActive : UITheme.BUTTON_BG);
-    tabLeg.setBackground(TAB_LEG.equals(tab)     ? bgActive : UITheme.BUTTON_BG);
-    tabRealm.setBackground(TAB_REALM.equals(tab) ? bgActive : UITheme.BUTTON_BG);
+    tabLeg.setBackground(TAB_LEG.equals(tab)      ? bgActive : UITheme.BUTTON_BG);
+    tabRealm.setBackground(TAB_REALM.equals(tab)  ? bgActive : UITheme.BUTTON_BG);
 }
 
 // ─── Cards ───────────────────────────────────────────────────────────────
@@ -190,36 +190,42 @@ private void showTab(String tab) {
         return outer;
     }
 
-    private JPanel buildFormalCard() {
-        JPanel outer = new JPanel(new BorderLayout());
-        outer.setBackground(UITheme.BG_DARK);
-        outer.add(makeDescLabel(
-                "These actions require assembly approval. Shares the single formal vote per turn."),
-                BorderLayout.NORTH);
+private JPanel buildFormalCard() {
+    JPanel outer = new JPanel(new BorderLayout());
+    outer.setBackground(UITheme.BG_DARK);
+    outer.add(makeDescLabel(
+            "These actions require assembly approval. Shares the single formal vote per turn."),
+            BorderLayout.NORTH);
 
-        JPanel buttons = new JPanel();
-        buttons.setLayout(new BoxLayout(buttons, BoxLayout.Y_AXIS));
-        buttons.setBackground(UITheme.BG_DARK);
+    JPanel buttons = new JPanel();
+    buttons.setLayout(new BoxLayout(buttons, BoxLayout.Y_AXIS));
+    buttons.setBackground(UITheme.BG_DARK);
 
-        LegislationManager lm = gameState.getLegislationManager();
-        for (PlayerAction action : gameState.getActionRegistry().getFormalActions()) {
-            // Hide Allow Mercenaries if authorization law already passed
-            if (action instanceof main.actions.AllowMercenariesAction
-                    && lm.isPassed(LegislationType.MERCENARY_AUTHORIZATION_LAW)) continue;
-            // Hide Allow Mercenaries if base law not passed
-            if (action instanceof main.actions.AllowMercenariesAction
-                    && !lm.isPassed(LegislationType.MERCENARY_ALLOWANCE_LAW)) continue;
+    LegislationManager lm = gameState.getLegislationManager();
+    boolean formalUsed = gameState.getActionRegistry().isFormalUsedThisTurn();
+    boolean hasPending = gameState.hasActiveSession();
 
-            ActionButton btn = makeActionButton(action);
-            allButtons.add(btn);
-            buttons.add(btn);
-            buttons.add(Box.createVerticalStrut(6));
-        }
-        outer.add(wrapInScroll(buttons), BorderLayout.CENTER);
-        return outer;
+    for (PlayerAction action : gameState.getActionRegistry().getFormalActions()) {
+        // Hide Allow Mercenaries if authorization law already passed
+        if (action instanceof main.actions.AllowMercenariesAction
+                && lm.isPassed(LegislationType.MERCENARY_AUTHORIZATION_LAW)) continue;
+        // Hide Allow Mercenaries if base law not passed
+        if (action instanceof main.actions.AllowMercenariesAction
+                && !lm.isPassed(LegislationType.MERCENARY_ALLOWANCE_LAW)) continue;
+        // Hide WartimeTaxes until law is passed
+        if (action instanceof main.actions.WartimeTaxesAction
+                && !lm.isPassed(LegislationType.WARTIME_TAXES_LAW)) continue;
+
+        ActionButton btn = makeActionButton(action);
+        allButtons.add(btn);
+        buttons.add(btn);
+        buttons.add(Box.createVerticalStrut(6));
     }
+    outer.add(wrapInScroll(buttons), BorderLayout.CENTER);
+    return outer;
+}
 
-    private JPanel buildLegislationCard() {
+private JPanel buildLegislationCard() {
         JPanel outer = new JPanel(new BorderLayout());
         outer.setBackground(UITheme.BG_DARK);
         outer.add(makeDescLabel(
@@ -391,15 +397,18 @@ private void showTab(String tab) {
         return l;
     }
 
-    public void refresh() {
-        for (ActionButton btn : allButtons) {
-            btn.refresh();
-        }
-        buildCards();
-        refreshVoteCounter();
-        revalidate();
-        repaint();
+public void refresh() {
+    String tabToRestore = currentTab;
+    for (ActionButton btn : allButtons) {
+        btn.refresh();
     }
+    buildCards();
+    refreshVoteCounter();
+    // Restore the previously selected tab so UI doesn't jump back to Authorised
+    showTab(tabToRestore);
+    revalidate();
+    repaint();
+}
 
 public String getCurrentTab() { return currentTab; }
 

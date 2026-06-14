@@ -48,18 +48,23 @@ public class WartimeTaxesAction extends AbstractFormalAction {
     @Override public String getName() { return "Wartime Taxes"; }
 
     @Override
-    public String getDescription() {
-        int cooldown = legislationManager.getWartimeTaxesCooldown();
-        int gold     = computeGold();
-        int happiness = computeHappinessCost();
-        if (cooldown > 0)
-            return "On cooldown: " + cooldown + " turn(s). Would yield " + gold
-                    + " gold, -" + happiness + " happiness.";
-        return "Each pop pays " + GameParameters.WARTIME_TAXES_GOLD_PER_POP
-                + " gold. Yields ~" + gold + " gold, -" + happiness + " happiness.";
-    }
 
-    @Override
+
+public String getDescription() {
+    int cooldown  = legislationManager.getWartimeTaxesCooldown();
+    int gold      = computeGold();
+    int happiness = computeHappinessCost();
+    if (cooldown > 0)
+        return "On cooldown: " + cooldown + " turn(s). Would yield +" + gold
+                + " gold, -" + happiness + " happiness.";
+    if (!warStateChecker.isAtWar())
+        return "Only available during wartime. Would yield +" + gold
+                + " gold, -" + happiness + " happiness.";
+    return "Each pop pays " + GameParameters.WARTIME_TAXES_GOLD_PER_POP
+            + " gold. Yields +" + gold + " gold, -" + happiness + " happiness. Requires vote.";
+}
+
+@Override
     public int getInfluenceCost() {
         return GameParameters.WARTIME_TAXES_INFLUENCE_COST;
     }

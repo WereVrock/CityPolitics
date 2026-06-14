@@ -91,18 +91,22 @@ public void applyDeal(PoliticalParty party) {
 public SideDealResult applySideDeal(PoliticalParty party,
                                      main.resources.ResourcePool resources,
                                      main.resources.StatBlock stats) {
+    return applySideDeal(party, resources, stats, null);
+}
+
+public SideDealResult applySideDeal(PoliticalParty party,
+                                     main.resources.ResourcePool resources,
+                                     main.resources.StatBlock stats,
+                                     main.politics.PropagandaManager propagandaManager) {
     if (hasSideDealt(party)) {
         debug.Debug.log("voting", "side-deal-blocked", party.getName() + " already side-dealt");
         return new SideDealResult(0, "Already negotiated with secondary leader.");
     }
 
-    // Side deals ALWAYS cost resources, never favour.
-    // Use half of main offer's resource costs, but apply minimums independently.
     DealOffer mainOffer = new DealOffer(party, scores.getOrDefault(party, 0.0));
     int goldCost;
     int influenceCost;
     if (mainOffer.isFavourOnly()) {
-        // When main deal is favour-only, side deal costs minimums
         goldCost      = GameParameters.DEAL_MIN_MONEY;
         influenceCost = GameParameters.DEAL_MIN_INFLUENCE;
     } else {
@@ -113,9 +117,7 @@ public SideDealResult applySideDeal(PoliticalParty party,
     }
 
     debug.Debug.log("voting", "side-deal-attempt", party.getName()
-            + " goldCost=" + goldCost + " influenceCost=" + influenceCost
-            + " available gold=" + resources.getMoney()
-            + " available influence=" + resources.getInfluence());
+            + " goldCost=" + goldCost + " influenceCost=" + influenceCost);
 
     if (resources.getMoney() < goldCost || resources.getInfluence() < influenceCost) {
         debug.Debug.log("voting", "side-deal-failed", party.getName() + " — cannot afford");
@@ -125,6 +127,11 @@ public SideDealResult applySideDeal(PoliticalParty party,
     resources.spendMoney(goldCost);
     resources.spendInfluence(influenceCost);
 
+    // Feed propaganda
+    if (propagandaManager != null) {
+        propagandaManager.convertDealToPropaganda(party, goldCost, influenceCost);
+    }
+
     int maxSeats = Math.max(1, (int)(party.getSeats() * 0.75));
     int seatsWon = 1 + (int)(Math.random() * maxSeats);
     seatsWon     = Math.min(seatsWon, party.getSeats());
@@ -133,7 +140,7 @@ public SideDealResult applySideDeal(PoliticalParty party,
     dealt.put(party, true);
 
     debug.Debug.log("voting", "side-deal-success", party.getName()
-            + " seatsWon=" + seatsWon + " of " + party.getSeats()
+            + " seatsWon=" + seatsWon
             + " goldCost=" + goldCost + " influenceCost=" + influenceCost);
 
     return new SideDealResult(seatsWon,

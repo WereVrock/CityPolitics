@@ -87,6 +87,50 @@ public class TurnProcessor {
                 gameState.getZoneManager(),
                 resources));
 
+        // ── Propaganda ideology spread (before ledger apply) ─────────────────
+        gameState.getPropagandaManager().processIdeologySpread(
+                gameState.getPartyManager().getParties(),
+                gameState.getPopManager());
+
+        // ── Power drift ───────────────────────────────────────────────────────
+        gameState.getElectionManager().applyPowerDrift(
+                gameState.getPartyManager().getParties());
+
+        // ── Council session manager turn ──────────────────────────────────────
+        log.addAll(gameState.getCouncilSessionManager().processTurn(
+                gameState.getNobleHouseManager(),
+                resources,
+                gameState.getPlayerPrestige()));
+
+        // ── Player prestige: barb-owned zones ─────────────────────────────────
+        int barbZones = 0;
+        for (main.map.Zone z : gameState.getZoneManager().getZones()) {
+            if (!z.isDesolate()
+                    && !gameState.getBarbArmyManager().getGarrisonsInZone(z.getId()).isEmpty()) {
+                barbZones++;
+            }
+        }
+        if (barbZones > 0) {
+            gameState.getPlayerPrestige().addPrestige(
+                    barbZones * main.parameters.GameParameters.PLAYER_PRESTIGE_PER_BARB_ZONE);
+            if (barbZones > 0) {
+                log.add("Prestige -" + (barbZones
+                        * Math.abs(main.parameters.GameParameters.PLAYER_PRESTIGE_PER_BARB_ZONE))
+                        + " (" + barbZones + " barbarian-occupied zones).");
+            }
+        }
+
+        // ── Protection: check for protected house zone losses ─────────────────
+        // (tracked via NobleHouseManager callback — prestige hit applied in PlayerCombatProcessor)
+
+        // ── Election tick ─────────────────────────────────────────────────────
+        List<String> electionLog = gameState.getElectionManager().tick(
+                gameState.getPartyManager().getParties(),
+                gameState.getPopManager(),
+                gameState.getPropagandaManager(),
+                gameState.getStats().getCorruption());
+        log.addAll(electionLog);
+
         // ── Legislation ticking ───────────────────────────────────────────────
         gameState.getLegislationManager().tickMercenaryWindow();
         gameState.getLegislationManager().tickWartimeTaxesCooldown();

@@ -49,11 +49,17 @@ public class PlayerCombatProcessor {
         NobleHouse askPlayerChooseClaimant(String zoneId, List<NobleHouse> claimants);
     }
 
-    private ZoneAwardCallback zoneAwardCallback;
-    private PartyManager      partyManager;
+    private ZoneAwardCallback            zoneAwardCallback;
+    private PartyManager                 partyManager;
+    private main.nobles.PlayerPrestige   playerPrestige;
+    private main.nobles.ProtectionManager protectionManager;
+    private main.nobles.NobleHouseManager nobleHouseManager;
 
-    public void setZoneAwardCallback(ZoneAwardCallback cb) { this.zoneAwardCallback = cb; }
-    public void setPartyManager(PartyManager pm)           { this.partyManager = pm; }
+    public void setZoneAwardCallback(ZoneAwardCallback cb)     { this.zoneAwardCallback = cb; }
+    public void setPartyManager(PartyManager pm)               { this.partyManager = pm; }
+    public void setPlayerPrestige(main.nobles.PlayerPrestige pp)         { this.playerPrestige = pp; }
+    public void setProtectionManager(main.nobles.ProtectionManager pm)   { this.protectionManager = pm; }
+    public void setNobleHouseManagerRef(main.nobles.NobleHouseManager nhm){ this.nobleHouseManager = nhm; }
 
     // ─── Main entry ──────────────────────────────────────────────────────────
 

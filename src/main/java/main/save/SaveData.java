@@ -179,6 +179,7 @@ public class SaveData {
         public int     turnsSinceInvasionStart;
         public int     nextWaveTurn;
         public int     waveHalfPending;
+        public int     invasionCount;
         public BarbInvasionStateEntry() {}
     }
 
@@ -215,6 +216,33 @@ public class SaveData {
         public int     rebellionPower;
         public ZoneStateEntry() {}
     }
+
+    // ── Election ──────────────────────────────────────────────────────────────
+    public static class ElectionEntry {
+        public int turnsSinceLastElection;
+        public ElectionEntry() {}
+    }
+
+    public static class PropagandaEntry {
+        public String  partyName;
+        public double  electionPropaganda;
+        public double  spreadPropaganda;
+        public PropagandaEntry() {}
+    }
+
+    public static class PopElectoralEntry {
+        public String  popType;
+        public Map<String, Integer> viewIntensities;
+        public int     consecutiveVotesForAffiliated;
+        public int     consecutiveOverrides;
+        public String  lastVotedPartyName;
+        public boolean lastOverridden;
+        public PopElectoralEntry() {}
+    }
+
+    public ElectionEntry              election;
+    public List<PropagandaEntry>      propaganda;
+    public List<PopElectoralEntry>    popElectoral;
 
     // ── Legislation ───────────────────────────────────────────────────────────
     public static class LegislationEntry {

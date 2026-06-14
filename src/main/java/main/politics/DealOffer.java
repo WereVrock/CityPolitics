@@ -74,12 +74,21 @@ public class DealOffer {
             && res.getInfluence() >= influenceCost;
     }
 
-    public void apply(main.resources.ResourcePool res, main.resources.StatBlock stats) {
-        if (!favourOnly) {
-            res.spendMoney(moneyCost);
-            res.spendInfluence(influenceCost);
-        }
-        if (happinessMalus > 0) stats.reduceHappiness(happinessMalus);
-        // Favour is tracked via VotingSession.applyDeal which decrements party favour
+public void apply(main.resources.ResourcePool res, main.resources.StatBlock stats) {
+    if (!favourOnly) {
+        res.spendMoney(moneyCost);
+        res.spendInfluence(influenceCost);
     }
+    if (happinessMalus > 0) stats.reduceHappiness(happinessMalus);
+}
+
+public void apply(main.resources.ResourcePool res, main.resources.StatBlock stats,
+                  main.politics.PoliticalParty party,
+                  main.politics.PropagandaManager propagandaManager) {
+    apply(res, stats);
+    if (propagandaManager != null && party != null && !favourOnly) {
+        propagandaManager.convertDealToPropaganda(party, moneyCost, influenceCost);
+    }
+}
+
 }

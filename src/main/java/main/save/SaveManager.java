@@ -129,6 +129,9 @@ public class SaveManager {
 
         data.legislation      = serializeLegislation(gs);
         data.mercenaryArmies  = serializeMercenaries(gs);
+        data.election         = serializeElection(gs);
+        data.propaganda       = serializePropaganda(gs);
+        data.popElectoral     = serializePopElectoral(gs);
 
         return data;
     }
@@ -295,6 +298,7 @@ public class SaveManager {
         e.turnsSinceInvasionStart = s.getTurnsSinceInvasionStart();
         e.nextWaveTurn            = s.getNextWaveTurn();
         e.waveHalfPending         = readBarbWaveHalfPending(s);
+        e.invasionCount           = s.getInvasionCount();
         return e;
     }
 
@@ -435,6 +439,9 @@ public class SaveManager {
         applyZoneStates(data, gs);
         applyLegislation(data, gs);
         applyMercenaries(data, gs);
+        applyElection(data, gs);
+        applyPropaganda(data, gs);
+        applyPopElectoral(data, gs);
     }
 
     private static void applyCalendar(SaveData data, GameCalendar cal) {
@@ -650,6 +657,7 @@ public class SaveManager {
             setField(s, BarbInvasionState.class, "turnsSinceInvasionStart", e.turnsSinceInvasionStart);
             setField(s, BarbInvasionState.class, "nextWaveTurn",          e.nextWaveTurn);
             setField(s, BarbInvasionState.class, "waveHalfPending",       e.waveHalfPending);
+            setField(s, BarbInvasionState.class, "invasionCount",         e.invasionCount);
         } catch (Exception ex) {}
     }
 
@@ -764,6 +772,85 @@ public class SaveManager {
                 List<MercenaryArmy> armies = (List<MercenaryArmy>) f.get(mm);
                 armies.add(army);
             } catch (Exception ignored) {}
+        }
+    }
+
+    private static SaveData.ElectionEntry serializeElection(GameState gs) {
+        SaveData.ElectionEntry e = new SaveData.ElectionEntry();
+        e.turnsSinceLastElection = gs.getElectionManager().getTurnsSinceLastElection();
+        return e;
+    }
+
+    private static List<SaveData.PropagandaEntry> serializePropaganda(GameState gs) {
+        List<SaveData.PropagandaEntry> list = new ArrayList<>();
+        main.politics.PropagandaManager pm = gs.getPropagandaManager();
+        for (main.politics.PoliticalParty p : gs.getPartyManager().getParties()) {
+            SaveData.PropagandaEntry e = new SaveData.PropagandaEntry();
+            e.partyName          = p.getName();
+            e.electionPropaganda = pm.getElectionPropaganda(p);
+            list.add(e);
+        }
+        return list;
+    }
+
+    private static List<SaveData.PopElectoralEntry> serializePopElectoral(GameState gs) {
+        List<SaveData.PopElectoralEntry> list = new ArrayList<>();
+        for (main.pops.Pop pop : gs.getPopManager().getPops()) {
+            SaveData.PopElectoralEntry e = new SaveData.PopElectoralEntry();
+            e.popType    = pop.getType().name();
+            e.viewIntensities = new LinkedHashMap<>();
+            for (Map.Entry<main.politics.PolitcalView, Integer> entry
+                    : pop.getElectoralData().getViewIntensities().entrySet()) {
+                e.viewIntensities.put(entry.getKey().name(), entry.getValue());
+            }
+            e.consecutiveVotesForAffiliated = pop.getElectoralData().getConsecutiveVotesForAffiliated();
+            e.consecutiveOverrides          = pop.getElectoralData().getConsecutiveOverrides();
+            e.lastVotedPartyName            = pop.getElectoralData().getLastVotedPartyName();
+            e.lastOverridden                = pop.getElectoralData().wasLastOverridden();
+            list.add(e);
+        }
+        return list;
+    }
+
+    private static void applyElection(SaveData data, GameState gs) {
+        if (data.election == null) return;
+        gs.getElectionManager().setTurnsSinceLastElection(data.election.turnsSinceLastElection);
+    }
+
+    private static void applyPropaganda(SaveData data, GameState gs) {
+        if (data.propaganda == null) return;
+        main.politics.PropagandaManager pm = gs.getPropagandaManager();
+        for (SaveData.PropagandaEntry e : data.propaganda) {
+            for (main.politics.PoliticalParty p : gs.getPartyManager().getParties()) {
+                if (p.getName().equals(e.partyName)) {
+                    pm.setElectionPropaganda(p, e.electionPropaganda);
+                    break;
+                }
+            }
+        }
+    }
+
+    private static void applyPopElectoral(SaveData data, GameState gs) {
+        if (data.popElectoral == null) return;
+        for (SaveData.PopElectoralEntry e : data.popElectoral) {
+            main.pops.Pop pop = gs.getPopManager().getPopByType(
+                    main.pops.PopType.valueOf(e.popType));
+            if (pop == null) continue;
+            main.pops.PopElectoralData ed = pop.getElectoralData();
+            if (e.viewIntensities != null) {
+                Map<main.politics.PolitcalView, Integer> intensities = new LinkedHashMap<>();
+                for (Map.Entry<String, Integer> entry : e.viewIntensities.entrySet()) {
+                    try {
+                        intensities.put(main.politics.PolitcalView.valueOf(entry.getKey()),
+                                entry.getValue());
+                    } catch (Exception ignored) {}
+                }
+                ed.setRawIntensities(intensities);
+            }
+            ed.setConsecutiveVotesForAffiliated(e.consecutiveVotesForAffiliated);
+            ed.setConsecutiveOverrides(e.consecutiveOverrides);
+            ed.setLastVotedPartyName(e.lastVotedPartyName);
+            ed.setLastOverridden(e.lastOverridden);
         }
     }
 

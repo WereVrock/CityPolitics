@@ -13,14 +13,43 @@ public class PopManager {
 
     private final List<Pop> pops = new ArrayList<>();
 
-    public PopManager() {
-        pops.add(new Pop(PopType.HUMAN, PolitcalView.HUMAN_SUPREMACIST));
-        pops.add(new Pop(PopType.DWARF, PolitcalView.WARMONGERING));
-        pops.add(new Pop(PopType.ORC,   PolitcalView.WARMONGERING));
-        pops.add(new Pop(PopType.ELF,   PolitcalView.ENVIRONMENTALIST));
+public PopManager() {
+    pops.add(new Pop(PopType.HUMAN, PolitcalView.HUMAN_SUPREMACIST));
+    pops.add(new Pop(PopType.DWARF, PolitcalView.WARMONGERING));
+    pops.add(new Pop(PopType.ORC,   PolitcalView.WARMONGERING));
+    pops.add(new Pop(PopType.ELF,   PolitcalView.ENVIRONMENTALIST));
+    // Initialise starting view intensities based on affiliation
+    for (Pop pop : pops) {
+        if (pop.getAffiliation() != PolitcalView.NONE) {
+            pop.getElectoralData().setViewIntensity(pop.getAffiliation(), 60);
+        }
+        // Secondary views (weaker)
+        initSecondaryViews(pop);
     }
+}
 
-    // ─── Aggregate totals ────────────────────────────────────────────────────
+private void initSecondaryViews(Pop pop) {
+    // Give each pop type some baseline secondary views at low intensity
+    switch (pop.getType()) {
+        case HUMAN -> {
+            pop.getElectoralData().setViewIntensity(PolitcalView.TRADITIONALIST, 30);
+            pop.getElectoralData().setViewIntensity(PolitcalView.MERCANTILE,     20);
+        }
+        case DWARF -> {
+            pop.getElectoralData().setViewIntensity(PolitcalView.MERCANTILE,     40);
+            pop.getElectoralData().setViewIntensity(PolitcalView.ISOLATIONIST,   30);
+        }
+        case ORC -> {
+            pop.getElectoralData().setViewIntensity(PolitcalView.MILITARIST,     30);
+        }
+        case ELF -> {
+            pop.getElectoralData().setViewIntensity(PolitcalView.ARCANE,         35);
+            pop.getElectoralData().setViewIntensity(PolitcalView.DEMOCRATIC,     25);
+        }
+    }
+}
+
+// ─── Aggregate totals ────────────────────────────────────────────────────
 
     public int getTotalFoodConsumption() {
         int total = 0;
