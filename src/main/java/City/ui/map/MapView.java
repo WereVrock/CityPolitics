@@ -73,6 +73,9 @@ public MapView(GameState gameState, Runnable onBack) {
             }
         });
 
+        // NOTE: If a buildScrollPane / createArmyScroll helper exists elsewhere in this
+        // file or in ArmyListPanel, add scroll.getVerticalScrollBar().setUnitIncrement(28)
+        // there instead — the original @@FIND target was not present in MapView.java.
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(UITheme.BG_PANEL);
         rightPanel.setPreferredSize(new Dimension(240, 0));

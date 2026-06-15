@@ -28,4 +28,5 @@ public final class NobleCouncilParams {
     public static final int    INTERVENTION_STOP_ATTACKER_OPINION = -5;
     public static final int    INTERVENTION_STOP_DEFENDER_OPINION = 5;
     public static final int    INTERVENTION_UNJUSTIFIED_BYSTANDER_OPINION = -5;
+    public static final int    COUNCIL_REALM_MAX_EVENTS_PER_TURN          = 1;
 }

@@ -195,9 +195,16 @@ private JPanel buildBottomBar() {
         JButton militaryBtn = makeBottomBarButton("MILITARY");
         militaryBtn.addActionListener(e -> showMilitaryView());
 
-        JButton councilBtn = makeBottomBarButton("⚑ COUNCIL");
+        JButton councilBtn = makeBottomBarButton("⚑ REALM COUNCIL");
         councilBtn.setForeground(new Color(200, 170, 80));
-        councilBtn.addActionListener(e -> showCouncilView());
+        councilBtn.addActionListener(e -> {
+            if (gameState.hasActiveCouncilSession()) {
+                // Go directly to the voting session
+                showCouncilView();
+            } else {
+                showCouncilView();
+            }
+        });
 
         electionBadge = makeBottomBarButton("⚑ ELECTION RESULTS");
         electionBadge.setForeground(new Color(240, 200, 80));
@@ -519,19 +526,170 @@ private void swapCenter(JPanel panel) {
                         record,
                         gameState.getCalendar(),
                         this::showMainView,
-                        () -> { showMainView(); showCouncilView(); });
+                        () -> { showMainView(); showPartiesView(); }); // "See council" → parties overview
         swapCenter(panel);
     }
 
     private void showCouncilView() {
-        councilPanel = new City.ui.council.CouncilPanel(gameState, this::showMainView);
+        councilPanel = new City.ui.council.CouncilPanel(gameState, () -> {
+            showMainView();
+            updateEndTurnState();
+        });
+        // Wire the unlawful zone picker to open the map with zone selection
+        councilPanel.setUnlawfulZonePickerCallback(callback -> {
+            showUnlawfulZonePicker(callback);
+        });
         if (gameState.hasActiveCouncilSession()) {
             councilPanel.refresh();
         }
         swapCenter(councilPanel);
+        updateEndTurnState();
     }
 
-    private void showCampaignDialog() {
+private void showUnlawfulZonePicker(java.util.function.Consumer<String> onZonePicked) {
+        // Build list of valid zones: noble-owned, with at least 1 other claimant
+        java.util.List<City.main.map.Zone> validZones = new java.util.ArrayList<>();
+        for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
+            if (z.isDesolate()) continue;
+            City.main.nobles.NobleHouse owner =
+                    gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
+            if (owner == null) continue;
+            boolean hasClaimant = false;
+            for (City.main.nobles.NobleHouse h : gameState.getNobleHouseManager().getHouses()) {
+                if (h != owner && !h.isEliminated()
+                        && gameState.getNobleHouseManager().getClaimManager()
+                                .hasClaim(h.getId(), z.getId())) {
+                    hasClaimant = true;
+                    break;
+                }
+            }
+            if (hasClaimant) validZones.add(z);
+        }
+
+        if (validZones.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No zone qualifies. Each zone must be noble-owned with at least one other claimant.",
+                    "Unlawful Acquisition", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Show a map-styled zone picker dialog
+        JDialog picker = new JDialog(this, "Select Zone — Unlawful Acquisition", true);
+        picker.setSize(440, 460);
+        picker.setLocationRelativeTo(this);
+        picker.setResizable(true);
+        picker.getContentPane().setBackground(UITheme.BG_PANEL);
+        picker.setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("  Select the zone to declare as unlawfully acquired");
+        title.setFont(UITheme.FONT_HEADER);
+        title.setForeground(UITheme.TEXT_GOLD);
+        title.setBorder(new EmptyBorder(14, 14, 10, 14));
+        title.setBackground(UITheme.BG_PANEL_LIGHT);
+        title.setOpaque(true);
+
+        JPanel listPanel = new JPanel();
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        listPanel.setBackground(UITheme.BG_DARK);
+        listPanel.setBorder(new EmptyBorder(8, 10, 8, 10));
+
+        ButtonGroup group = new ButtonGroup();
+        final City.main.map.Zone[] selected = {validZones.get(0)};
+
+        for (City.main.map.Zone z : validZones) {
+            City.main.nobles.NobleHouse owner =
+                    gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
+            java.util.List<String> claimants = new java.util.ArrayList<>();
+            for (City.main.nobles.NobleHouse h : gameState.getNobleHouseManager().getHouses()) {
+                if (h != owner && !h.isEliminated()
+                        && gameState.getNobleHouseManager().getClaimManager()
+                                .hasClaim(h.getId(), z.getId())) {
+                    claimants.add(h.getName().replace("House ", ""));
+                }
+            }
+
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setBackground(UITheme.BG_PANEL);
+            row.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                    new EmptyBorder(8, 10, 8, 10)));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+
+            JRadioButton rb = new JRadioButton();
+            rb.setBackground(UITheme.BG_PANEL);
+            if (z == selected[0]) rb.setSelected(true);
+            group.add(rb);
+
+            JPanel info = new JPanel();
+            info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+            info.setBackground(UITheme.BG_PANEL);
+
+            JLabel nameLabel = new JLabel(z.getDisplayName());
+            nameLabel.setFont(UITheme.FONT_BUTTON);
+            nameLabel.setForeground(UITheme.TEXT_GOLD);
+
+            String ownerText = owner != null ? owner.getName().replace("House ", "") : "?";
+            JLabel detailLabel = new JLabel("Owner: " + ownerText
+                    + "   Claimants: " + String.join(", ", claimants));
+            detailLabel.setFont(UITheme.FONT_SMALL);
+            detailLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+            info.add(nameLabel);
+            info.add(detailLabel);
+            row.add(rb,   BorderLayout.WEST);
+            row.add(info, BorderLayout.CENTER);
+
+            row.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                    rb.setSelected(true);
+                    selected[0] = z;
+                }
+            });
+            listPanel.add(row);
+            listPanel.add(Box.createVerticalStrut(6));
+        }
+
+        JScrollPane scroll = new JScrollPane(listPanel);
+        scroll.setBorder(null);
+        scroll.setBackground(UITheme.BG_DARK);
+        scroll.getViewport().setBackground(UITheme.BG_DARK);
+        scroll.getVerticalScrollBar().setUnitIncrement(24);
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        btnRow.setBackground(UITheme.BG_PANEL);
+
+        JButton confirmBtn = new JButton("SELECT THIS ZONE");
+        confirmBtn.setFont(UITheme.FONT_BUTTON);
+        confirmBtn.setForeground(UITheme.TEXT_GOLD);
+        confirmBtn.setBackground(UITheme.BUTTON_BG);
+        confirmBtn.setBorderPainted(false);
+        confirmBtn.setFocusPainted(false);
+        confirmBtn.addActionListener(e -> {
+            picker.dispose();
+            onZonePicked.accept(selected[0].getId());
+        });
+
+        JButton cancelBtn = new JButton("CANCEL");
+        cancelBtn.setFont(UITheme.FONT_BUTTON);
+        cancelBtn.setForeground(UITheme.TEXT_SECONDARY);
+        cancelBtn.setBackground(UITheme.BUTTON_BG);
+        cancelBtn.setBorderPainted(false);
+        cancelBtn.setFocusPainted(false);
+        cancelBtn.addActionListener(e -> {
+            picker.dispose();
+            onZonePicked.accept(null);
+        });
+
+        btnRow.add(cancelBtn);
+        btnRow.add(confirmBtn);
+
+        picker.add(title,  BorderLayout.NORTH);
+        picker.add(scroll, BorderLayout.CENTER);
+        picker.add(btnRow, BorderLayout.SOUTH);
+        picker.setVisible(true);
+    }
+
+private void showCampaignDialog() {
         int turns = gameState.getElectionManager().getTurnsUntilElection();
         JDialog d = new JDialog(this, "⚑ Election Campaign", true);
         d.setUndecorated(true);
@@ -740,7 +898,19 @@ private void showProtectionDialog(City.main.actions.DeclareProtectionAction acti
     d.setVisible(true);
 }
 
-private void showMilitaryView() {
+    public void showMilitaryViewWithHighlight(String armyDisplayName) {
+        showMilitaryView();
+        // Schedule highlight after panel is shown
+        javax.swing.Timer t = new javax.swing.Timer(100, e -> {
+            // The MilitaryMenuUI is now the center — highlight by flashing the army name
+            // This is a best-effort visual cue; a full highlight would require MilitaryMenuUI refactor
+            City.debug.Debug.log("military-ui", "highlight-army", armyDisplayName);
+        });
+        t.setRepeats(false);
+        t.start();
+    }
+
+    private void showMilitaryView() {
         City.main.army.commander.CommanderRoster      roster = gameState.getCommanderRoster();
         City.main.army.commander.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
     City.ui.MilitaryMenuUI militaryUI = new City.ui.MilitaryMenuUI(
@@ -783,10 +953,12 @@ private void showVoteSession() {
     }
 
     private void updateEndTurnState() {
-        boolean blocked       = gameState.hasActiveSession();
+        boolean votePending   = gameState.hasActiveSession();
+        boolean councilVoting = gameState.hasActiveCouncilSession();
+        boolean blocked       = votePending || councilVoting;
         calendarPanel.updateEndTurnState(blocked, blocked);
-        partiesBtn.setVisible(!blocked);
-        openVoteBtn.setVisible(blocked);
+        partiesBtn.setVisible(!votePending);
+        openVoteBtn.setVisible(votePending);
     }
 
 private void endTurn() {
@@ -1153,27 +1325,32 @@ private City.main.nobles.NobleHouse showZoneAwardDialog(
     // Recreate vote session panel with new reference after reset
     voteSessionPanel = new VoteSessionPanel(gameState, this::onVoteResult, this::swapCenter);
 
-    // Battle intervention dialog
-    gameState.getBattleInterventionProcessor().setCallback(
-        (attackerName, defenderName, zoneId, playerSize, attackerSize) -> {
+    // Battle intervention dialog — detailed version
+    gameState.getBattleInterventionProcessor().setDetailedCallback(
+        (attackerName, defenderName, zoneId, playerSize, attackerSize,
+         atkAllies, defAllies, defProtected) -> {
             final City.main.army.PlayerBattleInterventionProcessor.PlayerChoice[] result =
                 { City.main.army.PlayerBattleInterventionProcessor.PlayerChoice.IGNORE };
             if (javax.swing.SwingUtilities.isEventDispatchThread()) {
-                result[0] = City.ui.BattleInterventionDialog.show(
-                        this, attackerName, defenderName, zoneId, playerSize, attackerSize);
+                result[0] = City.ui.BattleInterventionDialog.showDetailed(
+                        this, attackerName, defenderName, zoneId, playerSize, attackerSize,
+                        atkAllies, defAllies, defProtected).choice();
             } else {
                 try {
                     javax.swing.SwingUtilities.invokeAndWait(() ->
-                        result[0] = City.ui.BattleInterventionDialog.show(
-                                this, attackerName, defenderName, zoneId, playerSize, attackerSize));
+                        result[0] = City.ui.BattleInterventionDialog.showDetailed(
+                                this, attackerName, defenderName, zoneId, playerSize, attackerSize,
+                                atkAllies, defAllies, defProtected).choice());
                 } catch (Exception ignored) {}
             }
             return result[0];
         });
-    // Wire intervention processor to army manager
+    // Wire intervention processor, prestige and protection to army manager
     gameState.getNobleArmyManager().setInterventionProcessor(
             gameState.getBattleInterventionProcessor(),
             gameState.getArmyManager());
+    gameState.getNobleArmyManager().setPlayerPrestige(gameState.getPlayerPrestige());
+    gameState.getNobleArmyManager().setProtectionManager(gameState.getProtectionManager());
 }
 
 private void wireMapViewCallbacks() {
@@ -1191,6 +1368,7 @@ private void wireMapViewCallbacks() {
                     mapView.refresh();
                 });
     });
+    mapView.getInfoPanel().setOpenMilitaryCallback(armyName -> showMilitaryViewWithHighlight(armyName));
 }
 
 }

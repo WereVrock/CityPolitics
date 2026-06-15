@@ -130,6 +130,9 @@ public class GameState {
         // ActionRegistry depends on legislation+mercenary managers
         actionRegistry = new ActionRegistry(this);
 
+        // Wire noble house manager into vote session manager for noble party votes
+        voteSessionManager.setNobleHouseManager(nobleHouseManager);
+
         bootstrapLedger();
     }
 

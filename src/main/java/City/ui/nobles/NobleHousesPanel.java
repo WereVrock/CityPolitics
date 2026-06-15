@@ -37,7 +37,7 @@ public class NobleHousesPanel extends JPanel {
         scroll.setBorder(null);
         scroll.setBackground(UITheme.BG_DARK);
         scroll.getViewport().setBackground(UITheme.BG_DARK);
-        scroll.getVerticalScrollBar().setUnitIncrement(20);
+        scroll.getVerticalScrollBar().setUnitIncrement(32);
         add(scroll, BorderLayout.CENTER);
     }
 

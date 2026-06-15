@@ -135,11 +135,16 @@ public class LegislationManager {
 
     // ─── Council event limiting ───────────────────────────────────────────────
 
-    private boolean councilEventUsedThisTurn = false;
+    private boolean councilEventUsedThisTurn  = false;
+    private boolean realmCouncilUsedThisTurn  = false;
 
-    public boolean isCouncilEventUsedThisTurn()   { return councilEventUsedThisTurn; }
-    public void    markCouncilEventUsedThisTurn()  { councilEventUsedThisTurn = true; }
-    public void    resetCouncilEventUsed()         { councilEventUsedThisTurn = false; }
+    public boolean isCouncilEventUsedThisTurn()    { return councilEventUsedThisTurn; }
+    public void    markCouncilEventUsedThisTurn()   { councilEventUsedThisTurn = true; }
+    public void    resetCouncilEventUsed()          { councilEventUsedThisTurn = false; }
+
+    public boolean isRealmCouncilUsedThisTurn()    { return realmCouncilUsedThisTurn; }
+    public void    markRealmCouncilUsedThisTurn()   { realmCouncilUsedThisTurn = true; }
+    public void    resetRealmCouncilUsed()          { realmCouncilUsedThisTurn = false; }
 
     public void reset() {
         passedLegislations.clear();

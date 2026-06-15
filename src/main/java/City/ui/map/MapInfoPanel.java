@@ -59,6 +59,9 @@ private final JLabel   commanderSkillLabel;
 // Barbarian pay-off button
 private final JButton barbPayOffBtn;
 private final JButton barbDismissBtn;
+// Military shortcut
+private final JButton openMilitaryBtn;
+private java.util.function.Consumer<String> openMilitaryCallback;
 
 public MapInfoPanel(ZoneManager zoneManager, City.main.nobles.NobleHouseManager nobleHouseManager) {
 this.zoneManager       = zoneManager;
@@ -180,6 +183,15 @@ barbDismissBtn.setFocusPainted(false);
 barbDismissBtn.setVisible(false);
 barbDismissBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+openMilitaryBtn = new JButton("⚔ Open in Military");
+openMilitaryBtn.setFont(UITheme.FONT_MAP_SMALL);
+openMilitaryBtn.setForeground(UITheme.ACCENT_FROST);
+openMilitaryBtn.setBackground(UITheme.BUTTON_BG);
+openMilitaryBtn.setBorderPainted(false);
+openMilitaryBtn.setFocusPainted(false);
+openMilitaryBtn.setVisible(false);
+openMilitaryBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
 JPanel armyCard = new JPanel(new GridBagLayout());
 armyCard.setBackground(UITheme.BG_PANEL);
 GridBagConstraints ac = new GridBagConstraints();
@@ -193,9 +205,10 @@ ac.gridy = 4; armyCard.add(armyStatusLabel,      ac);
 ac.gridy = 5; armyCard.add(sep(),                ac);
 ac.gridy = 6; armyCard.add(commanderButton,      ac);
 ac.gridy = 7; armyCard.add(commanderSkillLabel,  ac);
-ac.gridy = 8; armyCard.add(barbPayOffBtn,        ac);
-ac.gridy = 9; armyCard.add(barbDismissBtn,       ac);
-ac.gridy = 10; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
+ac.gridy = 8; armyCard.add(openMilitaryBtn,      ac);
+ac.gridy = 9; armyCard.add(barbPayOffBtn,        ac);
+ac.gridy = 10; armyCard.add(barbDismissBtn,      ac);
+ac.gridy = 11; ac.weighty = 1.0; ac.fill = GridBagConstraints.BOTH;
 armyCard.add(Box.createVerticalGlue(), ac);
 
 cards.add(armyCard, CARD_ARMY);
@@ -344,11 +357,20 @@ public void showArmy(City.main.army.Army army, ZoneManager zm) {
     barbPayOffBtn.setVisible(false);
     barbDismissBtn.setVisible(false);
 
+    // Open in Military button
+    for (java.awt.event.ActionListener al : openMilitaryBtn.getActionListeners())
+        openMilitaryBtn.removeActionListener(al);
+    openMilitaryBtn.setVisible(true);
+    final String displayName = army.getDisplayName();
+    openMilitaryBtn.addActionListener(e -> {
+        if (openMilitaryCallback != null) openMilitaryCallback.accept(displayName);
+    });
+
     // Commander section
     for (java.awt.event.ActionListener al : commanderButton.getActionListeners())
         commanderButton.removeActionListener(al);
 
-        City.main.army.commander.Commander cmd = army.getCommander();
+    City.main.army.commander.Commander cmd = army.getCommander();
     if (cmd != null) {
         commanderButton.setText("⚔ " + cmd.getName());
         commanderButton.setVisible(true);
@@ -478,6 +500,7 @@ public void clearArmy() {
     commanderSkillLabel.setVisible(false);
     barbPayOffBtn.setVisible(false);
     barbDismissBtn.setVisible(false);
+    openMilitaryBtn.setVisible(false);
     cardLayout.show(cards, CARD_EMPTY);
 }
 
@@ -694,7 +717,8 @@ private String skillDescription(int skill) {
      * Re-applies UITheme map-panel fonts to every label/button in this panel.
      * Called from MapView after the user changes the map-panel font size in Settings.
      */
-    public void applyMapPanelFonts() {
+
+public void applyMapPanelFonts() {
         zoneTitleLabel.setFont(UITheme.FONT_MAP_HEADER);
         zoneTypeLabel.setFont(UITheme.FONT_MAP_SMALL);
         ownerButton.setFont(UITheme.FONT_MAP_SMALL);
@@ -714,6 +738,7 @@ private String skillDescription(int skill) {
         commanderSkillLabel.setFont(UITheme.FONT_MAP_SMALL);
         barbPayOffBtn.setFont(UITheme.FONT_MAP_BUTTON);
         barbDismissBtn.setFont(UITheme.FONT_MAP_BUTTON);
+        openMilitaryBtn.setFont(UITheme.FONT_MAP_SMALL);
 
         revalidate();
         repaint();
@@ -767,6 +792,10 @@ private void updateClaimsPanel(String zoneId) {
 public void setGrantClaimFromMapCallback(
         java.util.function.BiConsumer<String, City.main.nobles.NobleHouseManager> cb) {
     this.grantClaimFromMapCallback = cb;
+}
+
+public void setOpenMilitaryCallback(java.util.function.Consumer<String> cb) {
+    this.openMilitaryCallback = cb;
 }
 
 }

@@ -21,22 +21,23 @@ public class PlayerBattleInterventionProcessor {
     public enum PlayerChoice { JOIN_ATTACKER, JOIN_DEFENDER, IGNORE, STOP_FIGHT }
 
     public interface InterventionCallback {
-        /**
-         * Ask the player what to do about a battle in zoneId.
-         * @param attackerName attacker house name
-         * @param defenderName defender house name
-         * @param zoneId       zone being attacked
-         * @param playerSize   total player army size in zone
-         * @param attackerSize total attacker army size
-         * @return player's choice
-         */
         PlayerChoice ask(String attackerName, String defenderName,
                          String zoneId, int playerSize, int attackerSize);
     }
 
-    private InterventionCallback callback;
+    public interface DetailedInterventionCallback {
+        PlayerChoice ask(String attackerName, String defenderName,
+                         String zoneId, int playerSize, int attackerSize,
+                         java.util.List<String> attackerAllies,
+                         java.util.List<String> defenderAllies,
+                         boolean defenderIsProtected);
+    }
 
-    public void setCallback(InterventionCallback cb) { this.callback = cb; }
+    private InterventionCallback         callback;
+    private DetailedInterventionCallback detailedCallback;
+
+    public void setCallback(InterventionCallback cb)                 { this.callback = cb; }
+    public void setDetailedCallback(DetailedInterventionCallback cb) { this.detailedCallback = cb; }
 
     /**
      * Called just before a noble attack resolves.
@@ -97,6 +98,36 @@ public PlayerChoice checkIntervention(
         Debug.log("player-battle", "intervention", attacker.getName()
                 + " vs " + defender.getName() + " at " + zoneId
                 + " — player=" + playerSize + " choice=" + choice);
+        return choice;
+    }
+
+public PlayerChoice checkInterventionDetailed(
+            NobleHouse attacker, NobleHouse defender, String zoneId,
+            int totalAttackerSize, ArmyManager playerArmyManager,
+            java.util.List<String> attackerAllies,
+            java.util.List<String> defenderAllies,
+            boolean defenderIsProtected) {
+
+        if (detailedCallback == null && callback == null) return PlayerChoice.IGNORE;
+
+        int playerSize = 0;
+        for (Army a : playerArmyManager.getDeployedArmies()) {
+            if (zoneId.equals(a.getZoneId()) && a.isAlive()) playerSize += a.getSize();
+        }
+        if (playerSize <= 0) return PlayerChoice.IGNORE;
+        if (playerSize < totalAttackerSize) return PlayerChoice.IGNORE;
+
+        PlayerChoice choice;
+        if (detailedCallback != null) {
+            choice = detailedCallback.ask(attacker.getName(), defender.getName(),
+                    zoneId, playerSize, totalAttackerSize,
+                    attackerAllies, defenderAllies, defenderIsProtected);
+        } else {
+            choice = callback.ask(attacker.getName(), defender.getName(),
+                    zoneId, playerSize, totalAttackerSize);
+        }
+        Debug.log("player-battle", "detailed-intervention", attacker.getName()
+                + " vs " + defender.getName() + " at " + zoneId + " → " + choice);
         return choice;
     }
 

@@ -8,38 +8,40 @@ import java.util.LinkedHashMap;
 
 /**
  * Immutable record of a single election's outcome.
- * Captured by ElectionManager after votes are counted.
  */
 public class ElectionRecord {
 
     public static class PartyResult {
-        public final String partyName;
-        public final int    seatsAfter;
-        public final int    seatsBefore;
-        public final int    naturalVotes;
-        public final int    boughtVotes;
-        public final int    stolenVotes;     // net stolen away from this party
-        public final int    totalVotes;
-        public final double votePct;
-        public final int    powerBefore;
-        public final int    powerAfter;
+        public final String  partyName;
+        public final int     seatsAfter;
+        public final int     seatsBefore;
+        public final int     naturalVotes;
+        public final int     boughtVotes;
+        public final int     stolenFromVotes;  // votes stolen away FROM this party
+        public final int     stolenToVotes;    // votes stolen TO this party
+        public final int     totalVotes;
+        public final double  votePct;
+        public final int     powerBefore;
+        public final int     powerAfter;
         public final boolean isFixedSeat;
 
         public PartyResult(String partyName, int seatsAfter, int seatsBefore,
-                           int naturalVotes, int boughtVotes, int stolenVotes,
+                           int naturalVotes, int boughtVotes, int stolenFromVotes,
                            int totalVotes, double votePct,
                            int powerBefore, int powerAfter, boolean isFixedSeat) {
-            this.partyName    = partyName;
-            this.seatsAfter   = seatsAfter;
-            this.seatsBefore  = seatsBefore;
-            this.naturalVotes = naturalVotes;
-            this.boughtVotes  = boughtVotes;
-            this.stolenVotes  = stolenVotes;
-            this.totalVotes   = totalVotes;
-            this.votePct      = votePct;
-            this.powerBefore  = powerBefore;
-            this.powerAfter   = powerAfter;
-            this.isFixedSeat  = isFixedSeat;
+            this.partyName       = partyName;
+            this.seatsAfter      = seatsAfter;
+            this.seatsBefore     = seatsBefore;
+            this.naturalVotes    = naturalVotes;
+            this.boughtVotes     = boughtVotes;
+            this.stolenFromVotes = stolenFromVotes;
+            // stolenToVotes = what total would be if only natural + bought, vs actual
+            this.stolenToVotes   = Math.max(0, totalVotes - naturalVotes - boughtVotes + stolenFromVotes);
+            this.totalVotes      = totalVotes;
+            this.votePct         = votePct;
+            this.powerBefore     = powerBefore;
+            this.powerAfter      = powerAfter;
+            this.isFixedSeat     = isFixedSeat;
         }
 
         public int seatDelta()  { return seatsAfter - seatsBefore; }
@@ -47,17 +49,17 @@ public class ElectionRecord {
     }
 
     public static class AffiliationChange {
-        public final String popTypeName;
-        public final String oldAffiliation;
-        public final String newAffiliation; // null = lost affiliation
+        public final String  popTypeName;
+        public final String  oldAffiliation;
+        public final String  newAffiliation;
         public final boolean gained;
 
         public AffiliationChange(String popTypeName, String oldAffiliation,
                                   String newAffiliation, boolean gained) {
-            this.popTypeName     = popTypeName;
-            this.oldAffiliation  = oldAffiliation;
-            this.newAffiliation  = newAffiliation;
-            this.gained          = gained;
+            this.popTypeName    = popTypeName;
+            this.oldAffiliation = oldAffiliation;
+            this.newAffiliation = newAffiliation;
+            this.gained         = gained;
         }
     }
 
@@ -69,7 +71,7 @@ public class ElectionRecord {
     private final double stolenVotesPct;
     private final List<PartyResult>       partyResults;
     private final List<AffiliationChange> affiliationChanges;
-    private final Map<String, Double>     propagandaSpent; // partyName → propaganda units
+    private final Map<String, Double>     propagandaSpent;
 
     public ElectionRecord(int year, String period, int totalVotesCast,
                           int corruption, int stolenVotesTotal,
@@ -99,7 +101,6 @@ public class ElectionRecord {
     public List<AffiliationChange> getAffiliationChanges() { return affiliationChanges; }
     public Map<String, Double>     getPropagandaSpent()    { return propagandaSpent; }
 
-    /** Returns null if no party results. */
     public PartyResult getWinner() {
         PartyResult best = null;
         for (PartyResult r : partyResults) {

@@ -26,6 +26,9 @@ public class VotingSession {
 
     private PartyVoteIntent playerIntent = PartyVoteIntent.YES;
 
+    // Noble party vote result — computed at session creation, shown in UI
+    private NoblePartyVoteManager.NoblePartyVoteResult noblePartyVoteResult = null;
+
     public VotingSession(FormalAction action,
                          List<PoliticalParty> parties,
                          Map<PoliticalParty, Double> scores) {
@@ -41,6 +44,24 @@ public class VotingSession {
             dealt.put(p, false);
             favour.put(p, p.getFavour());
             sideDealtSeats.put(p, 0);
+        }
+    }
+
+    public NoblePartyVoteManager.NoblePartyVoteResult getNoblePartyVoteResult() {
+        return noblePartyVoteResult;
+    }
+
+    public void setNoblePartyVoteResult(NoblePartyVoteManager.NoblePartyVoteResult result) {
+        this.noblePartyVoteResult = result;
+        if (result != null) {
+            // Wire the noble party intent based on internal vote
+            for (PoliticalParty p : parties) {
+                if (p.getName().equals(NoblePartyVoteManager.NOBLE_PARTY_NAME)) {
+                    NoblePartyVoteManager.NobleVoteStance stance = result.unifiedStance;
+                    intents.put(p, NoblePartyVoteManager.toIntent(stance));
+                    break;
+                }
+            }
         }
     }
 
@@ -96,13 +117,17 @@ public SideDealResult applySideDeal(PoliticalParty party,
     return applySideDeal(party, resources, stats, null);
 }
 
-public SideDealResult applySideDeal(PoliticalParty party,
+    public SideDealResult applySideDeal(PoliticalParty party,
                                      City.main.resources.ResourcePool resources,
                                      City.main.resources.StatBlock stats,
                                      City.main.politics.PropagandaManager propagandaManager) {
     if (hasSideDealt(party)) {
         City.debug.Debug.log("voting", "side-deal-blocked", party.getName() + " already side-dealt");
         return new SideDealResult(0, "Already negotiated with secondary leader.");
+    }
+    if (party.getSeats() <= 1) {
+        City.debug.Debug.log("voting", "side-deal-blocked", party.getName() + " only 1 seat");
+        return new SideDealResult(0, "This party has only one seat — no secondary faction to negotiate with.");
     }
 
     DealOffer mainOffer = new DealOffer(party, scores.getOrDefault(party, 0.0));

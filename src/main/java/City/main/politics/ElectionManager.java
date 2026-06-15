@@ -214,7 +214,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
             PopElectoralData data = pop.getElectoralData();
             data.recordVote(affiliatedParty.getName(), overridden);
 
-            if (data.getConsecutiveOverrides() >= PoliticalParams.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
+            if (data.getConsecutiveOverrides() >= data.getAffiliationLossThreshold()) {
                 String oldAff = pop.getAffiliation().getDisplayName();
                 pop.setAffiliation(PolitcalView.NONE);
                 data.setConsecutiveOverrides(0);
@@ -241,7 +241,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
             }
 
             if (data.getConsecutiveVotesForAffiliated()
-                    >= PoliticalParams.ELECTION_AFFILIATION_GAIN_THRESHOLD) {
+                    >= data.getAffiliationGainThreshold()) {
                 PolitcalView newAffiliation = getDominantView(voted);
                 if (newAffiliation != PolitcalView.NONE) {
                     String oldAff = pop.getAffiliation().getDisplayName();
@@ -292,8 +292,10 @@ public ElectionRecord getLastRecord() { return lastRecord; }
             int     pBefore  = powerBefore.getOrDefault(party, party.getPower());
             int     natural  = naturalVotesMap.getOrDefault(party, 0);
             int     bought   = boughtVotesMap.getOrDefault(party, 0);
-            int     stolen   = stolenFromMap.getOrDefault(party, 0);
+            int     stolenFrom = stolenFromMap.getOrDefault(party, 0);
             int     total    = votes.getOrDefault(party, 0);
+            // Verify: total should equal natural + bought - stolenFrom + stolenTo
+            // stolenTo is implicit: total - natural - bought + stolenFrom
             double  pct      = fixed ? 0.0 : (double) total / totalVotes * 100.0;
             int     pAfter   = party.getPower();
 
@@ -308,7 +310,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
 
             partyResults.add(new ElectionRecord.PartyResult(
                     party.getName(), after, before,
-                    natural, bought, stolen, total, pct,
+                    natural, bought, stolenFrom, total, pct,
                     pBefore, pAfter, fixed));
         }
 
@@ -326,7 +328,7 @@ public ElectionRecord getLastRecord() { return lastRecord; }
             int powerNow = p != null ? p.getPower() : r.powerAfter;
             correctedResults.add(new ElectionRecord.PartyResult(
                     r.partyName, r.seatsAfter, r.seatsBefore,
-                    r.naturalVotes, r.boughtVotes, r.stolenVotes,
+                    r.naturalVotes, r.boughtVotes, r.stolenFromVotes,
                     r.totalVotes, r.votePct,
                     r.powerBefore, powerNow, r.isFixedSeat));
         }
@@ -525,13 +527,13 @@ public ElectionRecord getLastRecord() { return lastRecord; }
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private boolean isFixedSeat(PoliticalParty party) {
-        return party.getName().equals("Oracles");
+        return party.isUnelected();
     }
 
     private List<PoliticalParty> getElectableParties(List<PoliticalParty> parties) {
         List<PoliticalParty> result = new ArrayList<>();
         for (PoliticalParty p : parties) {
-            if (!isFixedSeat(p)) result.add(p);
+            if (!p.isUnelected()) result.add(p);
         }
         return result;
     }

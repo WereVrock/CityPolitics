@@ -264,27 +264,30 @@ public class ElectionResultsPanel extends JPanel {
         return row;
     }
 
-    private String buildPartyTooltip(PartyResult r) {
+private String buildPartyTooltip(PartyResult r) {
         if (r.isFixedSeat) return r.partyName + " holds a fixed seat — not subject to election.";
+        int stolenTo = r.stolenToVotes;
         return "<html><b>" + r.partyName + "</b><br>"
                 + "Seats: " + r.seatsBefore + " → " + r.seatsAfter
                 + "  (Δ " + (r.seatDelta() >= 0 ? "+" : "") + r.seatDelta() + ")<br>"
-                + "Vote %: " + String.format("%.1f", r.votePct) + "%<br>"
-                + "Natural votes: "  + r.naturalVotes + "<br>"
-                + "Bought votes: +"  + r.boughtVotes  + "<br>"
-                + "Stolen from: −"   + r.stolenVotes  + "<br>"
-                + "Power: "          + r.powerBefore  + " → " + r.powerAfter
+                + "Natural votes: "   + r.naturalVotes    + "<br>"
+                + "Bought votes: +"   + r.boughtVotes     + "<br>"
+                + "Stolen away: −"    + r.stolenFromVotes + "<br>"
+                + "Stolen gained: +"  + stolenTo          + "<br>"
+                + "Total: "           + r.totalVotes      + " (= natural + bought − stolen away + stolen gained)<br>"
+                + "Vote %: "          + String.format("%.1f", r.votePct) + "%<br>"
+                + "Power: "           + r.powerBefore     + " → " + r.powerAfter
                 + "  (Δ " + (r.powerDelta() >= 0 ? "+" : "") + r.powerDelta() + ")"
                 + "</html>";
     }
 
-    private String buildArrowTooltip(PartyResult r) {
+private String buildArrowTooltip(PartyResult r) {
         int d = r.seatDelta();
         if (d == 0) return "Seat count unchanged.";
         String dir = d > 0 ? "Gained " : "Lost ";
         return dir + Math.abs(d) + " seat(s). Natural: " + r.naturalVotes
                 + "  Bought: " + r.boughtVotes
-                + "  Stolen from: " + r.stolenVotes;
+                + "  Stolen from: " + r.stolenFromVotes;
     }
 
     // ── Seat Chart ────────────────────────────────────────────────────────────
@@ -465,7 +468,7 @@ public class ElectionResultsPanel extends JPanel {
 
     // ── Advanced Breakdown ────────────────────────────────────────────────────
 
-    private JPanel buildAdvancedPanel() {
+private JPanel buildAdvancedPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(new Color(20, 15, 8));
@@ -478,10 +481,16 @@ public class ElectionResultsPanel extends JPanel {
         hdr.setFont(FONT_HEADER);
         hdr.setForeground(COL_GOLD);
         panel.add(hdr);
+        panel.add(Box.createVerticalStrut(4));
+
+        JLabel note = new JLabel("Total = Natural + Bought − Stolen Away + Stolen Gained");
+        note.setFont(FONT_ITALIC);
+        note.setForeground(COL_MUTED);
+        panel.add(note);
         panel.add(Box.createVerticalStrut(8));
 
         // Table header
-        JPanel tableHdr = buildAdvancedTableRow("Party", "Natural", "Bought", "Stolen", "Total", true);
+        JPanel tableHdr = buildAdvancedTableRow("Party", "Natural", "+Bought", "−Stolen", "+Gained", "Total", true);
         panel.add(tableHdr);
         panel.add(Box.createVerticalStrut(3));
 
@@ -490,11 +499,13 @@ public class ElectionResultsPanel extends JPanel {
 
         for (PartyResult r : sorted) {
             if (r.isFixedSeat) continue;
+            int stolenTo = r.stolenToVotes;
             JPanel tableRow = buildAdvancedTableRow(
                     abbreviate(r.partyName, 16),
                     String.valueOf(r.naturalVotes),
                     "+" + r.boughtVotes,
-                    "−" + r.stolenVotes,
+                    "−" + r.stolenFromVotes,
+                    "+" + stolenTo,
                     String.valueOf(r.totalVotes),
                     false);
             panel.add(tableRow);
@@ -503,7 +514,6 @@ public class ElectionResultsPanel extends JPanel {
 
         panel.add(Box.createVerticalStrut(8));
 
-        // Power drift info
         JLabel driftHdr = new JLabel("Power Drift");
         driftHdr.setFont(FONT_BOLD);
         driftHdr.setForeground(COL_GOLD);
@@ -524,7 +534,6 @@ public class ElectionResultsPanel extends JPanel {
 
         panel.add(Box.createVerticalStrut(8));
 
-        // Corruption formula
         double cheatPct = 0.05 + 0.15 * (1.0 - Math.exp(-3.0 * record.getCorruption() / 100.0));
         JLabel corrLbl = new JLabel(String.format(
                 "Corruption formula: corruption=%d%% → %.1f%% votes cheat-eligible",
@@ -536,12 +545,13 @@ public class ElectionResultsPanel extends JPanel {
         return panel;
     }
 
-    private static final int GameParameters_POWER_DRIFT =
+private static final int GameParameters_POWER_DRIFT =
             PoliticalParams.POWER_DRIFT_SEAT_MULTIPLIER;
 
-    private JPanel buildAdvancedTableRow(String name, String natural, String bought,
-                                          String stolen, String total, boolean isHeader) {
-        JPanel row = new JPanel(new GridLayout(1, 5, 4, 0));
+private JPanel buildAdvancedTableRow(String name, String natural, String bought,
+                                          String stolen, String gained, String total,
+                                          boolean isHeader) {
+        JPanel row = new JPanel(new GridLayout(1, 6, 4, 0));
         row.setBackground(isHeader ? new Color(30, 22, 10) : new Color(20, 15, 8));
         row.setBorder(new EmptyBorder(3, 4, 3, 4));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
@@ -550,7 +560,7 @@ public class ElectionResultsPanel extends JPanel {
         Color fg = isHeader ? COL_GOLD : COL_PARCHMENT;
         Font  f  = isHeader ? FONT_BOLD : FONT_SMALL;
 
-        for (String val : new String[]{name, natural, bought, stolen, total}) {
+        for (String val : new String[]{name, natural, bought, stolen, gained, total}) {
             JLabel lbl = new JLabel(val);
             lbl.setFont(f);
             lbl.setForeground(fg);
@@ -559,7 +569,7 @@ public class ElectionResultsPanel extends JPanel {
         return row;
     }
 
-    private void toggleAdvanced(JPanel body) {
+private void toggleAdvanced(JPanel body) {
         advancedVisible = !advancedVisible;
         advancedPanel.setVisible(advancedVisible);
         advancedToggle.setText(advancedVisible

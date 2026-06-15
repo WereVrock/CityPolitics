@@ -43,19 +43,36 @@ public class VoteSessionManager {
         return new VotingSession(action, parties, scores, intents, dealt, playerIntent);
     }
 
+    private City.main.nobles.NobleHouseManager nobleHouseManager;
+
+    public void setNobleHouseManager(City.main.nobles.NobleHouseManager nhm) {
+        this.nobleHouseManager = nhm;
+    }
+
     public VotingSession createSession(FormalAction action,
                                        List<PoliticalParty> parties,
                                        ResourcePool resources,
                                        StatBlock stats) {
         Map<PoliticalParty, Double> scores = new LinkedHashMap<>();
         for (PoliticalParty p : parties) {
-            double score = engine.scoreForParty(p, action.getVoteConditions(), resources, stats);
+            double score;
+            if (p.getName().equals(NoblePartyVoteManager.NOBLE_PARTY_NAME)) {
+                score = 0.0;
+            } else {
+                score = engine.scoreForParty(p, action.getVoteConditions(), resources, stats);
+            }
             scores.put(p, score);
             Debug.log("voting", "score", p.getName() + " score=" + String.format("%.2f", score));
         }
-        Debug.log("voting", "session-created", action.getName()
-                + " parties=" + parties.size());
-        return new VotingSession(action, parties, scores);
+        Debug.log("voting", "session-created", action.getName() + " parties=" + parties.size());
+        VotingSession session = new VotingSession(action, parties, scores);
+        // Attach noble party vote
+        if (nobleHouseManager != null) {
+            NoblePartyVoteManager.NoblePartyVoteResult nobleResult =
+                    NoblePartyVoteManager.computeVote(nobleHouseManager);
+            session.setNoblePartyVoteResult(nobleResult);
+        }
+        return session;
     }
 
     /**
@@ -76,6 +93,13 @@ public class VoteSessionManager {
 
         for (PoliticalParty party : session.getParties()) {
             VotingSession.PartyVoteIntent intent = session.getIntent(party);
+            // Noble party: if unknown (all abstained) → resolve randomly as unanimous
+            if (party.getName().equals(NoblePartyVoteManager.NOBLE_PARTY_NAME)
+                    && intent == VotingSession.PartyVoteIntent.UNKNOWN) {
+                NoblePartyVoteManager.NobleVoteStance resolved = NoblePartyVoteManager.resolveUnknown();
+                intent = NoblePartyVoteManager.toIntent(resolved);
+                Debug.log("voting", "noble-unknown-resolved", resolved.name());
+            }
             int seats      = party.getSeats();
             int sideSeats  = session.getSideDealtSeats(party);
             int normalSeats = seats - sideSeats;
@@ -95,7 +119,7 @@ public class VoteSessionManager {
                     }
                 }
             }
-            yes += sideSeats; // side-dealt seats always vote YES
+            yes += sideSeats;
 
             totalYes     += yes;
             totalNo      += no;

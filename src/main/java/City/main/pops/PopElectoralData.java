@@ -21,8 +21,12 @@ public class PopElectoralData {
     private final Map<PolitcalView, Integer> viewIntensities = new LinkedHashMap<>();
 
     // Streak tracking (per pop)
-    private int consecutiveVotesForAffiliated = 0; // starts 0–3 random
-    private int consecutiveOverrides          = 0; // starts 0–3 random
+    private int consecutiveVotesForAffiliated = 0;
+    private int consecutiveOverrides          = 0;
+
+    // Per-pop randomized thresholds (0–3), set at construction
+    private final int affiliationGainThreshold;
+    private final int affiliationLossThreshold;
 
     // Last election result
     private String lastVotedPartyName = null;
@@ -32,7 +36,13 @@ public class PopElectoralData {
         // Randomise initial streaks between 0 and 3
         this.consecutiveVotesForAffiliated = rng.nextInt(4);
         this.consecutiveOverrides          = rng.nextInt(4);
+        // Each pop has a slightly randomized threshold (2, 3, or 4)
+        this.affiliationGainThreshold = 2 + rng.nextInt(3);
+        this.affiliationLossThreshold = 2 + rng.nextInt(3);
     }
+
+    public int getAffiliationGainThreshold() { return affiliationGainThreshold; }
+    public int getAffiliationLossThreshold() { return affiliationLossThreshold; }
 
     // ─── View management ─────────────────────────────────────────────────────
 
@@ -71,6 +81,7 @@ public class PopElectoralData {
      * Adjusts intensity by delta. Clamped to 0–100.
      */
     public void adjustIntensity(PolitcalView view, int delta) {
+        // setViewIntensity already handles contradiction resolution
         int current = viewIntensities.getOrDefault(view, 0);
         setViewIntensity(view, current + delta);
     }

@@ -241,6 +241,7 @@ public class SaveData {
     }
 
     public ElectionEntry              election;
+    public int                        playerTrust;
     public List<PropagandaEntry>      propaganda;
     public List<PopElectoralEntry>    popElectoral;
 

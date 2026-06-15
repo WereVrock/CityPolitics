@@ -23,6 +23,7 @@ public class ResourcePanel extends JPanel {
     private JLabel moneyLabel;
     private JLabel manpowerLabel;
     private JLabel influenceLabel;
+    private JLabel trustLabel;
     private JLabel corruptionLabel;
     private JLabel happinessLabel;
     private JLabel foodDeltaLabel;
@@ -40,7 +41,7 @@ public class ResourcePanel extends JPanel {
         buildUI();
     }
 
-    private void buildUI() {
+private void buildUI() {
         add(makeHeader("REALM RESOURCES"));
         add(Box.createVerticalStrut(8));
 
@@ -48,6 +49,7 @@ public class ResourcePanel extends JPanel {
         moneyLabel     = makeResourceLabel("Money");
         manpowerLabel  = makeResourceLabel("Manpower");
         influenceLabel = makeResourceLabel("Influence");
+        trustLabel     = makeResourceLabel("Trust");
 
         foodDeltaLabel      = makeDeltaLabel();
         moneyDeltaLabel     = makeDeltaLabel();
@@ -56,12 +58,14 @@ public class ResourcePanel extends JPanel {
         add(makeResourceRow(foodLabel, foodDeltaLabel));
         add(makeResourceRow(moneyLabel, moneyDeltaLabel));
         add(makeResourceRow(manpowerLabel, new JLabel()));
-        foodLabel.setToolTipText("Food consumed each turn by your population. Runs out → starvation.");
+        foodLabel.setToolTipText("Food consumed each turn by your population.");
         moneyLabel.setToolTipText("Money generated each turn. All costs scale with corruption.");
         manpowerLabel.setToolTipText("Military strength contributed by your population.");
-        influenceLabel.setToolTipText("Political capital generated each turn. Used for formal actions.");
-
+        influenceLabel.setToolTipText("Political capital generated each turn.");
         add(makeResourceRow(influenceLabel, influenceDeltaLabel));
+        add(makeResourceRow(trustLabel, new JLabel()));
+        trustLabel.setToolTipText("<html>Trust: 0–10. Affects realm council impression bonus: (Trust−5)×100.<br>"
+                + "Lost by joining unjustified battles. Gained over time.</html>");
 
         add(Box.createVerticalStrut(16));
         add(makeHeader("REALM STATS"));
@@ -80,7 +84,7 @@ public class ResourcePanel extends JPanel {
         add(Box.createVerticalGlue());
     }
 
-    private JLabel makeHeader(String text) {
+private JLabel makeHeader(String text) {
         JLabel label = new JLabel(text);
         label.setFont(UITheme.FONT_HEADER);
         label.setForeground(UITheme.TEXT_GOLD);
@@ -127,17 +131,23 @@ public void refresh() {
         int corruption     = stats.getCorruption();
         int baseHappiness  = stats.getHappiness();
         int effectiveHappy = (int) Math.max(0,
-            baseHappiness - corruption * ActionParams.CORRUPTION_HAPPINESS_MALUS);
+            baseHappiness - corruption * City.main.parameters.ActionParams.CORRUPTION_HAPPINESS_MALUS);
 
         foodLabel.setText("Food:      " + res.getFood());
         moneyLabel.setText("Money:     " + res.getMoney());
         manpowerLabel.setText("Manpower:  " + res.getManpower());
         influenceLabel.setText("Influence: " + res.getInfluence());
 
+        int trust = gameState.getPlayerPrestige().getTrust();
+        Color trustColor = trust >= 7 ? UITheme.TEXT_GREEN
+                         : trust <= 3 ? UITheme.TEXT_RED
+                         : UITheme.TEXT_PRIMARY;
+        trustLabel.setText("Trust:     " + trust + " / 10");
+        trustLabel.setForeground(trustColor);
+
         City.main.ledger.Ledger ledger = gameState.getLedger();
         int deltaFood      = ledger.getDelta(City.main.resources.ResourceType.FOOD);
         int deltaGold      = ledger.getDelta(City.main.resources.ResourceType.GOLD);
-        int deltaManpower  = ledger.getDelta(City.main.resources.ResourceType.MANPOWER);
         int deltaInfluence = ledger.getDelta(City.main.resources.ResourceType.INFLUENCE);
 
         setDeltaLabel(foodDeltaLabel,      deltaFood);

@@ -4,13 +4,13 @@ import City.main.politics.PolitcalView;
 import City.main.politics.PoliticalParty;
 import City.main.politics.ViewStrength;
 import City.main.core.GameState;
+import City.main.politics.NoblePartyVoteManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 import java.util.Map;
-import City.main.politics.PartyManager;
 import City.ui.UITheme;
 
 /**
@@ -40,6 +40,7 @@ public class PartiesOverviewPanel extends JPanel {
         scroll.setBorder(null);
         scroll.setBackground(UITheme.BG_DARK);
         scroll.getViewport().setBackground(UITheme.BG_DARK);
+        scroll.getVerticalScrollBar().setUnitIncrement(32);
         add(scroll, BorderLayout.CENTER);
     }
 
@@ -104,7 +105,7 @@ public class PartiesOverviewPanel extends JPanel {
         listPanel.repaint();
     }
 
-    private JPanel buildPartyCard(PoliticalParty party) {
+private JPanel buildPartyCard(PoliticalParty party) {
         City.main.politics.PropagandaManager pm = gameState.getPropagandaManager();
         JPanel card = new JPanel(new BorderLayout(12, 0));
         card.setBackground(UITheme.BG_PANEL);
@@ -112,12 +113,19 @@ public class PartiesOverviewPanel extends JPanel {
             BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
             new EmptyBorder(10, 12, 10, 12)
         ));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 140));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
         card.setAlignmentX(LEFT_ALIGNMENT);
 
         card.add(buildPortraitPlaceholder(party), BorderLayout.WEST);
         card.add(buildPartyInfo(party),           BorderLayout.CENTER);
         card.add(buildOpinionPanel(party),        BorderLayout.EAST);
+
+        // Campaign resource giving row — only for elected parties
+        City.main.politics.ElectionManager em = gameState.getElectionManager();
+        if (!party.isUnelected() && (em.isCampaignPeriod() || em.getTurnsUntilElection() <= 4)) {
+            card.add(buildCampaignRow(party, pm), BorderLayout.SOUTH);
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+        }
         return card;
     }
 
@@ -250,16 +258,21 @@ private JPanel buildPartyInfo(PoliticalParty party) {
         panel.add(favourLabel);
         panel.add(Box.createVerticalStrut(2));
 
-        // Propaganda display
-        City.main.politics.PropagandaManager pm = gameState.getPropagandaManager();
-        {
+        if (!party.isUnelected()) {
+            // Propaganda display — only for elected parties
+            City.main.politics.PropagandaManager pm = gameState.getPropagandaManager();
             double electionProp = pm.getElectionPropaganda(party);
-            JLabel propLabel = new JLabel(String.format(
-                    "Propaganda (election): %.1f", electionProp));
+            JLabel propLabel = new JLabel(String.format("Propaganda (election): %.1f", electionProp));
             propLabel.setFont(UITheme.FONT_SMALL);
             propLabel.setForeground(new Color(180, 150, 220));
             propLabel.setToolTipText("Propaganda banked for the next election. Higher = more vote bonus.");
             panel.add(propLabel);
+            panel.add(Box.createVerticalStrut(2));
+        } else if (party.getName().equals(NoblePartyVoteManager.NOBLE_PARTY_NAME)) {
+            JLabel fixedNote = new JLabel("Internal vote — based on noble opinion of you");
+            fixedNote.setFont(UITheme.FONT_SMALL);
+            fixedNote.setForeground(new Color(200, 170, 100));
+            panel.add(fixedNote);
             panel.add(Box.createVerticalStrut(2));
         }
 
@@ -307,7 +320,78 @@ private JPanel buildOpinionPanel(PoliticalParty party) {
         return panel;
     }
 
-    private Color viewColor(ViewStrength s) {
+private JPanel buildCampaignRow(PoliticalParty party,
+                                     City.main.politics.PropagandaManager pm) {
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        row.setBackground(new Color(35, 26, 48));
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, UITheme.BORDER_COLOR),
+                new EmptyBorder(4, 6, 4, 6)));
+
+        JLabel label = new JLabel("Donate:");
+        label.setFont(UITheme.FONT_SMALL);
+        label.setForeground(UITheme.TEXT_SECONDARY);
+        row.add(label);
+
+        // Gold donation
+        JButton goldBtn = makeDonateButton("50g");
+        goldBtn.setToolTipText("Donate 50 gold → propaganda for " + party.getName());
+        goldBtn.setEnabled(gameState.getResources().getMoney() >= 50);
+        goldBtn.addActionListener(e -> {
+            if (gameState.getResources().getMoney() < 50) return;
+            gameState.getResources().spendMoney(50);
+            pm.addPropaganda(party, 50 * City.main.parameters.PoliticalParams.PROPAGANDA_PER_GOLD);
+            refresh();
+        });
+        row.add(goldBtn);
+
+        JButton gold200Btn = makeDonateButton("200g");
+        gold200Btn.setToolTipText("Donate 200 gold → propaganda for " + party.getName());
+        gold200Btn.setEnabled(gameState.getResources().getMoney() >= 200);
+        gold200Btn.addActionListener(e -> {
+            if (gameState.getResources().getMoney() < 200) return;
+            gameState.getResources().spendMoney(200);
+            pm.addPropaganda(party, 200 * City.main.parameters.PoliticalParams.PROPAGANDA_PER_GOLD);
+            refresh();
+        });
+        row.add(gold200Btn);
+
+        // Influence donation
+        JButton infBtn = makeDonateButton("20 inf");
+        infBtn.setToolTipText("Spend 20 influence → propaganda for " + party.getName());
+        infBtn.setEnabled(gameState.getResources().getInfluence() >= 20);
+        infBtn.addActionListener(e -> {
+            if (gameState.getResources().getInfluence() < 20) return;
+            gameState.getResources().spendInfluence(20);
+            pm.addPropaganda(party, 20 * City.main.parameters.PoliticalParams.PROPAGANDA_PER_INFLUENCE);
+            refresh();
+        });
+        row.add(infBtn);
+
+        double electionProp = pm.getElectionPropaganda(party);
+        JLabel propLbl = new JLabel(String.format("Banked: %.0f propaganda", electionProp));
+        propLbl.setFont(UITheme.FONT_SMALL);
+        propLbl.setForeground(new Color(160, 130, 210));
+        row.add(propLbl);
+
+        return row;
+    }
+
+    private JButton makeDonateButton(String label) {
+        JButton btn = new JButton(label);
+        btn.setFont(UITheme.FONT_SMALL);
+        btn.setForeground(new Color(210, 170, 80));
+        btn.setBackground(new Color(55, 40, 10));
+        btn.setBorderPainted(true);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(120, 90, 30), 1),
+                new EmptyBorder(3, 8, 3, 8)));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
+private Color viewColor(ViewStrength s) {
         return switch (s) {
             case STRONGLY_FOR     -> UITheme.TEXT_GREEN;
             case FOR              -> new Color(120, 200, 140);

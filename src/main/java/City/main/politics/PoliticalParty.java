@@ -22,11 +22,13 @@ public class PoliticalParty {
     private final Map<PolitcalView, ViewStrength> views;
     private final List<Pop>        memberPops;
 
-    private int playerOpinion; // 0-100
-    private int publicOpinion; // 0-100
-    private int power;         // 0-100
-    private int favour;        // starts 0; negative = player owes them
-    private int prestige;      // accumulated from commander battle victories
+    private int     playerOpinion; // 0-100
+    private int     publicOpinion; // 0-100
+    private int     power;         // 0-100
+    private int     favour;        // starts 0; negative = player owes them
+    private int     prestige;      // accumulated from commander battle victories
+    private boolean unelected      = false; // fixed seats, not subject to elections
+    private boolean noNegotiation  = false; // cannot negotiate deals with this party
 
     public PoliticalParty(String name, int seats, int playerOpinion, int publicOpinion, int power,
                           String leaderName, String personality, List<SideLeader> sideLeaders) {
@@ -92,6 +94,12 @@ public class PoliticalParty {
     public void setFavour(int v)           { favour        = v; }
     public int  getPrestige()              { return prestige; }
     public void addPrestige(int amount)    { prestige = Math.max(0, prestige + amount); }
+
+    public boolean isUnelected()           { return unelected; }
+    public void    setUnelected(boolean v) { this.unelected = v; }
+
+    public boolean isNoNegotiation()           { return noNegotiation; }
+    public void    setNoNegotiation(boolean v) { this.noNegotiation = v; }
 
     /** Adjusts playerOpinion by delta, clamped to [0, 100]. */
     public void adjustPlayerOpinion(int delta) {

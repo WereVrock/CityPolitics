@@ -53,6 +53,7 @@ public class ArmyListPanel extends JPanel {
         scroll.setBorder(null);
         scroll.setBackground(UITheme.BG_PANEL);
         scroll.getViewport().setBackground(UITheme.BG_PANEL);
+        scroll.getVerticalScrollBar().setUnitIncrement(28);
 
         add(header, BorderLayout.NORTH);
         add(scroll,  BorderLayout.CENTER);

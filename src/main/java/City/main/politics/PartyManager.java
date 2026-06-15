@@ -18,6 +18,7 @@ public class PartyManager {
     private final PoliticalParty merchantUnion;
     private final PoliticalParty democrats;
     private final PoliticalParty oracles;
+    private final PoliticalParty nobleHouses;
 
     public PartyManager(PopManager popManager) {
         knightsOfRuan = buildKnightsOfRuan();
@@ -27,6 +28,7 @@ public class PartyManager {
         merchantUnion = buildMerchantUnion();
         democrats     = buildDemocrats();
         oracles       = buildOracles();
+        nobleHouses   = buildNobleHouses();
 
         parties.add(knightsOfRuan);
         parties.add(dwarvenFront);
@@ -35,16 +37,28 @@ public class PartyManager {
         parties.add(merchantUnion);
         parties.add(democrats);
         parties.add(oracles);
+        parties.add(nobleHouses);
 
         wirePopReferences(popManager);
     }
 
+    private PoliticalParty buildNobleHouses() {
+        PoliticalParty p = new PoliticalParty(
+                NoblePartyVoteManager.NOBLE_PARTY_NAME,
+                NoblePartyVoteManager.NOBLE_PARTY_SEATS,
+                50, 50, 50,
+                "The Noble Council",
+                "The great houses of the realm. Their vote is determined by internal deliberation among the five most prestigious houses. They vote unanimously based on collective opinion.",
+                List.of());
+        p.setUnelected(true);
+        p.setNoNegotiation(true);
+        return p;
+    }
+
     private PoliticalParty buildKnightsOfRuan() {
         List<SideLeader> sides = List.of(
-            new SideLeader("Captain Edric Hale",
-                "Loyal but ambitious. Quietly questions Voss's methods. Wants results, not glory."),
-            new SideLeader("Dame Isolde Crane",
-                "Old blood nobility. Polite on the surface, ruthless underneath. Hates compromise.")
+            new SideLeader("Captain Edric Hale", "Loyal but ambitious. Quietly questions Voss's methods."),
+            new SideLeader("Dame Isolde Crane",  "Old blood nobility. Polite on the surface, ruthless underneath.")
         );
         PoliticalParty p = new PoliticalParty("Knights of Ruan", 12, 50, 55, 65,
             "Commander Aldric Voss",
@@ -61,10 +75,8 @@ public class PartyManager {
 
     private PoliticalParty buildDwarvenFront() {
         List<SideLeader> sides = List.of(
-            new SideLeader("Elder Marta Coalvein",
-                "Practical and tired. Wants stability above ideology. Will deal quietly if Stonehammer won't."),
-            new SideLeader("Foreman Durg Blackpick",
-                "Represents the miners. Blunt, suspicious of politics, but can be swayed by tangible benefits.")
+            new SideLeader("Elder Marta Coalvein",  "Practical and tired. Wants stability above ideology."),
+            new SideLeader("Foreman Durg Blackpick","Represents the miners. Blunt, suspicious of politics.")
         );
         PoliticalParty p = new PoliticalParty("Dwarven Front", 8, 50, 50, 55,
             "Thane Brokk Stonehammer",
@@ -81,10 +93,8 @@ public class PartyManager {
 
     private PoliticalParty buildUnitedAxes() {
         List<SideLeader> sides = List.of(
-            new SideLeader("Champion Rulf Ashenmaw",
-                "Hothead who respects power. Can be impressed into cooperation if approached boldly."),
-            new SideLeader("Sergeant Brynn Tusk",
-                "Pragmatic veteran. Disagrees with Ironblood's aggression privately. Wants peace but won't say so openly.")
+            new SideLeader("Champion Rulf Ashenmaw","Hothead who respects power."),
+            new SideLeader("Sergeant Brynn Tusk",   "Pragmatic veteran. Wants peace but won't say so.")
         );
         PoliticalParty p = new PoliticalParty("United Axes", 10, 50, 50, 60,
             "Warchief Gorra Ironblood",
@@ -101,10 +111,8 @@ public class PartyManager {
 
     private PoliticalParty buildArchivists() {
         List<SideLeader> sides = List.of(
-            new SideLeader("Keeper Aldous Vrime",
-                "Young and idealistic for an Archivist. Believes records should inform action, not prevent it."),
-            new SideLeader("Scribe Fennel Dusk",
-                "Obsessed with procedure. Will cooperate only if everything is done exactly by the book.")
+            new SideLeader("Keeper Aldous Vrime", "Young and idealistic for an Archivist."),
+            new SideLeader("Scribe Fennel Dusk",  "Obsessed with procedure.")
         );
         PoliticalParty p = new PoliticalParty("Archivists", 9, 50, 50, 50,
             "Grand Scribe Elowen Ashveil",
@@ -121,10 +129,8 @@ public class PartyManager {
 
     private PoliticalParty buildMerchantUnion() {
         List<SideLeader> sides = List.of(
-            new SideLeader("Factor Dorin Pale",
-                "Handles the books. Cares only about margins. Completely amoral, entirely approachable."),
-            new SideLeader("Broker Liessa Wynn",
-                "Specialises in influence trading. Knows where every body is buried. Dangerous but useful.")
+            new SideLeader("Factor Dorin Pale",   "Handles the books. Cares only about margins."),
+            new SideLeader("Broker Liessa Wynn",  "Specialises in influence trading. Dangerous but useful.")
         );
         PoliticalParty p = new PoliticalParty("Merchant Union", 10, 50, 50, 55,
             "Guildmaster Sera Vantis",
@@ -141,10 +147,8 @@ public class PartyManager {
 
     private PoliticalParty buildDemocrats() {
         List<SideLeader> sides = List.of(
-            new SideLeader("Councillor Fen Marsh",
-                "Grassroots organiser. Distrusts the elite but pragmatic enough to work with them quietly."),
-            new SideLeader("Advocate Sable Reyne",
-                "Fiery and principled. Harder to deal with than Dawnhollow but commands real loyalty among the base.")
+            new SideLeader("Councillor Fen Marsh",  "Grassroots organiser. Distrusts the elite but pragmatic."),
+            new SideLeader("Advocate Sable Reyne",  "Fiery and principled.")
         );
         PoliticalParty p = new PoliticalParty("Democrats", 6, 50, 60, 40,
             "Speaker Mira Dawnhollow",
@@ -161,17 +165,16 @@ public class PartyManager {
 
     private PoliticalParty buildOracles() {
         List<SideLeader> sides = List.of(
-            new SideLeader("Seer Voss Pale",
-                "Young oracle, sharp minded. Privately doubts the prophecy but enforces it publicly out of loyalty."),
-            new SideLeader("Oracle Maren Dusk",
-                "Ancient even by oracle standards. Speaks rarely. When she does, even Thessivane listens.")
+            new SideLeader("Seer Voss Pale",   "Young oracle, sharp minded."),
+            new SideLeader("Oracle Maren Dusk","Ancient even by oracle standards.")
         );
         PoliticalParty p = new PoliticalParty("Oracles", 4, 100, 80, 20,
             "Arch Oracle Thessivane",
-            "Ancient and half-senile. Speaks in slow, wandering sentences. Deeply fond of the player. Occasionally confuses past and present.",
+            "Ancient and half-senile. Speaks in slow, wandering sentences. Deeply fond of the player.",
             sides);
-        p.setView(PolitcalView.ARCANE,             ViewStrength.STRONGLY_FOR);
-        p.setView(PolitcalView.TRADITIONALIST,     ViewStrength.FOR);
+        p.setView(PolitcalView.ARCANE,         ViewStrength.STRONGLY_FOR);
+        p.setView(PolitcalView.TRADITIONALIST, ViewStrength.FOR);
+        p.setUnelected(true);
         return p;
     }
 
@@ -194,14 +197,11 @@ public class PartyManager {
         };
     }
 
-    public List<PoliticalParty> getParties()  { return Collections.unmodifiableList(parties); }
-    public PoliticalParty       getOracles()  { return oracles; }
+    public List<PoliticalParty> getParties()    { return Collections.unmodifiableList(parties); }
+    public PoliticalParty       getOracles()    { return oracles; }
+    public PoliticalParty       getNobleHouses(){ return nobleHouses; }
 
-    /**
-     * Finds the party whose view matches the given affiliation and adjusts
-     * their player opinion by delta. No-op if no party matches.
-     */
-    public void adjustOpinion(City.main.politics.PolitcalView affiliation, int delta) {
+    public void adjustOpinion(PolitcalView affiliation, int delta) {
         for (PoliticalParty party : parties) {
             if (party.getViews().containsKey(affiliation)
                     && party.getViewStrength(affiliation).getMultiplier() > 0) {
@@ -211,19 +211,12 @@ public class PartyManager {
         }
     }
 
-    /**
-     * Adds prestige to the party most strongly associated with the given affiliation.
-     * Uses the party whose STRONGLY_FOR or FOR view matches first.
-     */
-    public void addPrestige(City.main.politics.PolitcalView affiliation, int amount) {
+    public void addPrestige(PolitcalView affiliation, int amount) {
         PoliticalParty best = null;
         double bestStrength = Double.NEGATIVE_INFINITY;
         for (PoliticalParty party : parties) {
             double m = party.getViewStrength(affiliation).getMultiplier();
-            if (m > bestStrength) {
-                bestStrength = m;
-                best = party;
-            }
+            if (m > bestStrength) { bestStrength = m; best = party; }
         }
         if (best != null) best.addPrestige(amount);
     }

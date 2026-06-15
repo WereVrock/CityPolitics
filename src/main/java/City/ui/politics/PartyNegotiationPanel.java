@@ -284,13 +284,15 @@ private JPanel buildSideDealRow(VotingSession session, DealOffer mainOffer) {
     boolean canAffordSide = gameState.getResources().getMoney()     >= finalGold
                          && gameState.getResources().getInfluence() >= finalInfluence;
 
-    JButton sideBtn = new JButton("NEGOTIATE SIDE DEAL");
-    sideBtn.setFont(UITheme.FONT_SMALL);
-    sideBtn.setForeground(new Color(180, 200, 255));
-    sideBtn.setBackground(new Color(30, 35, 60));
-    sideBtn.setBorderPainted(false);
-    sideBtn.setFocusPainted(false);
-    sideBtn.setEnabled(canAffordSide);
+        boolean onlyOneSeat = party.getSeats() <= 1;
+        JButton sideBtn = new JButton("NEGOTIATE SIDE DEAL");
+        sideBtn.setFont(UITheme.FONT_SMALL);
+        sideBtn.setForeground(new Color(180, 200, 255));
+        sideBtn.setBackground(new Color(30, 35, 60));
+        sideBtn.setBorderPainted(false);
+        sideBtn.setFocusPainted(false);
+        sideBtn.setEnabled(canAffordSide && !onlyOneSeat);
+        if (onlyOneSeat) sideBtn.setToolTipText("Party has only 1 seat — no secondary faction.");
     sideBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     sideBtn.addActionListener(e -> {
         SideDealResult result = session.applySideDeal(party,
@@ -306,12 +308,12 @@ private JPanel buildSideDealRow(VotingSession session, DealOffer mainOffer) {
     return row;
 }
 
-    private void showSideDealResultDialog(SideLeader sideLeader, SideDealResult result) {
+private void showSideDealResultDialog(SideLeader sideLeader, SideDealResult result) {
         javax.swing.JDialog dialog = new javax.swing.JDialog(
                 javax.swing.SwingUtilities.getWindowAncestor(this) instanceof java.awt.Frame
                         ? (java.awt.Frame) javax.swing.SwingUtilities.getWindowAncestor(this) : null,
                 "Side Deal — " + sideLeader.getName(), true);
-        dialog.setMinimumSize(new Dimension(460, 320));
+        dialog.setMinimumSize(new Dimension(460, 300));
         dialog.pack();
         dialog.setLocationRelativeTo(this);
         dialog.setResizable(true);
@@ -352,15 +354,15 @@ private JPanel buildSideDealRow(VotingSession session, DealOffer mainOffer) {
 
         String message;
         if (result.seatsWon <= 0) {
-            message = "\"I tried my best, but I couldn't convince anyone to cross the party line. "
-                    + "I will vote with you myself, for whatever that is worth.\"";
+            message = "\"I tried, but I couldn't convince anyone else to cross the party line. "
+                    + "I'll cast my own vote with you, but that's the best I can do.\"";
         } else if (result.seatsWon == 1) {
-            message = "\"It wasn't easy, but I managed to bring one seat over to your side. "
-                    + "Don't expect me to make a habit of it.\"";
+            message = "\"It wasn't easy. I managed to convince one colleague to vote with you. "
+                    + "Don't expect more — the others wouldn't hear of it.\"";
         } else {
-            message = "\"I worked the room as best I could. "
+            message = "\"I worked the room as hard as I could. "
                     + result.seatsWon + " of my colleagues will cast their vote for you. "
-                    + "The rest wouldn't hear of it.\"";
+                    + "The rest wouldn't budge.\"";
         }
 
         JTextArea messageArea = new JTextArea(message);
@@ -375,9 +377,12 @@ private JPanel buildSideDealRow(VotingSession session, DealOffer mainOffer) {
                 BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
                 new EmptyBorder(8, 10, 8, 10)));
 
-        String seatsText = result.seatsWon > 0
-                ? "Seats convinced: " + result.seatsWon + " / " + party.getSeats()
-                : "No additional seats convinced — side leader votes with you alone.";
+        String seatsText;
+        if (result.seatsWon <= 0) {
+            seatsText = "Only the side leader's implicit vote — no additional seats swayed.";
+        } else {
+            seatsText = "Seats convinced: " + result.seatsWon + " / " + party.getSeats();
+        }
         JLabel seatsLabel = new JLabel("<html><body style='width:280px'>" + seatsText + "</body></html>");
         seatsLabel.setFont(UITheme.FONT_SMALL);
         seatsLabel.setForeground(result.seatsWon > 0 ? UITheme.TEXT_GREEN : UITheme.TEXT_SECONDARY);

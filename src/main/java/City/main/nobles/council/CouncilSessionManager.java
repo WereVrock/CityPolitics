@@ -41,13 +41,14 @@ public class CouncilSessionManager {
     public CouncilSession createSession(CouncilAction action,
                                          int playerPrestige,
                                          int oracleOpinion,
+                                         int trustBonus,
                                          List<NobleHouse> allHouses) {
         List<CouncilVoter> voters = new ArrayList<>();
 
-        // Player voter
-        int playerImpression = playerPrestige;
+        // Player voter — prestige + trust council bonus
+        int playerImpression = playerPrestige + trustBonus;
         voters.add(new CouncilVoter("player", "You", CouncilVoter.VoterType.PLAYER,
-                null, playerImpression));
+                null, Math.max(1, playerImpression)));
 
         // Oracle voter
         int oracleImpression = NobleCouncilParams.COUNCIL_ORACLE_IMPRESSION;

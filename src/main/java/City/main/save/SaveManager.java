@@ -136,6 +136,7 @@ public class SaveManager {
         data.ravagedZones      = serializeRavagedZones(gs);
         data.zoneStates        = serializeZoneStates(gs);
 
+        data.playerTrust      = gs.getPlayerPrestige().getTrust();
         data.legislation      = serializeLegislation(gs);
         data.mercenaryArmies  = serializeMercenaries(gs);
         data.election         = serializeElection(gs);
@@ -448,6 +449,8 @@ public class SaveManager {
         applyZoneStates(data, gs);
         applyLegislation(data, gs);
         applyMercenaries(data, gs);
+        gs.getPlayerPrestige().setTrust(data.playerTrust > 0 ? data.playerTrust
+                : City.main.parameters.StartingParams.PLAYER_TRUST_START);
         applyElection(data, gs);
         applyPropaganda(data, gs);
         applyPopElectoral(data, gs);

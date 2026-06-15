@@ -5,15 +5,17 @@ import City.main.politics.PoliticalParty;
 import City.main.politics.VoteResult;
 import City.main.politics.VotingSession;
 import City.main.politics.VotingSession.PartyVoteIntent;
-import City.main.politics.VoteSessionManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.util.List;
  
 import City.main.parameters.VotingParams;
+import City.main.politics.NoblePartyVoteManager;
+import static City.main.politics.VotingSession.PartyVoteIntent.ABSTAIN;
+import static City.main.politics.VotingSession.PartyVoteIntent.NO;
+import static City.main.politics.VotingSession.PartyVoteIntent.YES;
 import City.ui.UITheme;
 
 /**
@@ -55,6 +57,7 @@ public class VoteSessionPanel extends JPanel {
         scroll.setBorder(null);
         scroll.setBackground(UITheme.BG_DARK);
         scroll.getViewport().setBackground(UITheme.BG_DARK);
+        scroll.getVerticalScrollBar().setUnitIncrement(32);
         add(scroll, BorderLayout.CENTER);
 
         JPanel south = new JPanel(new BorderLayout(0, 6));
@@ -290,7 +293,16 @@ public class VoteSessionPanel extends JPanel {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { openNegotiation(party); }
         });
 
-        if (alreadyDealt && !hasSideDeal) {
+        if (party.isNoNegotiation()) {
+             session = gameState.getActiveSession();
+            boolean unknown = session != null && session.getNoblePartyVoteResult() != null
+                    && session.getNoblePartyVoteResult().isUnknown;
+            JLabel hint = new JLabel(unknown ? "UNKNOWN (all abstained — click for details)"
+                    : "click to see breakdown");
+            hint.setFont(UITheme.FONT_SMALL);
+            hint.setForeground(unknown ? UITheme.TEXT_GOLD : UITheme.TEXT_SECONDARY);
+            right.add(hint);
+        } else if (alreadyDealt && !hasSideDeal) {
             JLabel dealt = new JLabel("DEAL STRUCK");
             dealt.setFont(UITheme.FONT_SMALL);
             dealt.setForeground(UITheme.TEXT_GREEN);
@@ -322,6 +334,11 @@ public class VoteSessionPanel extends JPanel {
     }
 
     private void openNegotiation(PoliticalParty party) {
+        if (party.isNoNegotiation()) {
+            // Noble party — show internal vote breakdown
+            showNobleVoteBreakdown(party);
+            return;
+        }
         PartyNegotiationPanel neg = new PartyNegotiationPanel(
             gameState, party,
             () -> onSwapPanel.accept(this),
@@ -331,6 +348,194 @@ public class VoteSessionPanel extends JPanel {
             }
         );
         onSwapPanel.accept(neg);
+    }
+
+    private void showNobleVoteBreakdown(PoliticalParty party) {
+        VotingSession session = gameState.getActiveSession();
+        if (session == null) return;
+        NoblePartyVoteManager.NoblePartyVoteResult result = session.getNoblePartyVoteResult();
+        if (result == null) return;
+        onSwapPanel.accept(buildNobleBreakdownPanel(party, result));
+    }
+
+    private JPanel buildNobleBreakdownPanel(PoliticalParty party,
+                                             NoblePartyVoteManager.NoblePartyVoteResult result) {
+        JPanel panel = new JPanel(new BorderLayout(0, 12));
+        panel.setBackground(UITheme.BG_DARK);
+        panel.setBorder(new EmptyBorder(16, 20, 16, 20));
+
+        // Back button
+        JButton back = new JButton("← BACK TO VOTE");
+        back.setFont(UITheme.FONT_BUTTON);
+        back.setForeground(UITheme.TEXT_SECONDARY);
+        back.setBackground(UITheme.BUTTON_BG);
+        back.setBorderPainted(false);
+        back.setFocusPainted(false);
+        back.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        back.addActionListener(e -> onSwapPanel.accept(this));
+
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        topBar.setBackground(UITheme.BG_DARK);
+        topBar.add(back);
+
+        // Title
+        JLabel title = new JLabel("Noble Houses — Internal Vote Breakdown");
+        title.setFont(UITheme.FONT_TITLE);
+        title.setForeground(UITheme.TEXT_GOLD);
+
+        JLabel sub = new JLabel("The five most prestigious houses deliberate amongst themselves. Their vote is unanimous.");
+        sub.setFont(UITheme.FONT_SMALL);
+        sub.setForeground(UITheme.TEXT_SECONDARY);
+
+        JPanel titleBlock = new JPanel();
+        titleBlock.setLayout(new BoxLayout(titleBlock, BoxLayout.Y_AXIS));
+        titleBlock.setBackground(UITheme.BG_DARK);
+        titleBlock.add(title);
+        titleBlock.add(Box.createVerticalStrut(4));
+        titleBlock.add(sub);
+
+        JPanel north = new JPanel(new BorderLayout(0, 6));
+        north.setBackground(UITheme.BG_DARK);
+        north.add(topBar,      BorderLayout.NORTH);
+        north.add(titleBlock,  BorderLayout.CENTER);
+
+        // Voter rows
+        JPanel voterList = new JPanel();
+        voterList.setLayout(new BoxLayout(voterList, BoxLayout.Y_AXIS));
+        voterList.setBackground(UITheme.BG_DARK);
+
+        int maxPrestige = result.voters.stream().mapToInt(v -> v.prestige).max().orElse(1);
+
+        for (NoblePartyVoteManager.NobleVoterEntry voter : result.voters) {
+            voterList.add(buildNobleVoterRow(voter, maxPrestige));
+            voterList.add(Box.createVerticalStrut(6));
+        }
+
+        // Weight summary bar
+        voterList.add(Box.createVerticalStrut(12));
+        voterList.add(buildWeightSummary(result));
+
+        // Unified result
+        voterList.add(Box.createVerticalStrut(10));
+        String unifiedText;
+        Color  unifiedColor;
+        if (result.isUnknown) {
+            unifiedText  = "⚑ All houses abstained — final vote will be UNKNOWN until resolved";
+            unifiedColor = UITheme.TEXT_GOLD;
+        } else {
+            unifiedText  = "⚑ Noble Houses vote UNANIMOUSLY: " + result.unifiedStance.name();
+            unifiedColor = result.unifiedStance == NoblePartyVoteManager.NobleVoteStance.YES
+                    ? UITheme.TEXT_GREEN : UITheme.TEXT_RED;
+        }
+        JLabel unifiedLabel = new JLabel(unifiedText);
+        unifiedLabel.setFont(UITheme.FONT_HEADER);
+        unifiedLabel.setForeground(unifiedColor);
+        voterList.add(unifiedLabel);
+
+        JScrollPane scroll = new JScrollPane(voterList);
+        scroll.setBorder(null);
+        scroll.setBackground(UITheme.BG_DARK);
+        scroll.getViewport().setBackground(UITheme.BG_DARK);
+
+        panel.add(north,  BorderLayout.NORTH);
+        panel.add(scroll, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel buildNobleVoterRow(NoblePartyVoteManager.NobleVoterEntry voter, int maxPrestige) {
+        JPanel row = new JPanel(new BorderLayout(12, 0));
+        row.setBackground(UITheme.BG_PANEL);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                new EmptyBorder(8, 12, 8, 12)));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+
+        // Left: name + prestige bar
+        JPanel left = new JPanel();
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        left.setBackground(UITheme.BG_PANEL);
+
+        JLabel nameLabel = new JLabel(voter.house.getName());
+        nameLabel.setFont(UITheme.FONT_BUTTON);
+        nameLabel.setForeground(UITheme.TEXT_GOLD);
+
+        JLabel prestigeLabel = new JLabel("Prestige: " + voter.prestige + "  |  Opinion: " + voter.playerOpinion);
+        prestigeLabel.setFont(UITheme.FONT_SMALL);
+        prestigeLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+        // Prestige bar
+        JPanel barBg = new JPanel() {
+            @Override protected void paintComponent(java.awt.Graphics g) {
+                super.paintComponent(g);
+                java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+                g2.setColor(new Color(30, 22, 40));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 4, 4);
+                double frac = Math.min(1.0, (double) voter.prestige / maxPrestige);
+                Color barColor = stanceColor(voter.stance);
+                g2.setColor(barColor);
+                g2.fillRoundRect(0, 0, (int)(getWidth() * frac), getHeight(), 4, 4);
+            }
+        };
+        barBg.setPreferredSize(new Dimension(0, 8));
+        barBg.setBackground(UITheme.BG_PANEL);
+
+        // Reason explanation
+        String reason;
+        if (voter.playerOpinion >= NoblePartyVoteManager.NOBLE_PARTY_ABSTAIN_LOWER()
+                && voter.playerOpinion <= NoblePartyVoteManager.NOBLE_PARTY_ABSTAIN_UPPER()) {
+            reason = "Opinion " + voter.playerOpinion + " is in the neutral zone (45–55) → ABSTAIN";
+        } else if (voter.playerOpinion > NoblePartyVoteManager.NOBLE_PARTY_ABSTAIN_UPPER()) {
+            reason = "Opinion " + voter.playerOpinion + " > 55 → votes YES";
+        } else {
+            reason = "Opinion " + voter.playerOpinion + " < 45 → votes NO";
+        }
+        JLabel reasonLabel = new JLabel(reason);
+        reasonLabel.setFont(UITheme.FONT_SMALL);
+        reasonLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+        left.add(nameLabel);
+        left.add(prestigeLabel);
+        left.add(Box.createVerticalStrut(3));
+        left.add(barBg);
+        left.add(Box.createVerticalStrut(2));
+        left.add(reasonLabel);
+
+        // Right: stance
+        JLabel stanceLabel = new JLabel(voter.stance.name());
+        stanceLabel.setFont(UITheme.FONT_BUTTON);
+        stanceLabel.setForeground(stanceColor(voter.stance));
+
+        row.add(left,        BorderLayout.CENTER);
+        row.add(stanceLabel, BorderLayout.EAST);
+        return row;
+    }
+
+    private JPanel buildWeightSummary(NoblePartyVoteManager.NoblePartyVoteResult result) {
+        JPanel panel = new JPanel(new BorderLayout(8, 0));
+        panel.setBackground(new Color(22, 16, 32));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                new EmptyBorder(8, 12, 8, 12)));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        panel.setAlignmentX(LEFT_ALIGNMENT);
+
+        int total = result.yesWeight + result.noWeight + result.abstainWeight;
+        JLabel label = new JLabel(String.format(
+                "Prestige weight — YES: %d   NO: %d   ABSTAIN: %d   (total: %d)",
+                result.yesWeight, result.noWeight, result.abstainWeight, total));
+        label.setFont(UITheme.FONT_BODY);
+        label.setForeground(UITheme.TEXT_PRIMARY);
+        panel.add(label, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private Color stanceColor(NoblePartyVoteManager.NobleVoteStance stance) {
+        return switch (stance) {
+            case YES     -> UITheme.TEXT_GREEN;
+            case NO      -> UITheme.TEXT_RED;
+            case ABSTAIN -> UITheme.TEXT_GOLD;
+        };
     }
 
     private void updateOutcomeLabel(VotingSession session) {

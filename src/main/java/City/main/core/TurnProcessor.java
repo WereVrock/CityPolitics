@@ -156,6 +156,7 @@ public class TurnProcessor {
         gameState.getLegislationManager().tickWartimeTaxesCooldown();
         gameState.getLegislationManager().tickSendResourcesWindow();
         gameState.getLegislationManager().resetCouncilEventUsed();
+        gameState.getLegislationManager().resetRealmCouncilUsed();
 
         // ── Refresh mercenary hire pool ───────────────────────────────────────
         gameState.getMercenaryManager().getHirePool().refresh();
