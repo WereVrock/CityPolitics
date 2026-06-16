@@ -252,7 +252,13 @@ public class CouncilPanel extends JPanel {
         }
     }
 
-    private void doStartSession(CouncilAction action) {
+private void doStartSession(CouncilAction action) {
+        if (gameState.getLegislationManager().isRealmCouncilUsedThisTurn()) {
+            JOptionPane.showMessageDialog(this,
+                    "The realm council has already been convened this turn.");
+            return;
+        }
+
         int oracleOpinion = 50;
         for (City.main.politics.PoliticalParty p : gameState.getPartyManager().getParties()) {
             if (p.getName().equals("Oracles")) { oracleOpinion = p.getPlayerOpinion(); break; }
@@ -269,11 +275,11 @@ public class CouncilPanel extends JPanel {
         gameState.setActiveCouncilSession(session);
         gameState.getLegislationManager().markRealmCouncilUsedThisTurn();
 
-        // Immediately switch to the voting view
+        // Immediately rebuild this panel in voting mode and refresh
         onBack.run();
     }
 
-    private String pickZoneForUnlawful() {
+private String pickZoneForUnlawful() {
         java.util.List<City.main.map.Zone> ownedZones = new java.util.ArrayList<>();
         for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
             if (z.isDesolate()) continue;

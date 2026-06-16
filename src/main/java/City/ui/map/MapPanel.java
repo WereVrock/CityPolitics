@@ -49,12 +49,15 @@ public class MapPanel extends JPanel
     private int   panYAtDrag = 0;
 
     private final City.main.core.GameState gameState;
+    private City.main.mercenaries.MercenaryArmy selectedMercArmy = null;
+    private final java.util.function.Consumer<City.main.mercenaries.MercenaryArmy> onMercArmySelected;
 
     public MapPanel(City.main.core.GameState gameState,
                     Consumer<Zone>     onZoneSelected,
                     Consumer<Army>     onArmySelected,
                     Consumer<NobleArmy> onNobleArmySelected,
                     Consumer<BarbArmy>  onBarbArmySelected,
+                    java.util.function.Consumer<City.main.mercenaries.MercenaryArmy> onMercArmySelected,
                     ArmyListPanel      armyListPanel,
                     City.main.nobles.NobleHouseManager nobleHouseManager) {
 
@@ -65,6 +68,7 @@ public class MapPanel extends JPanel
         this.onArmySelected      = onArmySelected;
         this.onNobleArmySelected = onNobleArmySelected;
         this.onBarbArmySelected  = onBarbArmySelected;
+        this.onMercArmySelected  = onMercArmySelected;
         this.armyListPanel       = armyListPanel;
 
         this.camera       = new MapCamera();
@@ -102,18 +106,19 @@ public class MapPanel extends JPanel
 
     // ─── Selection ───────────────────────────────────────────────────────────
 
-    public void clearSelection() {
+public void clearSelection() {
         selectedZone      = null;
         selectedArmy      = null;
         selectedNobleArmy = null;
         selectedBarbArmy  = null;
+        selectedMercArmy  = null;
         renderer.setSelectedNobleArmy(null);
         BarbArmyRenderer br = renderer.getBarbArmyRenderer();
         if (br != null) br.setSelectedArmy(null);
         repaint();
     }
 
-    public Zone     getSelectedZone()     { return selectedZone; }
+public Zone     getSelectedZone()     { return selectedZone; }
     public BarbArmy getSelectedBarbArmy() { return selectedBarbArmy; }
 
     public void cycleViewMode() {
@@ -173,7 +178,7 @@ public class MapPanel extends JPanel
         });
     }
 
-    private void handleLeftClick(Point screenPt) {
+private void handleLeftClick(Point screenPt) {
         Point world = camera.screenToWorld(screenPt);
 
         // 1. Barbarian armies (rendered on top)
@@ -184,6 +189,7 @@ public class MapPanel extends JPanel
                 selectedBarbArmy  = (selectedBarbArmy == barbHit) ? null : barbHit;
                 selectedArmy      = null;
                 selectedNobleArmy = null;
+                selectedMercArmy  = null;
                 selectedZone      = null;
                 renderer.setSelectedNobleArmy(null);
                 barbRenderer.setSelectedArmy(selectedBarbArmy);
@@ -193,12 +199,31 @@ public class MapPanel extends JPanel
             }
         }
 
-        // 2. Player armies
+        // 2. Mercenary armies
+        City.ui.map.MercenaryArmyRenderer mercRenderer = renderer.getMercenaryArmyRenderer();
+        if (mercRenderer != null) {
+            City.main.mercenaries.MercenaryArmy mercHit = mercRenderer.hitTest(world);
+            if (mercHit != null) {
+                selectedMercArmy  = (selectedMercArmy == mercHit) ? null : mercHit;
+                selectedArmy      = null;
+                selectedNobleArmy = null;
+                selectedBarbArmy  = null;
+                selectedZone      = null;
+                renderer.setSelectedNobleArmy(null);
+                if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
+                repaint();
+                if (onMercArmySelected != null) onMercArmySelected.accept(selectedMercArmy);
+                return;
+            }
+        }
+
+        // 3. Player armies
         Army armyHit = armyRenderer.hitTest(world, zoneManager);
         if (armyHit != null) {
             selectedArmy      = (selectedArmy == armyHit) ? null : armyHit;
             selectedNobleArmy = null;
             selectedBarbArmy  = null;
+            selectedMercArmy  = null;
             selectedZone      = null;
             renderer.setSelectedNobleArmy(null);
             if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
@@ -207,7 +232,7 @@ public class MapPanel extends JPanel
             return;
         }
 
-        // 3. Noble armies
+        // 4. Noble armies
         NobleArmyRenderer nobleRenderer = renderer.getNobleArmyRenderer();
         if (nobleRenderer != null) {
             NobleArmy nobleHit = nobleRenderer.hitTest(world);
@@ -215,6 +240,7 @@ public class MapPanel extends JPanel
                 selectedNobleArmy = (selectedNobleArmy == nobleHit) ? null : nobleHit;
                 selectedArmy      = null;
                 selectedBarbArmy  = null;
+                selectedMercArmy  = null;
                 selectedZone      = null;
                 renderer.setSelectedNobleArmy(selectedNobleArmy);
                 if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
@@ -225,19 +251,20 @@ public class MapPanel extends JPanel
             }
         }
 
-        // 4. Zone
+        // 5. Zone
         Zone hit      = zoneAt(screenPt);
         selectedZone  = hit;
         selectedArmy  = null;
         selectedNobleArmy = null;
         selectedBarbArmy  = null;
+        selectedMercArmy  = null;
         renderer.setSelectedNobleArmy(null);
         if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
         repaint();
         onZoneSelected.accept(hit);
     }
 
-    private void handleRightClick(Point screenPt) {
+private void handleRightClick(Point screenPt) {
         Point world  = camera.screenToWorld(screenPt);
         Army armyHit = armyRenderer.hitTest(world, zoneManager);
         if (armyHit == null || armyHit.isInCity()) return;

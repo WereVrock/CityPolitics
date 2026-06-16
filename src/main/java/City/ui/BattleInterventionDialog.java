@@ -31,7 +31,7 @@ public class BattleInterventionDialog {
                 playerSize, attackerSize, List.of(), List.of(), false).choice();
     }
 
-    public static InterventionResult showDetailed(
+public static InterventionResult showDetailed(
             Window parent,
             String attackerName, String defenderName,
             String zoneId, int playerSize, int attackerSize,
@@ -42,16 +42,16 @@ public class BattleInterventionDialog {
         JDialog dialog = new JDialog(
                 parent instanceof Frame ? (Frame) parent : null,
                 "Noble Battle at " + zoneId.replace("_", " "), true);
-        dialog.setSize(560, 480);
+        dialog.setMinimumSize(new Dimension(500, 460));
         dialog.setLocationRelativeTo(parent);
-        dialog.setResizable(false);
+        dialog.setResizable(true);
         dialog.getContentPane().setBackground(UITheme.BG_PANEL);
 
         JPanel root = new JPanel(new BorderLayout(0, 10));
         root.setBackground(UITheme.BG_PANEL);
         root.setBorder(new EmptyBorder(16, 20, 12, 20));
 
-        // Header
+        // Title
         JLabel title = new JLabel("⚔ Noble Battle — " + zoneId.replace("_", " "));
         title.setFont(UITheme.FONT_TITLE);
         title.setForeground(UITheme.TEXT_GOLD);
@@ -87,17 +87,24 @@ public class BattleInterventionDialog {
         info.setFont(UITheme.FONT_BODY);
         info.setForeground(UITheme.TEXT_PRIMARY);
 
-        // Justification note
+        // Justification explanations
         boolean joinDefenderJustified = defenderIsProtected;
-        boolean joinAttackerJustified = false; // coalition not passed through here yet
 
-        JLabel justNote = new JLabel("<html><i>"
-                + (defenderIsProtected
-                    ? "Joining the defender is justified — they are under your protection."
-                    : "Note: joining either side without justification costs 1 Trust and lowers bystander opinions.")
-                + "</i></html>");
-        justNote.setFont(UITheme.FONT_SMALL);
-        justNote.setForeground(defenderIsProtected ? UITheme.TEXT_GREEN : new Color(200, 160, 60));
+        JPanel justPanel = new JPanel();
+        justPanel.setLayout(new BoxLayout(justPanel, BoxLayout.Y_AXIS));
+        justPanel.setBackground(UITheme.BG_PANEL);
+
+        JLabel generalNote = new JLabel("<html><i>Joining without justification costs 1 Trust and lowers bystander opinions.</i></html>");
+        generalNote.setFont(UITheme.FONT_SMALL);
+        generalNote.setForeground(new Color(200, 160, 60));
+        justPanel.add(generalNote);
+
+        if (defenderIsProtected) {
+            JLabel protNote = new JLabel("<html><i>★ Joining the defender is <b>justified</b> — they are under your protection.</i></html>");
+            protNote.setFont(UITheme.FONT_SMALL);
+            protNote.setForeground(new Color(120, 200, 120));
+            justPanel.add(protNote);
+        }
 
         JPanel header = new JPanel();
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
@@ -106,9 +113,9 @@ public class BattleInterventionDialog {
         header.add(Box.createVerticalStrut(8));
         header.add(info);
         header.add(Box.createVerticalStrut(6));
-        header.add(justNote);
+        header.add(justPanel);
 
-        // Buttons
+        // Buttons — full descriptions
         JPanel btnPanel = new JPanel(new GridLayout(2, 2, 8, 8));
         btnPanel.setBackground(UITheme.BG_PANEL);
 
@@ -117,22 +124,37 @@ public class BattleInterventionDialog {
         String atkShort = stripHouse(attackerName);
         String defShort = stripHouse(defenderName);
 
-        JButton joinAtkBtn  = makeBtn("<html>Join " + atkShort
-                + "<br><font size='-1' color='#aaaaaa'>+opinion attacker, −opinion defender</font></html>",
+        String joinAtkJust = "No special justification. Costs 1 Trust and lowers bystander opinions.";
+        String joinDefJust = defenderIsProtected
+                ? "Justified — defender is under your protection. No Trust penalty."
+                : "No special justification. Costs 1 Trust and lowers bystander opinions.";
+        String stopJust = "Stopping a fight between nobles. Costs some attacker opinion, gains small defender opinion.";
+        String ignoreJust = "You do nothing. No penalties.";
+
+        JButton joinAtkBtn  = makeBtn(
+                "<html><b>Join " + atkShort + "</b>"
+                + "<br><font size='-1' color='#aaaaaa'>+opinion attacker, −opinion defender</font>"
+                + "<br><font size='-1' color='#cc8844'>" + joinAtkJust + "</font></html>",
                 new Color(200, 80, 60));
-        JButton joinDefBtn  = makeBtn("<html>Join " + defShort
-                + (defenderIsProtected ? " ★" : "")
-                + "<br><font size='-1' color='#aaaaaa'>+opinion defender, −opinion attacker</font></html>",
+        JButton joinDefBtn  = makeBtn(
+                "<html><b>Join " + defShort + (defenderIsProtected ? " ★" : "") + "</b>"
+                + "<br><font size='-1' color='#aaaaaa'>+opinion defender, −opinion attacker</font>"
+                + "<br><font size='-1' color='" + (defenderIsProtected ? "#78C87A" : "#cc8844") + "'>"
+                + joinDefJust + "</font></html>",
                 defenderIsProtected ? UITheme.TEXT_GREEN : new Color(60, 140, 200));
-        JButton stopBtn     = makeBtn("<html>Stop the Fight"
-                + "<br><font size='-1' color='#aaaaaa'>−½opinion attacker, +¼opinion defender</font></html>",
+        JButton stopBtn     = makeBtn(
+                "<html><b>Stop the Fight</b>"
+                + "<br><font size='-1' color='#aaaaaa'>−½ opinion attacker, +¼ opinion defender</font>"
+                + "<br><font size='-1' color='#cc8844'>" + stopJust + "</font></html>",
                 new Color(180, 140, 60));
-        JButton ignoreBtn   = makeBtn("<html>Ignore"
-                + "<br><font size='-1' color='#aaaaaa'>No effect</font></html>",
+        JButton ignoreBtn   = makeBtn(
+                "<html><b>Ignore</b>"
+                + "<br><font size='-1' color='#aaaaaa'>No immediate effect</font>"
+                + "<br><font size='-1' color='#78C87A'>" + ignoreJust + "</font></html>",
                 UITheme.TEXT_SECONDARY);
 
         joinAtkBtn.addActionListener(e -> {
-            result[0] = new InterventionResult(PlayerChoice.JOIN_ATTACKER, joinAttackerJustified);
+            result[0] = new InterventionResult(PlayerChoice.JOIN_ATTACKER, false);
             dialog.dispose();
         });
         joinDefBtn.addActionListener(e -> {
@@ -156,25 +178,29 @@ public class BattleInterventionDialog {
         root.add(header,   BorderLayout.CENTER);
         root.add(btnPanel, BorderLayout.SOUTH);
         dialog.add(root);
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(500, dialog.getHeight()));
+        dialog.setLocationRelativeTo(parent);
         dialog.setVisible(true);
         return result[0];
     }
 
-    private static JButton makeBtn(String text, Color fg) {
-        JButton btn = new JButton("<html><body style='text-align:center'>" + text + "</body></html>");
+private static JButton makeBtn(String text, Color fg) {
+        JButton btn = new JButton("<html><body style='text-align:left; padding: 4px'>" + text + "</body></html>");
         btn.setFont(UITheme.FONT_BUTTON);
         btn.setForeground(fg);
         btn.setBackground(UITheme.BUTTON_BG);
         btn.setBorderPainted(true);
         btn.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
-                new EmptyBorder(6, 8, 6, 8)));
+                new EmptyBorder(8, 10, 8, 10)));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
         return btn;
     }
 
-    private static String stripHouse(String name) {
+private static String stripHouse(String name) {
         if (name == null) return "";
         return name.startsWith("House ") ? name.substring(6) : name;
     }

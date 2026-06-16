@@ -49,6 +49,13 @@ public MapView(GameState gameState, Runnable onBack) {
                     infoPanel.clearArmy();
                 }
             },
+            mercArmy -> {
+                if (mercArmy != null) {
+                    infoPanel.showMercArmy(mercArmy, zoneManager);
+                } else {
+                    infoPanel.clearArmy();
+                }
+            },
             armyListPanel,
             gameState.getNobleHouseManager()
         );

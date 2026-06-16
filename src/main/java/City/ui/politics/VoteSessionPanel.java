@@ -126,7 +126,7 @@ public class VoteSessionPanel extends JPanel {
         return panel;
     }
 
-    public void refresh() {
+public void refresh() {
         partyRows.removeAll();
         VotingSession session = gameState.getActiveSession();
         if (session == null) return;
@@ -138,17 +138,23 @@ public class VoteSessionPanel extends JPanel {
         // Oracles second
         PoliticalParty oracles = gameState.getPartyManager().getOracles();
         session.syncOraclesWithPlayer(oracles);
-        partyRows.add(buildPartyRow(session, oracles));
-        partyRows.add(Box.createVerticalStrut(4));
+        JPanel oraclesRow = buildPartyRow(session, oracles);
+        if (oraclesRow.getComponentCount() > 0) {
+            partyRows.add(oraclesRow);
+            partyRows.add(Box.createVerticalStrut(4));
+        }
 
-        // Rest sorted
+        // Rest sorted, skip 0-seat non-fixed parties
         List<PoliticalParty> parties = session.getParties().stream()
             .filter(p -> p != oracles)
+            .filter(p -> p.getSeats() > 0 || p.isUnelected())
             .sorted((a, b) -> a.getName().compareToIgnoreCase(b.getName()))
             .toList();
 
         for (PoliticalParty party : parties) {
-            partyRows.add(buildPartyRow(session, party));
+            JPanel row = buildPartyRow(session, party);
+            if (row.getComponentCount() == 0) continue;
+            partyRows.add(row);
             // Side deal row if struck
             if (session.hasSideDealt(party)) {
                 partyRows.add(buildSideDealResultRow(session, party));
@@ -161,7 +167,7 @@ public class VoteSessionPanel extends JPanel {
         updateOutcomeLabel(session);
     }
 
-    // ─── Side deal result row shown below main party row ─────────────────────
+// ─── Side deal result row shown below main party row ─────────────────────
 
     private JPanel buildSideDealResultRow(VotingSession session, PoliticalParty party) {
         int seats      = session.getSideDealtSeats(party);
@@ -240,7 +246,10 @@ public class VoteSessionPanel extends JPanel {
         return panel;
     }
 
-    private JPanel buildPartyRow(VotingSession session, PoliticalParty party) {
+private JPanel buildPartyRow(VotingSession session, PoliticalParty party) {
+        // Skip parties with 0 seats (unless they are fixed-seat special parties)
+        if (party.getSeats() == 0 && !party.isUnelected()) return new JPanel();
+
         boolean isOracles    = party == gameState.getPartyManager().getOracles();
         boolean canDeal      = session.canDeal(party);
         boolean alreadyDealt = session.hasDealt(party);
@@ -294,9 +303,9 @@ public class VoteSessionPanel extends JPanel {
         });
 
         if (party.isNoNegotiation()) {
-             session = gameState.getActiveSession();
-            boolean unknown = session != null && session.getNoblePartyVoteResult() != null
-                    && session.getNoblePartyVoteResult().isUnknown;
+            VotingSession currentSession = gameState.getActiveSession();
+            boolean unknown = currentSession != null && currentSession.getNoblePartyVoteResult() != null
+                    && currentSession.getNoblePartyVoteResult().isUnknown;
             JLabel hint = new JLabel(unknown ? "UNKNOWN (all abstained — click for details)"
                     : "click to see breakdown");
             hint.setFont(UITheme.FONT_SMALL);
@@ -333,7 +342,7 @@ public class VoteSessionPanel extends JPanel {
         return row;
     }
 
-    private void openNegotiation(PoliticalParty party) {
+private void openNegotiation(PoliticalParty party) {
         if (party.isNoNegotiation()) {
             // Noble party — show internal vote breakdown
             showNobleVoteBreakdown(party);

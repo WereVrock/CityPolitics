@@ -15,16 +15,20 @@ import java.util.List;
  */
 public class MercenaryArmyRenderer {
 
-    private static final Color COLOR_BODY    = new Color(130, 100,  30);
-    private static final Color COLOR_OUTLINE = new Color(220, 180,  60);
-    private static final Color COLOR_LABEL   = new Color(255, 230, 150);
-    private static final Color COLOR_SHADOW  = new Color(10,   5,   0, 180);
+    private static final Color COLOR_BODY     = new Color(130, 100,  30);
+    private static final Color COLOR_OUTLINE  = new Color(220, 180,  60);
+    private static final Color COLOR_LABEL    = new Color(255, 230, 150);
+    private static final Color COLOR_SHADOW   = new Color(10,   5,   0, 180);
+    private static final Color COLOR_SELECTED = new Color(255, 240, 100);
 
     private static final int  SLOT_WIDTH = 32;
     private static final Font FONT_LABEL = new Font("Serif", Font.BOLD, 9);
 
     private final MercenaryManager mercenaryManager;
     private final ZoneManager       zoneManager;
+    private City.main.mercenaries.MercenaryArmy selectedArmy = null;
+
+    public void setSelectedArmy(City.main.mercenaries.MercenaryArmy army) { this.selectedArmy = army; }
 
     public MercenaryArmyRenderer(MercenaryManager mercenaryManager, ZoneManager zoneManager) {
         this.mercenaryManager = mercenaryManager;
@@ -54,7 +58,14 @@ public class MercenaryArmyRenderer {
         }
     }
 
-    private void drawMercArmy(Graphics2D g2, MercenaryArmy army, int cx, int cy) {
+private void drawMercArmy(Graphics2D g2, MercenaryArmy army, int cx, int cy) {
+        boolean selected = army == selectedArmy;
+        if (selected) {
+            g2.setColor(COLOR_SELECTED);
+            g2.setStroke(new BasicStroke(2.5f));
+            g2.drawOval(cx - 12, cy - 14, 24, 26);
+            g2.setStroke(new BasicStroke(1f));
+        }
         // Diamond / coin shape
         int[] sx = { cx, cx + 8, cx, cx - 8 };
         int[] sy = { cy - 10, cy, cy + 10, cy };
@@ -81,4 +92,30 @@ public class MercenaryArmyRenderer {
         g2.setColor(COLOR_LABEL);
         g2.drawString(lbl, lx, ly);
     }
+
+public MercenaryArmy hitTest(Point world) {
+        Map<String, List<MercenaryArmy>> byZone = new LinkedHashMap<>();
+        for (MercenaryArmy army : mercenaryManager.getArmies()) {
+            if (!army.isAlive()) continue;
+            byZone.computeIfAbsent(army.getZoneId(), k -> new ArrayList<>()).add(army);
+        }
+        for (Map.Entry<String, List<MercenaryArmy>> entry : byZone.entrySet()) {
+            Zone zone = zoneManager.getZone(entry.getKey());
+            if (zone == null) continue;
+            List<MercenaryArmy> armies = entry.getValue();
+            int count      = armies.size();
+            int anchorX    = zone.getLabelX() - 32;
+            int anchorY    = zone.getLabelY() - 20;
+            int totalWidth = (count - 1) * SLOT_WIDTH;
+            int startX     = anchorX - totalWidth / 2;
+            for (int i = 0; i < count; i++) {
+                int cx = startX + i * SLOT_WIDTH;
+                int dx = world.x - cx;
+                int dy = world.y - anchorY;
+                if (dx * dx + dy * dy <= 12 * 12) return armies.get(i);
+            }
+        }
+        return null;
+    }
+
 }

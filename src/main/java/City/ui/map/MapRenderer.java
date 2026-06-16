@@ -76,6 +76,7 @@ public class MapRenderer {
     private       NobleArmyRenderer        nobleArmyRenderer;
     private       BarbArmyRenderer         barbArmyRenderer;
     private       City.ui.map.MercenaryArmyRenderer mercenaryArmyRenderer;
+    public City.ui.map.MercenaryArmyRenderer getMercenaryArmyRenderer() { return mercenaryArmyRenderer; }
     private       City.main.barbarians.BarbArmyManager barbArmyManagerRef;
     private       NobleArmy                selectedNobleArmy = null;
     private MapViewMode viewMode = MapViewMode.SETTLEMENT;

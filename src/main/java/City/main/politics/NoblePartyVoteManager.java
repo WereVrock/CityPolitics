@@ -71,7 +71,8 @@ public class NoblePartyVoteManager {
      * Compute the noble party vote result for a given set of houses.
      * Called when building the vote session so the result can be shown in the UI.
      */
-    public static NoblePartyVoteResult computeVote(NobleHouseManager nobleHouseManager) {
+
+public static NoblePartyVoteResult computeVote(NobleHouseManager nobleHouseManager) {
         List<NobleHouse> all = new ArrayList<>(nobleHouseManager.getHouses());
         all.removeIf(NobleHouse::isEliminated);
         // Sort by prestige descending, take top 5
@@ -109,11 +110,9 @@ public class NoblePartyVoteManager {
         } else if (noWeight > yesWeight) {
             unified = NobleVoteStance.NO;
         } else if (yesWeight == 0 && noWeight == 0) {
-            // All abstained
             unified   = NobleVoteStance.ABSTAIN;
             isUnknown = true;
         } else {
-            // Tie — random, unknown
             unified   = NobleVoteStance.ABSTAIN;
             isUnknown = true;
         }
@@ -121,7 +120,7 @@ public class NoblePartyVoteManager {
         return new NoblePartyVoteResult(entries, unified, isUnknown, yesWeight, noWeight, abstainWeight);
     }
 
-    /**
+/**
      * Resolve the actual vote when all abstained (random).
      * Called at finalization time.
      */

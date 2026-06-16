@@ -22,6 +22,8 @@ public class PartiesOverviewPanel extends JPanel {
     private final GameState  gameState;
     private final Runnable   onBack;
     private final JPanel     listPanel;
+    // Survey panel shown during campaign
+    private JPanel surveyPanel = null;
 
     public PartiesOverviewPanel(GameState gameState, Runnable onBack) {
         this.gameState = gameState;
@@ -67,7 +69,7 @@ public class PartiesOverviewPanel extends JPanel {
         return panel;
     }
 
-    public void refresh() {
+public void refresh() {
         listPanel.removeAll();
 
         // Election countdown banner
@@ -81,9 +83,15 @@ public class PartiesOverviewPanel extends JPanel {
         elBanner.setBorder(new EmptyBorder(0, 0, 10, 0));
         listPanel.add(elBanner);
 
+        // Election survey during campaign period
+        if (em.isCampaignPeriod()) {
+            listPanel.add(buildSurveyPanel());
+            listPanel.add(Box.createVerticalStrut(8));
+        }
+
         List<PoliticalParty> parties = gameState.getPartyManager().getParties();
+
         // Election support button (during campaign)
-        
         if (em.canSupportParty()) {
             JPanel supportBanner = buildSupportBanner(parties, em);
             listPanel.add(supportBanner);
@@ -97,7 +105,9 @@ public class PartiesOverviewPanel extends JPanel {
             listPanel.add(supportLabel);
         }
 
+        // Filter: only parties with seats OR fixed-seat parties
         for (PoliticalParty party : parties) {
+            if (party.getSeats() == 0 && !party.isUnelected()) continue;
             listPanel.add(buildPartyCard(party));
             listPanel.add(Box.createVerticalStrut(8));
         }
@@ -113,18 +123,81 @@ private JPanel buildPartyCard(PoliticalParty party) {
             BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
             new EmptyBorder(10, 12, 10, 12)
         ));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
         card.setAlignmentX(LEFT_ALIGNMENT);
+        card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        card.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                showPartyDetailDialog(party);
+            }
+            @Override public void mouseEntered(java.awt.event.MouseEvent e) {
+                card.setBackground(UITheme.BG_PANEL_LIGHT);
+            }
+            @Override public void mouseExited(java.awt.event.MouseEvent e) {
+                card.setBackground(UITheme.BG_PANEL);
+            }
+        });
 
-        card.add(buildPortraitPlaceholder(party), BorderLayout.WEST);
-        card.add(buildPartyInfo(party),           BorderLayout.CENTER);
-        card.add(buildOpinionPanel(party),        BorderLayout.EAST);
+        // Emblem + name block
+        JPanel left = new JPanel();
+        left.setLayout(new BoxLayout(left, BoxLayout.Y_AXIS));
+        left.setBackground(UITheme.BG_PANEL);
+        left.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                showPartyDetailDialog(party);
+            }
+        });
 
-        // Campaign resource giving row — only for elected parties
+        String emblem = City.main.politics.PartyEmblemRegistry.getEmblem(party.getName());
+        JLabel nameLabel = new JLabel(emblem + "  " + party.getName());
+        nameLabel.setFont(UITheme.FONT_HEADER);
+        nameLabel.setForeground(UITheme.TEXT_GOLD);
+
+        JLabel seatsLabel = new JLabel(party.getSeats() + " seats  |  Power: " + party.getPower());
+        seatsLabel.setFont(UITheme.FONT_SMALL);
+        seatsLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+        int favour = party.getFavour();
+        String favourText = favour == 0 ? ""
+            : favour < 0 ? "  ⚠ You owe " + Math.abs(favour) + " favour(s)"
+            : "  ✓ They owe " + favour + " favour(s)";
+        JLabel favourLabel = new JLabel(favourText);
+        favourLabel.setFont(UITheme.FONT_SMALL);
+        favourLabel.setForeground(favour < 0 ? UITheme.TEXT_RED : UITheme.TEXT_GREEN);
+
+        JLabel clickHint = new JLabel("Click for details");
+        clickHint.setFont(UITheme.FONT_SMALL);
+        clickHint.setForeground(new Color(100, 85, 130));
+
+        left.add(nameLabel);
+        left.add(seatsLabel);
+        if (!favourText.isEmpty()) left.add(favourLabel);
+        left.add(clickHint);
+
+        // Right: opinion bars
+        JPanel right = new JPanel();
+        right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
+        right.setBackground(UITheme.BG_PANEL);
+        right.setPreferredSize(new Dimension(130, 0));
+        right.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                showPartyDetailDialog(party);
+            }
+        });
+        right.add(makeStatLabelSmall("Opinion of you", party.getPlayerOpinion() + "/100",
+                opinionColor(party.getPlayerOpinion())));
+        right.add(Box.createVerticalStrut(4));
+        right.add(makeStatLabelSmall("Public opinion", party.getPublicOpinion() + "/100",
+                opinionColor(party.getPublicOpinion())));
+
+        card.add(left,  BorderLayout.CENTER);
+        card.add(right, BorderLayout.EAST);
+
+        // Campaign resource row
         City.main.politics.ElectionManager em = gameState.getElectionManager();
         if (!party.isUnelected() && (em.isCampaignPeriod() || em.getTurnsUntilElection() <= 4)) {
             card.add(buildCampaignRow(party, pm), BorderLayout.SOUTH);
-            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 140));
         }
         return card;
     }
@@ -377,7 +450,282 @@ private JPanel buildCampaignRow(PoliticalParty party,
         return row;
     }
 
-    private JButton makeDonateButton(String label) {
+private JPanel buildSurveyPanel() {
+        City.main.politics.ElectionManager em = gameState.getElectionManager();
+        List<City.main.politics.ElectionSurveyCalculator.SurveyResult> survey =
+                em.getSurveyCalculator().compute(
+                        gameState.getPartyManager().getParties(),
+                        gameState.getPopManager(),
+                        gameState.getPropagandaManager());
+
+        JPanel panel = new JPanel(new BorderLayout(0, 6));
+        panel.setBackground(new Color(22, 16, 36));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(100, 70, 160), 1),
+                new EmptyBorder(10, 12, 10, 12)));
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 180));
+        panel.setAlignmentX(LEFT_ALIGNMENT);
+
+        JLabel title = new JLabel("📊 ELECTION SURVEY (rough estimate ±15%)");
+        title.setFont(UITheme.FONT_BUTTON);
+        title.setForeground(new Color(200, 170, 255));
+
+        // Pie chart panel
+        JPanel piePanel = new JPanel() {
+            @Override
+            protected void paintComponent(java.awt.Graphics g) {
+                super.paintComponent(g);
+                java.awt.Graphics2D g2 = (java.awt.Graphics2D) g;
+                g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                int cx = 60, cy = 60, r = 55;
+                double start = -90;
+                java.awt.Color[] pieColors = {
+                    new java.awt.Color(180, 60, 60),
+                    new java.awt.Color(60, 120, 200),
+                    new java.awt.Color(60, 160, 80),
+                    new java.awt.Color(180, 140, 40),
+                    new java.awt.Color(120, 60, 180),
+                    new java.awt.Color(40, 160, 160),
+                    new java.awt.Color(200, 100, 40),
+                    new java.awt.Color(140, 140, 60)
+                };
+                int colorIdx = 0;
+                for (City.main.politics.ElectionSurveyCalculator.SurveyResult sr : survey) {
+                    if (sr.votePct < 0.5) { colorIdx++; continue; }
+                    double arc = sr.votePct / 100.0 * 360.0;
+                    g2.setColor(pieColors[colorIdx % pieColors.length]);
+                    g2.fillArc(cx - r, cy - r, r * 2, r * 2, (int) start, (int) arc);
+                    g2.setColor(new java.awt.Color(10, 8, 16));
+                    g2.setStroke(new java.awt.BasicStroke(1.5f));
+                    g2.drawArc(cx - r, cy - r, r * 2, r * 2, (int) start, (int) arc);
+                    start += arc;
+                    colorIdx++;
+                }
+                g2.setStroke(new java.awt.BasicStroke(1f));
+            }
+        };
+        piePanel.setPreferredSize(new Dimension(130, 130));
+        piePanel.setBackground(new java.awt.Color(22, 16, 36));
+
+        // Legend
+        JPanel legend = new JPanel();
+        legend.setLayout(new BoxLayout(legend, BoxLayout.Y_AXIS));
+        legend.setBackground(new java.awt.Color(22, 16, 36));
+
+        java.awt.Color[] pieColors = {
+            new java.awt.Color(180, 60, 60),
+            new java.awt.Color(60, 120, 200),
+            new java.awt.Color(60, 160, 80),
+            new java.awt.Color(180, 140, 40),
+            new java.awt.Color(120, 60, 180),
+            new java.awt.Color(40, 160, 160),
+            new java.awt.Color(200, 100, 40),
+            new java.awt.Color(140, 140, 60)
+        };
+        int cIdx = 0;
+        for (City.main.politics.ElectionSurveyCalculator.SurveyResult sr : survey) {
+            JPanel row = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 1));
+            row.setBackground(new java.awt.Color(22, 16, 36));
+            JLabel dot = new JLabel("■");
+            dot.setForeground(pieColors[cIdx % pieColors.length]);
+            dot.setFont(UITheme.FONT_SMALL);
+            String emblem = City.main.politics.PartyEmblemRegistry.getEmblem(sr.partyName);
+            JLabel lbl = new JLabel(emblem + " " + sr.partyName + ": " + String.format("%.1f%%", sr.votePct));
+            lbl.setFont(UITheme.FONT_SMALL);
+            lbl.setForeground(UITheme.TEXT_PRIMARY);
+            row.add(dot);
+            row.add(lbl);
+            legend.add(row);
+            cIdx++;
+        }
+
+        JPanel chartRow = new JPanel(new BorderLayout(8, 0));
+        chartRow.setBackground(new java.awt.Color(22, 16, 36));
+        chartRow.add(piePanel, BorderLayout.WEST);
+        chartRow.add(legend,   BorderLayout.CENTER);
+
+        panel.add(title,    BorderLayout.NORTH);
+        panel.add(chartRow, BorderLayout.CENTER);
+        return panel;
+    }
+
+private JPanel makeStatLabelSmall(String key, String value, Color valueColor) {
+        JPanel row = new JPanel();
+        row.setLayout(new BoxLayout(row, BoxLayout.Y_AXIS));
+        row.setBackground(UITheme.BG_PANEL);
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        JLabel k = new JLabel(key);
+        k.setFont(UITheme.FONT_SMALL);
+        k.setForeground(UITheme.TEXT_SECONDARY);
+        JLabel v = new JLabel(value);
+        v.setFont(UITheme.FONT_BODY);
+        v.setForeground(valueColor);
+        row.add(k);
+        row.add(v);
+        return row;
+    }
+
+private void showPartyDetailDialog(PoliticalParty party) {
+        JDialog dialog = new JDialog(
+                (java.awt.Frame) SwingUtilities.getWindowAncestor(this),
+                City.main.politics.PartyEmblemRegistry.getEmblem(party.getName()) + " " + party.getName(),
+                true);
+        dialog.setSize(520, 540);
+        dialog.setLocationRelativeTo(this);
+        dialog.setResizable(true);
+        dialog.getContentPane().setBackground(UITheme.BG_PANEL);
+
+        JPanel content = new JPanel(new GridBagLayout());
+        content.setBackground(UITheme.BG_PANEL);
+        content.setBorder(new EmptyBorder(16, 16, 16, 16));
+
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.gridx = 0; gc.weightx = 1.0; gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.insets = new java.awt.Insets(3, 0, 3, 0);
+
+        int row = 0;
+        String emblem = City.main.politics.PartyEmblemRegistry.getEmblem(party.getName());
+
+        gc.gridy = row++;
+        JLabel nameLabel = new JLabel(emblem + "  " + party.getName());
+        nameLabel.setFont(UITheme.FONT_TITLE);
+        nameLabel.setForeground(UITheme.TEXT_GOLD);
+        content.add(nameLabel, gc);
+
+        gc.gridy = row++;
+        JLabel leaderLabel = new JLabel("Leader: " + party.getLeaderName());
+        leaderLabel.setFont(UITheme.FONT_BUTTON);
+        leaderLabel.setForeground(UITheme.TEXT_SECONDARY);
+        content.add(leaderLabel, gc);
+
+        gc.gridy = row++;
+        JTextArea personality = new JTextArea(party.getPersonality());
+        personality.setFont(new java.awt.Font("Serif", java.awt.Font.ITALIC, 13));
+        personality.setForeground(UITheme.TEXT_PRIMARY);
+        personality.setBackground(UITheme.BG_PANEL);
+        personality.setEditable(false);
+        personality.setLineWrap(true);
+        personality.setWrapStyleWord(true);
+        personality.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+                new EmptyBorder(6, 8, 6, 8)));
+        content.add(personality, gc);
+
+        gc.gridy = row++;
+        JSeparator sep = new JSeparator();
+        sep.setForeground(UITheme.BORDER_COLOR);
+        content.add(sep, gc);
+
+        // Stats
+        gc.gridy = row++;
+        content.add(infoRow("Seats", String.valueOf(party.getSeats())), gc);
+        gc.gridy = row++;
+        content.add(infoRow("Power", party.getPower() + "/100"), gc);
+        gc.gridy = row++;
+        content.add(infoRow("Opinion of you", party.getPlayerOpinion() + "/100",
+                opinionColor(party.getPlayerOpinion())), gc);
+        gc.gridy = row++;
+        content.add(infoRow("Public opinion", party.getPublicOpinion() + "/100",
+                opinionColor(party.getPublicOpinion())), gc);
+
+        int favour = party.getFavour();
+        if (favour != 0) {
+            gc.gridy = row++;
+            content.add(infoRow("Favours",
+                    favour < 0 ? "You owe " + Math.abs(favour) : "They owe " + favour,
+                    favour < 0 ? UITheme.TEXT_RED : UITheme.TEXT_GREEN), gc);
+        }
+
+        gc.gridy = row++;
+        JSeparator sep2 = new JSeparator();
+        sep2.setForeground(UITheme.BORDER_COLOR);
+        content.add(sep2, gc);
+
+        // Views
+        gc.gridy = row++;
+        JLabel viewsHeader = new JLabel("Political Views:");
+        viewsHeader.setFont(UITheme.FONT_BUTTON);
+        viewsHeader.setForeground(UITheme.TEXT_GOLD);
+        content.add(viewsHeader, gc);
+
+        for (Map.Entry<City.main.politics.PolitcalView, City.main.politics.ViewStrength> entry
+                : party.getViews().entrySet()) {
+            if (entry.getValue() == City.main.politics.ViewStrength.NEUTRAL) continue;
+            gc.gridy = row++;
+            JLabel viewLabel = new JLabel("  " + entry.getKey().getDisplayName()
+                    + ": " + entry.getValue().name().replace("_", " "));
+            viewLabel.setFont(UITheme.FONT_SMALL);
+            viewLabel.setForeground(viewColor(entry.getValue()));
+            content.add(viewLabel, gc);
+        }
+
+        // Side leaders
+        if (!party.getSideLeaders().isEmpty()) {
+            gc.gridy = row++;
+            JSeparator sep3 = new JSeparator();
+            sep3.setForeground(UITheme.BORDER_COLOR);
+            content.add(sep3, gc);
+
+            gc.gridy = row++;
+            JLabel slHeader = new JLabel("Other Prominent Members:");
+            slHeader.setFont(UITheme.FONT_BUTTON);
+            slHeader.setForeground(UITheme.TEXT_GOLD);
+            content.add(slHeader, gc);
+
+            for (City.main.politics.SideLeader sl : party.getSideLeaders()) {
+                gc.gridy = row++;
+                JLabel slLabel = new JLabel("  " + sl.getName() + " — " + sl.getPersonality());
+                slLabel.setFont(UITheme.FONT_SMALL);
+                slLabel.setForeground(UITheme.TEXT_SECONDARY);
+                content.add(slLabel, gc);
+            }
+        }
+
+        gc.gridy = row;
+        gc.weighty = 1.0;
+        gc.fill = GridBagConstraints.BOTH;
+        content.add(Box.createVerticalGlue(), gc);
+
+        JButton closeBtn = new JButton("CLOSE");
+        closeBtn.setFont(UITheme.FONT_BUTTON);
+        closeBtn.setForeground(UITheme.TEXT_SECONDARY);
+        closeBtn.setBackground(UITheme.BUTTON_BG);
+        closeBtn.setBorderPainted(false);
+        closeBtn.setFocusPainted(false);
+        closeBtn.addActionListener(e -> dialog.dispose());
+
+        JScrollPane scroll = new JScrollPane(content);
+        scroll.setBorder(null);
+        scroll.setBackground(UITheme.BG_PANEL);
+        scroll.getViewport().setBackground(UITheme.BG_PANEL);
+
+        dialog.setLayout(new BorderLayout());
+        dialog.add(scroll,    BorderLayout.CENTER);
+        dialog.add(closeBtn,  BorderLayout.SOUTH);
+        dialog.getContentPane().setBackground(UITheme.BG_PANEL);
+        dialog.setVisible(true);
+    }
+
+private JPanel infoRow(String key, String value) {
+        return infoRow(key, value, UITheme.TEXT_PRIMARY);
+    }
+
+    private JPanel infoRow(String key, String value, Color valueColor) {
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setBackground(UITheme.BG_PANEL);
+        JLabel k = new JLabel(key + ":");
+        k.setFont(UITheme.FONT_SMALL);
+        k.setForeground(UITheme.TEXT_SECONDARY);
+        JLabel v = new JLabel(value);
+        v.setFont(UITheme.FONT_BODY);
+        v.setForeground(valueColor);
+        row.add(k, BorderLayout.WEST);
+        row.add(v, BorderLayout.EAST);
+        return row;
+    }
+
+private JButton makeDonateButton(String label) {
         JButton btn = new JButton(label);
         btn.setFont(UITheme.FONT_SMALL);
         btn.setForeground(new Color(210, 170, 80));

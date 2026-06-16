@@ -6,7 +6,7 @@ package City.debug;
  */
 public class Debug {
     private static boolean activateDebugWindow = true;
-    private static boolean consoleOutputEnabled = true;
+    private static boolean consoleOutputEnabled = false;
     private static int batchFlushDelayMs = 100;   // milliseconds
 
     private Debug() {}

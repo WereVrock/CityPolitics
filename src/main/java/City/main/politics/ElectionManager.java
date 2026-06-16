@@ -30,6 +30,8 @@ public List<String> tick(List<PoliticalParty> parties,
                               PropagandaManager propagandaManager,
                               int corruption) {
         turnsSinceLastElection++;
+        // Regenerate survey random factors each turn
+        surveyCalculator.regenerateFactors(parties);
         List<String> log = new ArrayList<>();
         if (turnsSinceLastElection >= CalendarParams.ELECTION_PERIOD_TURNS) {
             turnsSinceLastElection = 0;
@@ -138,6 +140,9 @@ public ElectionRecord getLastRecord() { return lastRecord; }
 
     private int  lastElectionYear   = 0;
     private String lastElectionPeriod = "";
+    private final ElectionSurveyCalculator surveyCalculator = new ElectionSurveyCalculator();
+
+    public ElectionSurveyCalculator getSurveyCalculator() { return surveyCalculator; }
 
     public void setCalendarContext(int year, String period) {
         this.lastElectionYear   = year;

@@ -66,6 +66,7 @@ public class ArmyListPanel extends JPanel {
 
 public void refresh() {
         listContainer.removeAll();
+        // Player armies in city
         for (Army army : armyManager.getCityArmies()) {
             listContainer.add(buildArmyCard(army));
             listContainer.add(Box.createVerticalStrut(3));

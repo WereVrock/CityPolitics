@@ -197,14 +197,11 @@ private JPanel buildBottomBar() {
 
         JButton councilBtn = makeBottomBarButton("⚑ REALM COUNCIL");
         councilBtn.setForeground(new Color(200, 170, 80));
-        councilBtn.addActionListener(e -> {
-            if (gameState.hasActiveCouncilSession()) {
-                // Go directly to the voting session
-                showCouncilView();
-            } else {
-                showCouncilView();
-            }
-        });
+        councilBtn.addActionListener(e -> showCouncilView());
+
+        JButton cityCouncilBtn = makeBottomBarButton("🏛 CITY COUNCIL");
+        cityCouncilBtn.setForeground(new Color(160, 190, 255));
+        cityCouncilBtn.addActionListener(e -> showCityCouncilView());
 
         electionBadge = makeBottomBarButton("⚑ ELECTION RESULTS");
         electionBadge.setForeground(new Color(240, 200, 80));
@@ -221,6 +218,7 @@ private JPanel buildBottomBar() {
         leftBtns.add(ledgerBtn);
         leftBtns.add(militaryBtn);
         leftBtns.add(councilBtn);
+        leftBtns.add(cityCouncilBtn);
         leftBtns.add(electionBadge);
 
         JPanel wrapper = new JPanel(new BorderLayout(6, 0));
@@ -544,6 +542,12 @@ private void swapCenter(JPanel panel) {
         }
         swapCenter(councilPanel);
         updateEndTurnState();
+    }
+
+private void showCityCouncilView() {
+        City.ui.politics.CityCouncilPanel panel = new City.ui.politics.CityCouncilPanel(
+                gameState, this::showMainView);
+        swapCenter(panel);
     }
 
 private void showUnlawfulZonePicker(java.util.function.Consumer<String> onZonePicked) {
@@ -984,9 +988,17 @@ private void endTurn() {
             ledgerPanel.refresh();
         }
 
-        if (centerPanel.getComponentCount() > 0 && centerPanel.getComponent(0) == mapView) {
-            mapView.refreshSelectedZone();
-            mapView.repaint();
+        // Refresh center panel if it's the council view or parties view
+        if (centerPanel.getComponentCount() > 0) {
+            Component center = centerPanel.getComponent(0);
+            if (center instanceof City.ui.council.CouncilPanel cp) {
+                cp.refresh();
+            } else if (center instanceof City.ui.politics.PartiesOverviewPanel pop) {
+                pop.refresh();
+            } else if (center instanceof City.ui.map.MapView mv) {
+                mv.refreshSelectedZone();
+                mv.repaint();
+            }
         }
 
         if (gameState.getCalendar().isFrostGiantYear()) {
@@ -1005,7 +1017,7 @@ private void endTurn() {
         // Show campaign popup if campaign just started
         City.main.politics.ElectionManager elMgr = gameState.getElectionManager();
         if (elMgr.isCampaignPeriod() && elMgr.getTurnsUntilElection()
-                == PoliticalParams.ELECTION_CAMPAIGN_WARNING_TURNS) {
+                == City.main.parameters.PoliticalParams.ELECTION_CAMPAIGN_WARNING_TURNS) {
             showCampaignDialog();
         }
     }

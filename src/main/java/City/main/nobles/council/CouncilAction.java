@@ -21,8 +21,7 @@ public enum CouncilAction {
 
     UNLAWFUL_ACQUISITION(
         "Declare Unlawful Acquisition",
-        "A selected zone's owner is stripped of their claim and must cede it to another claimant. "
-        + "If the owner's army can reach 70% of the player's strength, they may refuse.",
+        "A selected zone's owner is stripped of their claim and must cede it to another claimant.",
         0
     );
 
@@ -37,6 +36,8 @@ public enum CouncilAction {
     }
 
     public String getDisplayName()  { return displayName; }
-    public String getDescription()  { return description; }
-    public int    getDurationYears(){ return durationYears; }
+
+public String getDescription() { return description; }
+
+public int    getDurationYears(){ return durationYears; }
 }

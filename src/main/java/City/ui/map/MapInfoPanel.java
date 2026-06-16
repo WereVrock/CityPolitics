@@ -490,6 +490,27 @@ public void showBarbArmy(City.main.barbarians.BarbArmy army,
     cardLayout.show(cards, CARD_ARMY);
 }
 
+public void showMercArmy(City.main.mercenaries.MercenaryArmy army, ZoneManager zm) {
+        if (army == null) { clearArmy(); return; }
+        armyTitleLabel.setForeground(new Color(200, 165, 80));
+        armyTitleLabel.setText("⚔ " + army.getDisplayName() + " (Mercenary)");
+        Zone zone = zm.getZone(army.getZoneId());
+        armyZoneLabel.setText("📍 " + (zone != null ? zone.getDisplayName() : army.getZoneId()));
+        armySizeLabel.setText("Size: " + army.getSize() + " soldiers");
+        double upkeep = army.getSize()
+                * City.main.parameters.PlayerArmyParams.SOLDIER_UPKEEP_GOLD
+                * City.main.parameters.MercenaryParams.MERCENARY_COST_MULTIPLIER;
+        armyUpkeepLabel.setText(String.format("Upkeep: %.1f gold/turn", upkeep));
+        armyStatusLabel.setText("⚠ Unsupervised mercenaries may raid (30% chance/turn)");
+        armyStatusLabel.setForeground(new Color(220, 140, 40));
+        commanderButton.setVisible(false);
+        commanderSkillLabel.setVisible(false);
+        barbPayOffBtn.setVisible(false);
+        barbDismissBtn.setVisible(false);
+        openMilitaryBtn.setVisible(false);
+        cardLayout.show(cards, CARD_ARMY);
+    }
+
 public void clearArmy() {
     armyTitleLabel.setText("");
     armyZoneLabel.setText("");
