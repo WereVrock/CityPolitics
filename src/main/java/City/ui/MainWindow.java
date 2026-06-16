@@ -902,19 +902,19 @@ private void showProtectionDialog(City.main.actions.DeclareProtectionAction acti
     d.setVisible(true);
 }
 
-    public void showMilitaryViewWithHighlight(String armyDisplayName) {
-        showMilitaryView();
-        // Schedule highlight after panel is shown
-        javax.swing.Timer t = new javax.swing.Timer(100, e -> {
-            // The MilitaryMenuUI is now the center — highlight by flashing the army name
-            // This is a best-effort visual cue; a full highlight would require MilitaryMenuUI refactor
-            City.debug.Debug.log("military-ui", "highlight-army", armyDisplayName);
-        });
-        t.setRepeats(false);
-        t.start();
+public void showMilitaryViewWithHighlight(String armyDisplayName) {
+    showMilitaryView();
+    // Find the MilitaryMenuUI in center and request highlight
+    if (centerPanel.getComponentCount() > 0) {
+        Component c = centerPanel.getComponent(0);
+        if (c instanceof City.ui.MilitaryMenuUI mui) {
+            mui.highlightArmy(armyDisplayName);
+            mui.rebuild();
+        }
     }
+}
 
-    private void showMilitaryView() {
+private void showMilitaryView() {
         City.main.army.commander.CommanderRoster      roster = gameState.getCommanderRoster();
         City.main.army.commander.CommanderRecruitPool pool   = gameState.getCommanderRecruitPool();
     City.ui.MilitaryMenuUI militaryUI = new City.ui.MilitaryMenuUI(

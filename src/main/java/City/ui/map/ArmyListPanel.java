@@ -25,10 +25,12 @@ public class ArmyListPanel extends JPanel {
     }
 
     static final DataFlavor ARMY_FLAVOR = new DataFlavor(Army.class, "Army");
+    static final DataFlavor MERC_FLAVOR = new DataFlavor(City.main.mercenaries.MercenaryArmy.class, "MercenaryArmy");
 
-    private       ArmyManager      armyManager;
-    private       DragDropCallback callback;
-    private final JPanel           listContainer;
+    private       ArmyManager                            armyManager;
+    private       City.main.mercenaries.MercenaryManager mercenaryManager;
+    private       DragDropCallback                        callback;
+    private final JPanel                                  listContainer;
 
     public ArmyListPanel(ArmyManager armyManager) {
         this.armyManager = armyManager;
@@ -64,20 +66,33 @@ public class ArmyListPanel extends JPanel {
     public void setOnDragDropCallback(DragDropCallback cb) { this.callback = cb; }
     public DragDropCallback getCallback()                   { return callback; }
 
-public void refresh() {
+    public void setMercenaryManager(City.main.mercenaries.MercenaryManager mm) {
+        this.mercenaryManager = mm;
+    }
+
+    public void refresh() {
         listContainer.removeAll();
-        // Player armies in city
+        boolean any = false;
         for (Army army : armyManager.getCityArmies()) {
             listContainer.add(buildArmyCard(army));
             listContainer.add(Box.createVerticalStrut(3));
+            any = true;
         }
-        if (armyManager.getCityArmies().isEmpty()) {
+        if (mercenaryManager != null) {
+            for (City.main.mercenaries.MercenaryArmy merc : new java.util.ArrayList<>(mercenaryManager.getArmies())) {
+                if (City.main.army.Army.HEARTLAND_ID.equals(merc.getZoneId())) {
+                    listContainer.add(buildMercCard(merc));
+                    listContainer.add(Box.createVerticalStrut(3));
+                    any = true;
+                }
+            }
+        }
+        if (!any) {
             JLabel empty = new JLabel("  No armies in city");
             empty.setFont(UITheme.FONT_MAP_SMALL);
             empty.setForeground(UITheme.TEXT_SECONDARY);
             listContainer.add(empty);
         }
-        // Re-apply font to header
         Component north = ((BorderLayout) getLayout()).getLayoutComponent(BorderLayout.NORTH);
         if (north instanceof JLabel header) {
             header.setFont(UITheme.FONT_MAP_SMALL);
@@ -86,7 +101,7 @@ public void refresh() {
         listContainer.repaint();
     }
 
-private JPanel buildArmyCard(Army army) {
+    private JPanel buildArmyCard(Army army) {
         JPanel card = new JPanel(new BorderLayout());
         card.setBackground(UITheme.BG_PANEL_LIGHT);
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -131,22 +146,60 @@ private JPanel buildArmyCard(Army army) {
         return card;
     }
 
-/**
+    private JPanel buildMercCard(City.main.mercenaries.MercenaryArmy merc) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(new Color(45, 32, 15));
+        card.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(140, 100, 40), 1),
+            new EmptyBorder(4, 8, 4, 8)
+        ));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        card.setAlignmentX(LEFT_ALIGNMENT);
+
+        JLabel name = new JLabel("⚔ " + merc.getDisplayName() + " (Merc)");
+        name.setFont(UITheme.FONT_MAP_BUTTON);
+        name.setForeground(new Color(200, 165, 80));
+        card.add(name, BorderLayout.WEST);
+
+        // Drag support — mercs behave like player armies on the map
+        java.awt.dnd.DragSource ds = java.awt.dnd.DragSource.getDefaultDragSource();
+        ds.createDefaultDragGestureRecognizer(card, java.awt.dnd.DnDConstants.ACTION_MOVE, dge -> {
+            java.awt.datatransfer.Transferable t = new java.awt.datatransfer.Transferable() {
+                @Override public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() {
+                    return new java.awt.datatransfer.DataFlavor[]{MERC_FLAVOR};
+                }
+                @Override public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor f) {
+                    return f.equals(MERC_FLAVOR);
+                }
+                @Override public Object getTransferData(java.awt.datatransfer.DataFlavor f) {
+                    return merc;
+                }
+            };
+            java.awt.dnd.DragSourceAdapter dsa = new java.awt.dnd.DragSourceAdapter() {
+                @Override
+                public void dragDropEnd(java.awt.dnd.DragSourceDropEvent dsde) {
+                    refresh();
+                }
+            };
+            dge.startDrag(java.awt.dnd.DragSource.DefaultMoveDrop, t, dsa);
+        });
+
+        return card;
+    }
+
+    /**
      * Re-wires the ArmyManager reference after gameState.reset() (new game).
      */
-
-public void reinitialize(ArmyManager newArmyManager) {
+    public void reinitialize(ArmyManager newArmyManager) {
         this.armyManager = newArmyManager;
         refresh();
     }
 
-/**
+    /**
      * Re-applies UITheme map-panel fonts to this panel.
      * Called from MapView after the user changes the map-panel font size in Settings.
      */
     public void applyMapPanelFonts() {
-        // The header label and army cards are rebuilt on refresh(), so just refresh.
         refresh();
     }
-
 }

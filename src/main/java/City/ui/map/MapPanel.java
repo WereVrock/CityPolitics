@@ -51,6 +51,7 @@ public class MapPanel extends JPanel
     private final City.main.core.GameState gameState;
     private City.main.mercenaries.MercenaryArmy selectedMercArmy = null;
     private final java.util.function.Consumer<City.main.mercenaries.MercenaryArmy> onMercArmySelected;
+    // merc drop target wired in constructor
 
     public MapPanel(City.main.core.GameState gameState,
                     Consumer<Zone>     onZoneSelected,
@@ -284,33 +285,54 @@ private void handleRightClick(Point screenPt) {
     // ─── Drop target ─────────────────────────────────────────────────────────
 
     @Override
-    public void drop(DropTargetDropEvent dtde) {
-        try {
-            dtde.acceptDrop(DnDConstants.ACTION_MOVE);
-            Transferable t = dtde.getTransferable();
-            if (!t.isDataFlavorSupported(ArmyListPanel.ARMY_FLAVOR)) {
-                dtde.dropComplete(false);
-                return;
-            }
-            Army army   = (Army) t.getTransferData(ArmyListPanel.ARMY_FLAVOR);
+
+
+public void drop(DropTargetDropEvent dtde) {
+    try {
+        dtde.acceptDrop(DnDConstants.ACTION_MOVE);
+        Transferable t = dtde.getTransferable();
+
+        // Merc army drop
+        if (t.isDataFlavorSupported(ArmyListPanel.MERC_FLAVOR)) {
+            City.main.mercenaries.MercenaryArmy merc =
+                (City.main.mercenaries.MercenaryArmy) t.getTransferData(ArmyListPanel.MERC_FLAVOR);
             Zone target = zoneAt(dtde.getLocation());
             if (target == null) {
-                army.cancelDrag();
-                armyListPanel.refresh();
                 dtde.dropComplete(false);
                 return;
             }
-            army.moveTo(target.getId());
+            merc.setZoneId(target.getId());
             ArmyListPanel.DragDropCallback cb = armyListPanel.getCallback();
-            if (cb != null) cb.onDrop(army, target.getId());
+            if (cb != null) cb.onDrop(null, target.getId());
             dtde.dropComplete(true);
             repaint();
-        } catch (Exception ex) {
-            dtde.dropComplete(false);
+            return;
         }
-    }
 
-    @Override public void dragEnter(DropTargetDragEvent e)         { e.acceptDrag(DnDConstants.ACTION_MOVE); }
+        // Normal army drop
+        if (!t.isDataFlavorSupported(ArmyListPanel.ARMY_FLAVOR)) {
+            dtde.dropComplete(false);
+            return;
+        }
+        Army army   = (Army) t.getTransferData(ArmyListPanel.ARMY_FLAVOR);
+        Zone target = zoneAt(dtde.getLocation());
+        if (target == null) {
+            army.cancelDrag();
+            armyListPanel.refresh();
+            dtde.dropComplete(false);
+            return;
+        }
+        army.moveTo(target.getId());
+        ArmyListPanel.DragDropCallback cb = armyListPanel.getCallback();
+        if (cb != null) cb.onDrop(army, target.getId());
+        dtde.dropComplete(true);
+        repaint();
+    } catch (Exception ex) {
+        dtde.dropComplete(false);
+    }
+}
+
+@Override public void dragEnter(DropTargetDragEvent e)         { e.acceptDrag(DnDConstants.ACTION_MOVE); }
     @Override public void dragOver(DropTargetDragEvent e)          { e.acceptDrag(DnDConstants.ACTION_MOVE); }
     @Override public void dropActionChanged(DropTargetDragEvent e) {}
     @Override public void dragExit(DropTargetEvent e)              {}

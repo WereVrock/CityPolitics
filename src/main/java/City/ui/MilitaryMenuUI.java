@@ -36,6 +36,7 @@ public class MilitaryMenuUI extends JPanel {
     private final City.main.mercenaries.MercenaryManager mercenaryManager;
     private final Runnable             onBack;
     private final Runnable             onResourcesChanged;
+    private       String               highlightArmyName = null;
 
     // ─── Constructor ─────────────────────────────────────────────────────────
 
@@ -82,16 +83,20 @@ public MilitaryMenuUI(ArmyManager armyManager,
 
 // ─── Build ───────────────────────────────────────────────────────────────
 
-    private void build() {
-        removeAll();
-        add(buildTopBar(),    BorderLayout.NORTH);
-        add(buildCentre(),    BorderLayout.CENTER);
-        add(buildBottomBar(), BorderLayout.SOUTH);
-        revalidate();
-        repaint();
+private void build() {
+    removeAll();
+    add(buildTopBar(),    BorderLayout.NORTH);
+    add(buildCentre(),    BorderLayout.CENTER);
+    add(buildBottomBar(), BorderLayout.SOUTH);
+    revalidate();
+    repaint();
+    if (highlightArmyName != null) {
+        scheduleHighlight(highlightArmyName);
+        highlightArmyName = null;
     }
+}
 
-    private JPanel buildTopBar() {
+private JPanel buildTopBar() {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(UITheme.BG_PANEL);
         bar.setBorder(new EmptyBorder(6, 10, 6, 10));
@@ -889,4 +894,66 @@ private void addInfoLabel(JPanel panel, String text, Font font, Color color) {
         lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(lbl);
     }
+
+public void highlightArmy(String displayName) {
+        this.highlightArmyName = displayName;
+    }
+
+    private void scheduleHighlight(String displayName) {
+        // Find the army card with matching name and flash it for 2 seconds
+        flashMatchingCard(displayName, buildCentrePanel());
+    }
+
+    private JPanel buildCentrePanel() {
+        // Walk centre component to find army cards
+        for (java.awt.Component c : getComponents()) {
+            if (c instanceof JPanel p && p.getLayout() instanceof GridLayout) return p;
+        }
+        return null;
+    }
+
+    private void flashMatchingCard(String displayName, JPanel centre) {
+        if (centre == null) return;
+        for (java.awt.Component col : centre.getComponents()) {
+            if (!(col instanceof JScrollPane sp)) continue;
+            java.awt.Component view = sp.getViewport().getView();
+            if (!(view instanceof JPanel panel)) continue;
+            for (java.awt.Component card : panel.getComponents()) {
+                if (!(card instanceof JPanel cardPanel)) continue;
+                // Check if any label in card starts with army name
+                if (containsLabel(cardPanel, displayName)) {
+                    flashCard(cardPanel);
+                    return;
+                }
+            }
+        }
+    }
+
+    private boolean containsLabel(java.awt.Container container, String text) {
+        for (java.awt.Component c : container.getComponents()) {
+            if (c instanceof JLabel lbl && lbl.getText().contains(text)) return true;
+            if (c instanceof java.awt.Container sub && containsLabel(sub, text)) return true;
+        }
+        return false;
+    }
+
+    private void flashCard(JPanel card) {
+        java.awt.Color original = card.getBackground();
+        java.awt.Color highlight = new java.awt.Color(80, 120, 60);
+        card.setBackground(highlight);
+        javax.swing.Timer timer = new javax.swing.Timer(2000, e -> {
+            card.setBackground(original);
+            card.repaint();
+        });
+        timer.setRepeats(false);
+        timer.start();
+        card.scrollRectToVisible(card.getBounds());
+        card.repaint();
+    }
+
+/** Called externally to trigger a rebuild with a pending highlight. */
+    public void rebuild() {
+        build();
+    }
+
 }

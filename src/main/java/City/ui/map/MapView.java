@@ -30,6 +30,7 @@ public MapView(GameState gameState, Runnable onBack) {
         infoPanel.setRavagedZoneManager(gameState.getRavagedZoneManager());
         infoPanel.setBarbArmyManager(gameState.getBarbArmyManager());
         armyListPanel = new ArmyListPanel(gameState.getArmyManager());
+        armyListPanel.setMercenaryManager(gameState.getMercenaryManager());
 
         mapPanel = new MapPanel(
             gameState,
@@ -60,13 +61,9 @@ public MapView(GameState gameState, Runnable onBack) {
             gameState.getNobleHouseManager()
         );
 
-        // Grant claim from map — set after construction so MainWindow can wire it
-        // (accessed via getInfoPanel)
-
         armyListPanel.setOnDragDropCallback(new ArmyListPanel.DragDropCallback() {
             @Override
             public void onDrop(Army army, String zoneId) {
-                // army.moveTo() already called in MapPanel.drop()
                 armyListPanel.refresh();
                 mapPanel.repaint();
                 infoPanel.showArmy(army, zoneManager);
@@ -74,15 +71,11 @@ public MapView(GameState gameState, Runnable onBack) {
 
             @Override
             public void onDragCancelled(Army army) {
-                // army.cancelDrag() already called in ArmyListPanel drag end
                 armyListPanel.refresh();
                 mapPanel.repaint();
             }
         });
 
-        // NOTE: If a buildScrollPane / createArmyScroll helper exists elsewhere in this
-        // file or in ArmyListPanel, add scroll.getVerticalScrollBar().setUnitIncrement(28)
-        // there instead — the original @@FIND target was not present in MapView.java.
         JPanel rightPanel = new JPanel(new BorderLayout());
         rightPanel.setBackground(UITheme.BG_PANEL);
         rightPanel.setPreferredSize(new Dimension(240, 0));
@@ -135,7 +128,7 @@ public MapView(GameState gameState, Runnable onBack) {
         add(rightPanel, BorderLayout.EAST);
     }
 
-    public void refresh() {
+public void refresh() {
         mapPanel.clearSelection();
         infoPanel.clearZone();
         infoPanel.clearArmy();
@@ -153,6 +146,7 @@ public void reinitialize(GameState gameState) {
     mapPanel.reinitialize(gameState);
     infoPanel.reinitialize(gameState);
     armyListPanel.reinitialize(gameState.getArmyManager());
+    armyListPanel.setMercenaryManager(gameState.getMercenaryManager());
     refresh();
 }
 

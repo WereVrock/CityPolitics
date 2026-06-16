@@ -284,12 +284,13 @@ private JPanel buildPartyRow(VotingSession session, PoliticalParty party) {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) { openNegotiation(party); }
         });
 
-        JLabel nameLabel = new JLabel(party.getName() + "  (" + party.getSeats() + " seats)");
+        String emblem = City.main.politics.PartyEmblemRegistry.getEmblem(party.getName());
+        JLabel nameLabel = new JLabel(emblem + "  " + party.getName() + "  (" + party.getSeats() + " seats)");
         nameLabel.setFont(UITheme.FONT_BUTTON);
         nameLabel.setForeground(isOracles ? UITheme.TEXT_GOLD : UITheme.TEXT_PRIMARY);
 
         JLabel leaderLabel = new JLabel("<html><body style='width:200px'>"
-                + party.getLeaderName() + "</body></html>");
+                + party.getLeaderName() + " · " + party.getPersonality().substring(0, Math.min(40, party.getPersonality().length())) + "…</body></html>");
         leaderLabel.setFont(UITheme.FONT_SMALL);
         leaderLabel.setForeground(UITheme.TEXT_SECONDARY);
 
@@ -601,101 +602,100 @@ private void openNegotiation(PoliticalParty party) {
         showResultPanel(result, session.getAction().getName(), logLines);
     }
 
-    private void showResultPanel(VoteResult result, String actionName, List<String> logLines) {
-        JPanel panel = new JPanel(new BorderLayout(0, 12));
-        panel.setBackground(UITheme.BG_DARK);
-        panel.setBorder(new EmptyBorder(16, 20, 16, 20));
+private void showResultPanel(VoteResult result, String actionName, List<String> logLines) {
+    JPanel panel = new JPanel(new BorderLayout(0, 12));
+    panel.setBackground(UITheme.BG_DARK);
+    panel.setBorder(new EmptyBorder(16, 20, 16, 20));
 
-        // Result header
-        boolean passed = result.isPassed();
-        JLabel outcomeHeader = new JLabel(
-                passed ? "✓  VOTE PASSED" : "✗  VOTE REJECTED");
-        outcomeHeader.setFont(new Font("Serif", Font.BOLD, 22));
-        outcomeHeader.setForeground(passed ? UITheme.TEXT_GREEN : UITheme.TEXT_RED);
-        outcomeHeader.setHorizontalAlignment(SwingConstants.CENTER);
+    // Result header
+    boolean passed = result.isPassed();
+    Color headerBg = passed ? new Color(20, 45, 20) : new Color(45, 15, 15);
+    JPanel headerPanel = new JPanel(new BorderLayout(0, 6));
+    headerPanel.setBackground(headerBg);
+    headerPanel.setBorder(new EmptyBorder(16, 20, 16, 20));
 
-        JLabel actionLabel = new JLabel(actionName, SwingConstants.CENTER);
-        actionLabel.setFont(UITheme.FONT_HEADER);
-        actionLabel.setForeground(UITheme.TEXT_GOLD);
+    JLabel outcomeHeader = new JLabel(
+            passed ? "✓  VOTE PASSED" : "✗  VOTE REJECTED",
+            SwingConstants.CENTER);
+    outcomeHeader.setFont(new Font("Serif", Font.BOLD, 22));
+    outcomeHeader.setForeground(passed ? UITheme.TEXT_GREEN : UITheme.TEXT_RED);
 
-        JLabel totals = new JLabel(
-                "YES: " + result.getTotalYes()
-                + "   NO: " + result.getTotalNo()
-                + "   ABSTAIN: " + result.getTotalAbstain()
-                + "   (needed: " + result.getSeatsNeeded() + ")",
-                SwingConstants.CENTER);
-        totals.setFont(UITheme.FONT_BODY);
-        totals.setForeground(UITheme.TEXT_SECONDARY);
+    JLabel actionLabel = new JLabel(actionName, SwingConstants.CENTER);
+    actionLabel.setFont(UITheme.FONT_HEADER);
+    actionLabel.setForeground(UITheme.TEXT_GOLD);
 
-        JPanel headerBlock = new JPanel();
-        headerBlock.setLayout(new BoxLayout(headerBlock, BoxLayout.Y_AXIS));
-        headerBlock.setBackground(UITheme.BG_PANEL);
-        headerBlock.setBorder(new EmptyBorder(12, 12, 12, 12));
-        outcomeHeader.setAlignmentX(CENTER_ALIGNMENT);
-        actionLabel.setAlignmentX(CENTER_ALIGNMENT);
-        totals.setAlignmentX(CENTER_ALIGNMENT);
-        headerBlock.add(outcomeHeader);
-        headerBlock.add(Box.createVerticalStrut(4));
-        headerBlock.add(actionLabel);
-        headerBlock.add(Box.createVerticalStrut(6));
-        headerBlock.add(totals);
+    JLabel totals = new JLabel(
+            "YES: " + result.getTotalYes()
+            + "   NO: " + result.getTotalNo()
+            + "   ABSTAIN: " + result.getTotalAbstain()
+            + "   (needed: " + result.getSeatsNeeded() + ")",
+            SwingConstants.CENTER);
+    totals.setFont(UITheme.FONT_BODY);
+    totals.setForeground(UITheme.TEXT_SECONDARY);
 
-        // Party breakdown
-        JPanel breakdown = new JPanel();
-        breakdown.setLayout(new BoxLayout(breakdown, BoxLayout.Y_AXIS));
-        breakdown.setBackground(UITheme.BG_DARK);
+    headerPanel.add(outcomeHeader, BorderLayout.NORTH);
+    headerPanel.add(actionLabel,   BorderLayout.CENTER);
+    headerPanel.add(totals,        BorderLayout.SOUTH);
 
-        for (City.main.politics.VoteScore vs : result.getPartyScores()) {
-            JPanel row = new JPanel(new BorderLayout(8, 0));
-            row.setBackground(UITheme.BG_PANEL);
-            row.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(0, 0, 1, 0, UITheme.BORDER_COLOR),
-                    new EmptyBorder(4, 10, 4, 10)));
-            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
-            row.setAlignmentX(LEFT_ALIGNMENT);
+    // Party breakdown
+    JPanel breakdown = new JPanel();
+    breakdown.setLayout(new BoxLayout(breakdown, BoxLayout.Y_AXIS));
+    breakdown.setBackground(UITheme.BG_DARK);
+    breakdown.setBorder(new EmptyBorder(8, 0, 8, 0));
 
-            JLabel pName = new JLabel(vs.getParty().getName()
-                    + " (" + vs.getParty().getSeats() + ")");
-            pName.setFont(UITheme.FONT_SMALL);
-            pName.setForeground(UITheme.TEXT_PRIMARY);
+    for (City.main.politics.VoteScore vs : result.getPartyScores()) {
+        JPanel row = new JPanel(new BorderLayout(8, 0));
+        row.setBackground(UITheme.BG_PANEL);
+        row.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, UITheme.BORDER_COLOR),
+                new EmptyBorder(5, 12, 5, 12)));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        row.setAlignmentX(LEFT_ALIGNMENT);
 
-            JLabel pVotes = new JLabel("YES:" + vs.getYesSeats()
-                    + "  NO:" + vs.getNoSeats()
-                    + "  ABS:" + vs.getAbstainSeats());
-            pVotes.setFont(UITheme.FONT_SMALL);
-            Color rowColor = vs.getYesSeats() > vs.getNoSeats()
-                    ? UITheme.TEXT_GREEN : vs.getNoSeats() > vs.getYesSeats()
-                    ? UITheme.TEXT_RED : UITheme.TEXT_SECONDARY;
-            pVotes.setForeground(rowColor);
+        String emblem = City.main.politics.PartyEmblemRegistry.getEmblem(vs.getParty().getName());
+        JLabel pName = new JLabel(emblem + "  " + vs.getParty().getName()
+                + " (" + vs.getParty().getSeats() + ")");
+        pName.setFont(UITheme.FONT_BUTTON);
+        pName.setForeground(UITheme.TEXT_PRIMARY);
 
-            row.add(pName,  BorderLayout.WEST);
-            row.add(pVotes, BorderLayout.EAST);
-            breakdown.add(row);
-        }
+        JLabel pVotes = new JLabel("YES: " + vs.getYesSeats()
+                + "  NO: " + vs.getNoSeats()
+                + "  ABS: " + vs.getAbstainSeats());
+        pVotes.setFont(UITheme.FONT_SMALL);
+        Color rowColor = vs.getYesSeats() > vs.getNoSeats()
+                ? UITheme.TEXT_GREEN : vs.getNoSeats() > vs.getYesSeats()
+                ? UITheme.TEXT_RED : UITheme.TEXT_SECONDARY;
+        pVotes.setForeground(rowColor);
 
-        JScrollPane scrollBreakdown = new JScrollPane(breakdown);
-        scrollBreakdown.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1));
-        scrollBreakdown.setBackground(UITheme.BG_DARK);
-        scrollBreakdown.getViewport().setBackground(UITheme.BG_DARK);
-
-        JButton continueBtn = new JButton("CONTINUE  ▶");
-        continueBtn.setFont(new Font("Serif", Font.BOLD, 14));
-        continueBtn.setForeground(UITheme.ACCENT_FROST);
-        continueBtn.setBackground(new Color(25, 45, 65));
-        continueBtn.setBorderPainted(false);
-        continueBtn.setFocusPainted(false);
-        continueBtn.setPreferredSize(new Dimension(0, 44));
-        continueBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        continueBtn.addActionListener(e -> onFinalized.accept(result, logLines));
-
-        panel.add(headerBlock,     BorderLayout.NORTH);
-        panel.add(scrollBreakdown, BorderLayout.CENTER);
-        panel.add(continueBtn,     BorderLayout.SOUTH);
-
-        onSwapPanel.accept(panel);
+        row.add(pName,  BorderLayout.WEST);
+        row.add(pVotes, BorderLayout.EAST);
+        breakdown.add(row);
     }
 
-    private String intentText(PartyVoteIntent intent) {
+    JScrollPane scrollBreakdown = new JScrollPane(breakdown);
+    scrollBreakdown.setBorder(BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1));
+    scrollBreakdown.setBackground(UITheme.BG_DARK);
+    scrollBreakdown.getViewport().setBackground(UITheme.BG_DARK);
+    scrollBreakdown.getVerticalScrollBar().setUnitIncrement(18);
+
+    JButton continueBtn = new JButton("CONTINUE  ▶");
+    continueBtn.setFont(new Font("Serif", Font.BOLD, 14));
+    continueBtn.setForeground(UITheme.ACCENT_FROST);
+    continueBtn.setBackground(new Color(25, 45, 65));
+    continueBtn.setBorderPainted(false);
+    continueBtn.setFocusPainted(false);
+    continueBtn.setPreferredSize(new Dimension(0, 44));
+    continueBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    continueBtn.addActionListener(e -> onFinalized.accept(result, logLines));
+
+    panel.add(headerPanel,     BorderLayout.NORTH);
+    panel.add(scrollBreakdown, BorderLayout.CENTER);
+    panel.add(continueBtn,     BorderLayout.SOUTH);
+
+    onSwapPanel.accept(panel);
+}
+
+private String intentText(PartyVoteIntent intent) {
         return switch (intent) {
             case YES     -> "YES";
             case NO      -> "NO";
