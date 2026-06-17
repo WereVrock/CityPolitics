@@ -361,8 +361,7 @@ public class CouncilPanel extends JPanel {
                                 "Invalid Selection", JOptionPane.WARNING_MESSAGE);
                         return;
                     }
-                    selectedZoneId = zoneId;
-                    doStartSession(action);
+                    startSessionWithZone(action, zoneId);
                 });
             });
             btnRow.add(mapPickBtn);
@@ -386,9 +385,9 @@ public class CouncilPanel extends JPanel {
         confirmBtn.setBorderPainted(false);
         confirmBtn.setFocusPainted(false);
         confirmBtn.addActionListener(e -> {
-            selectedZoneId = selected[0].getId();
+            String zoneId = selected[0].getId();
             picker.dispose();
-            doStartSession(action);
+            startSessionWithZone(action, zoneId);
         });
 
         btnRow.add(cancelBtn);
@@ -423,6 +422,10 @@ public class CouncilPanel extends JPanel {
     }
 
 private void doStartSession(CouncilAction action) {
+        System.out.println("[UNLAWFUL-DEBUG] doStartSession entered, action=" + action
+                + " selectedZoneId=" + selectedZoneId
+                + " gameState.pending=" + gameState.getPendingUnlawfulAcquisitionZoneId()
+                + " on CouncilPanel instance=" + System.identityHashCode(this));
         if (gameState.getLegislationManager().isRealmCouncilUsedThisTurn()) {
             JOptionPane.showMessageDialog(this,
                     "The realm council has already been convened this turn.");
@@ -445,11 +448,15 @@ private void doStartSession(CouncilAction action) {
         gameState.setActiveCouncilSession(session);
         gameState.getLegislationManager().markRealmCouncilUsedThisTurn();
 
+        System.out.println("[UNLAWFUL-DEBUG] doStartSession about to call onBack.run(), "
+                + "selectedZoneId=" + selectedZoneId
+                + " gameState.pending=" + gameState.getPendingUnlawfulAcquisitionZoneId());
+
         // Immediately rebuild this panel in voting mode and refresh
         onBack.run();
     }
 
-    // pickZoneForUnlawful replaced by openUnlawfulZonePicker — kept empty for safety
+// pickZoneForUnlawful replaced by openUnlawfulZonePicker — kept empty for safety
     @SuppressWarnings("unused")
     private String pickZoneForUnlawful() { return null; }
 
@@ -734,15 +741,26 @@ private void doStartSession(CouncilAction action) {
         }
     }
 
-    private void finalizeVote() {
+private void finalizeVote() {
         CouncilSession session = gameState.getActiveCouncilSession();
         if (session == null) return;
 
         boolean passed = session.isPassingCurrently();
 
+        String zoneIdForOutcome = selectedZoneId != null
+                ? selectedZoneId
+                : gameState.getPendingUnlawfulAcquisitionZoneId();
+
+        System.out.println("[UNLAWFUL-DEBUG] finalizeVote: selectedZoneId=" + selectedZoneId
+                + " gameState.pending=" + gameState.getPendingUnlawfulAcquisitionZoneId()
+                + " zoneIdForOutcome=" + zoneIdForOutcome
+                + " on CouncilPanel instance=" + System.identityHashCode(this)
+                + " gameState instance=" + System.identityHashCode(gameState)
+                + " passed=" + passed);
+
         if (passed) {
             java.util.List<String> effectLog = gameState.getCouncilSessionManager().applyOutcome(
-                    session, session.getAction(), selectedZoneId,
+                    session, session.getAction(), zoneIdForOutcome,
                     gameState.getNobleHouseManager(),
                     gameState.getZoneManager(),
                     gameState.getArmyManager(),
@@ -756,11 +774,12 @@ private void doStartSession(CouncilAction action) {
         }
 
         gameState.clearActiveCouncilSession();
+        gameState.clearPendingUnlawfulAcquisitionZoneId();
         selectedZoneId = null;
         onBack.run();
     }
 
-    private void handleOutcomeLog(City.main.nobles.council.CouncilAction action,
+private void handleOutcomeLog(City.main.nobles.council.CouncilAction action,
                                    java.util.List<String> effectLog) {
         if (action == City.main.nobles.council.CouncilAction.UNLAWFUL_ACQUISITION
                 && !effectLog.isEmpty()
@@ -845,4 +864,21 @@ private void doStartSession(CouncilAction action) {
             case UNDECIDED-> UITheme.TEXT_GOLD;
         };
     }
+
+/**
+     * Starts an Unlawful Acquisition session for a zone chosen via the map picker.
+     * Stores the zone on GameState so it survives this CouncilPanel instance being
+     * discarded and recreated by MainWindow.showCouncilView() after the picker closes.
+     */
+
+private void startSessionWithZone(CouncilAction action, String zoneId) {
+        System.out.println("[UNLAWFUL-DEBUG] startSessionWithZone called with zoneId=" + zoneId
+                + " on CouncilPanel instance=" + System.identityHashCode(this));
+        gameState.setPendingUnlawfulAcquisitionZoneId(zoneId);
+        System.out.println("[UNLAWFUL-DEBUG] gameState.pendingUnlawfulAcquisitionZoneId now="
+                + gameState.getPendingUnlawfulAcquisitionZoneId()
+                + " on gameState instance=" + System.identityHashCode(gameState));
+        doStartSession(action);
+    }
+
 }

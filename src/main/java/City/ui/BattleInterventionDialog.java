@@ -101,7 +101,8 @@ public static InterventionResult showDetailed(
         info.setForeground(UITheme.TEXT_PRIMARY);
 
         // Justification explanations
-        boolean joinDefenderJustified = defenderIsProtected;
+        boolean joinAtkJustified = zoneIsUnlawful;
+        boolean joinDefenderJustified = defenderIsProtected || attackerHasUnlawfulZone;
 
         JPanel justPanel = new JPanel();
         justPanel.setLayout(new BoxLayout(justPanel, BoxLayout.Y_AXIS));
@@ -112,11 +113,23 @@ public static InterventionResult showDetailed(
         generalNote.setForeground(new Color(200, 160, 60));
         justPanel.add(generalNote);
 
+        if (joinAtkJustified) {
+            JLabel atkJustNote = new JLabel("<html><i>★ Joining the attacker is <b>justified</b> — this zone is marked as unlawfully acquired.</i></html>");
+            atkJustNote.setFont(UITheme.FONT_SMALL);
+            atkJustNote.setForeground(new Color(120, 200, 120));
+            justPanel.add(atkJustNote);
+        }
+
         if (defenderIsProtected) {
             JLabel protNote = new JLabel("<html><i>★ Joining the defender is <b>justified</b> — they are under your protection.</i></html>");
             protNote.setFont(UITheme.FONT_SMALL);
             protNote.setForeground(new Color(120, 200, 120));
             justPanel.add(protNote);
+        } else if (attackerHasUnlawfulZone) {
+            JLabel unlawfulNote = new JLabel("<html><i>★ Joining the defender is <b>justified</b> — the attacker holds an unlawfully acquired zone.</i></html>");
+            unlawfulNote.setFont(UITheme.FONT_SMALL);
+            unlawfulNote.setForeground(new Color(120, 200, 120));
+            justPanel.add(unlawfulNote);
         }
 
         JPanel header = new JPanel();
@@ -137,28 +150,29 @@ public static InterventionResult showDetailed(
         String atkShort = stripHouse(attackerName);
         String defShort = stripHouse(defenderName);
 
-        String joinAtkJust = attackerHasUnlawfulZone
-                ? "Justified — attacker holds an unlawfully acquired zone. No Trust penalty."
+        String joinAtkJust = zoneIsUnlawful
+                ? "Justified — this zone is marked as unlawfully acquired. No Trust penalty."
                 : "No special justification. Costs 1 Trust and lowers bystander opinions.";
         String joinDefJust = defenderIsProtected
                 ? "Justified — defender is under your protection. No Trust penalty."
-                : (zoneIsUnlawful
-                    ? "Justified — this zone is marked as unlawfully acquired. No Trust penalty."
+                : (attackerHasUnlawfulZone
+                    ? "Justified — attacker holds an unlawfully acquired zone. No Trust penalty."
                     : "No special justification. Costs 1 Trust and lowers bystander opinions.");
         String stopJust = "Stopping a fight between nobles. Costs some attacker opinion, gains small defender opinion.";
         String ignoreJust = "You do nothing. No penalties.";
 
         JButton joinAtkBtn  = makeBtn(
-                "<html><b>Join " + atkShort + "</b>"
+                "<html><b>Join " + atkShort + (joinAtkJustified ? " ★" : "") + "</b>"
                 + "<br><font size='-1' color='#aaaaaa'>+opinion attacker, −opinion defender</font>"
-                + "<br><font size='-1' color='#cc8844'>" + joinAtkJust + "</font></html>",
-                new Color(200, 80, 60));
+                + "<br><font size='-1' color='" + (joinAtkJustified ? "#78C87A" : "#cc8844") + "'>"
+                + joinAtkJust + "</font></html>",
+                joinAtkJustified ? UITheme.TEXT_GREEN : new Color(200, 80, 60));
         JButton joinDefBtn  = makeBtn(
-                "<html><b>Join " + defShort + (defenderIsProtected ? " ★" : "") + "</b>"
+                "<html><b>Join " + defShort + (joinDefenderJustified ? " ★" : "") + "</b>"
                 + "<br><font size='-1' color='#aaaaaa'>+opinion defender, −opinion attacker</font>"
-                + "<br><font size='-1' color='" + (defenderIsProtected ? "#78C87A" : "#cc8844") + "'>"
+                + "<br><font size='-1' color='" + (joinDefenderJustified ? "#78C87A" : "#cc8844") + "'>"
                 + joinDefJust + "</font></html>",
-                defenderIsProtected ? UITheme.TEXT_GREEN : new Color(60, 140, 200));
+                joinDefenderJustified ? UITheme.TEXT_GREEN : new Color(60, 140, 200));
         JButton stopBtn     = makeBtn(
                 "<html><b>Stop the Fight</b>"
                 + "<br><font size='-1' color='#aaaaaa'>−½ opinion attacker, +¼ opinion defender</font>"

@@ -300,7 +300,7 @@ public class NobleArmyManager {
             PlayerBattleInterventionProcessor.PlayerChoice choice =
                     interventionProcessor.checkInterventionDetailed(
                             attacker, defender, zoneId, totalAtkSz, playerArmyManager,
-                            atkAllies, defAllies, defProtected);
+                            atkAllies, defAllies, defProtected, isCoalition);
 
             switch (choice) {
                 case STOP_FIGHT -> {
@@ -313,7 +313,8 @@ public class NobleArmyManager {
                     log.add("Player army joins the attack on " + defender.getName() + ".");
                     addPlayerForcesToAttack(attackerForces, zoneId, log);
                     applyInterventionOpinions(choice, attacker, defender, allHouses, log);
-                boolean justified = isJoinAttackerJustified(attacker, this.zoneManager);
+                boolean justified = !isCoalition
+                        && isJoinDefenderSideJustifiedByUnlawful(zoneId, this.zoneManager);
                 if (!justified && playerPrestige != null) {
                     playerPrestige.addTrust(City.main.parameters.StartingParams.PLAYER_TRUST_JOIN_UNJUST);
                     applyBystanderOpinionPenalty(defender, attacker, allHouses, log);
@@ -324,7 +325,7 @@ public class NobleArmyManager {
                 addPlayerForcesToDefense(defenderForces, zoneId, defFort, militarySkill(defender), log);
                 applyInterventionOpinions(choice, attacker, defender, allHouses, log);
                 boolean justified = defProtected
-                        || isJoinDefenderSideJustifiedByUnlawful(zoneId, this.zoneManager);
+                        || (!isCoalition && isJoinAttackerJustified(attacker, this.zoneManager));
                 if (!justified && playerPrestige != null) {
                     playerPrestige.addTrust(City.main.parameters.StartingParams.PLAYER_TRUST_JOIN_UNJUST);
                     applyBystanderOpinionPenalty(attacker, defender, allHouses, log);

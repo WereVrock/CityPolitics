@@ -236,6 +236,7 @@ private List<String> applyUnlawfulAcquisition(String zoneId,
                                                NobleHouseManager houseManager,
                                                ArmyManager playerArmyManager,
                                                City.main.nobles.PlayerPrestige playerPrestige) {
+    System.out.println("[UNLAWFUL-DEBUG] applyUnlawfulAcquisition received zoneId=" + zoneId);
     List<String> log = new ArrayList<>();
     if (zoneId == null || zoneId.isBlank()) {
         log.add("⚠ No zone selected for unlawful acquisition.");

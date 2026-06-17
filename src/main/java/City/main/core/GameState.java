@@ -67,6 +67,7 @@ public class GameState {
     private City.main.nobles.ProtectionManager        protectionManager;
     private City.main.nobles.council.CouncilSessionManager councilSessionManager;
     private City.main.nobles.council.CouncilSession   activeCouncilSession;
+    private String pendingUnlawfulAcquisitionZoneId;
 
     private final List<VotingSession> activeSessions = new ArrayList<>();
 
@@ -221,7 +222,19 @@ public class GameState {
     public void setActiveCouncilSession(City.main.nobles.council.CouncilSession s) { activeCouncilSession = s; }
     public void clearActiveCouncilSession()       { activeCouncilSession = null; }
 
-    public void resetBarbarians() {
+public void setPendingUnlawfulAcquisitionZoneId(String zoneId) {
+        this.pendingUnlawfulAcquisitionZoneId = zoneId;
+    }
+
+    public String getPendingUnlawfulAcquisitionZoneId() {
+        return pendingUnlawfulAcquisitionZoneId;
+    }
+
+    public void clearPendingUnlawfulAcquisitionZoneId() {
+        this.pendingUnlawfulAcquisitionZoneId = null;
+    }
+
+public void resetBarbarians() {
         barbArmyManager.reset();
         ravagedZoneManager.reset();
         barbInvasionState.resetCountdown();

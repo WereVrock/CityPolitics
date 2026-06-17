@@ -1450,13 +1450,13 @@ private City.main.nobles.NobleHouse showZoneAwardDialog(
     // Battle intervention dialog — detailed version
     gameState.getBattleInterventionProcessor().setDetailedCallback(
         (attackerName, defenderName, zoneId, playerSize, attackerSize,
-         atkAllies, defAllies, defProtected) -> {
+         atkAllies, defAllies, defProtected, isCoalition) -> {
             final City.main.army.PlayerBattleInterventionProcessor.PlayerChoice[] result =
                 { City.main.army.PlayerBattleInterventionProcessor.PlayerChoice.IGNORE };
-            // Compute justification flags
+            // Compute justification flags (Rule B: attacker holds unlawful zone → justifies JOIN_DEFENDER;
+            // Rule C: contested zone is unlawful → justifies JOIN_ATTACKER). Both gated to non-coalition.
             City.main.nobles.NobleHouseManager nhm = gameState.getNobleHouseManager();
             City.main.map.ZoneManager zm = gameState.getZoneManager();
-            // Find attacker house by name
             boolean atkHasUnlawful = false;
             for (City.main.nobles.NobleHouse h : nhm.getHouses()) {
                 if (h.getName().equals(attackerName) || h.getName().replace("House ","").equals(attackerName)) {
@@ -1467,8 +1467,8 @@ private City.main.nobles.NobleHouse showZoneAwardDialog(
             }
             City.main.map.ZoneState zoneState = zm.getState(zoneId);
             boolean zoneUnlawful = zoneState != null && zoneState.isUnlawfullyAcquired();
-            final boolean finalAtkHasUnlawful = atkHasUnlawful;
-            final boolean finalZoneUnlawful   = zoneUnlawful;
+            final boolean finalAtkHasUnlawful = !isCoalition && atkHasUnlawful;
+            final boolean finalZoneUnlawful   = !isCoalition && zoneUnlawful;
             if (javax.swing.SwingUtilities.isEventDispatchThread()) {
                 result[0] = City.ui.BattleInterventionDialog.showDetailed(
                         this, attackerName, defenderName, zoneId, playerSize, attackerSize,

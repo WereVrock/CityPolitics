@@ -30,7 +30,8 @@ public class PlayerBattleInterventionProcessor {
                          String zoneId, int playerSize, int attackerSize,
                          java.util.List<String> attackerAllies,
                          java.util.List<String> defenderAllies,
-                         boolean defenderIsProtected);
+                         boolean defenderIsProtected,
+                         boolean isCoalition);
     }
 
     private InterventionCallback         callback;
@@ -106,7 +107,8 @@ public PlayerChoice checkInterventionDetailed(
             int totalAttackerSize, ArmyManager playerArmyManager,
             java.util.List<String> attackerAllies,
             java.util.List<String> defenderAllies,
-            boolean defenderIsProtected) {
+            boolean defenderIsProtected,
+            boolean isCoalition) {
 
         if (detailedCallback == null && callback == null) return PlayerChoice.IGNORE;
 
@@ -121,7 +123,7 @@ public PlayerChoice checkInterventionDetailed(
         if (detailedCallback != null) {
             choice = detailedCallback.ask(attacker.getName(), defender.getName(),
                     zoneId, playerSize, totalAttackerSize,
-                    attackerAllies, defenderAllies, defenderIsProtected);
+                    attackerAllies, defenderAllies, defenderIsProtected, isCoalition);
         } else {
             choice = callback.ask(attacker.getName(), defender.getName(),
                     zoneId, playerSize, totalAttackerSize);
