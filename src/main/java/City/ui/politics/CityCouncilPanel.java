@@ -99,7 +99,7 @@ public class CityCouncilPanel extends JPanel {
         // Party rows
         int maxSeats = parties.stream().mapToInt(PoliticalParty::getSeats).max().orElse(1);
         for (PoliticalParty party : parties) {
-            if (party.getSeats() == 0 && !party.isUnelected()) continue;
+            if (party.getSeats() == 0) continue;
             body.add(buildPartyRow(party, maxSeats));
             body.add(Box.createVerticalStrut(5));
         }

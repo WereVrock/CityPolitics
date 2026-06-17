@@ -31,6 +31,9 @@ public class CouncilPanel extends JPanel {
     private final Runnable  onBack;
     // Callback so MainWindow can open map zone picker
     private java.util.function.Consumer<java.util.function.Consumer<String>> unlawfulZonePickerCallback;
+    // Fired right after a council session is created, so MainWindow can
+    // immediately show the voting view instead of falling back to onBack.
+    private Runnable onSessionStarted;
 
     private final JPanel     voterListPanel;
     private final JLabel     totalLabel;
@@ -148,7 +151,11 @@ public class CouncilPanel extends JPanel {
         this.unlawfulZonePickerCallback = cb;
     }
 
-    private JPanel buildActionSelector() {
+public void setSessionStartedCallback(Runnable r) {
+        this.onSessionStarted = r;
+    }
+
+private JPanel buildActionSelector() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(UITheme.BG_DARK);
@@ -244,7 +251,7 @@ public class CouncilPanel extends JPanel {
     private void openUnlawfulZonePicker(CouncilAction action) {
         java.util.List<City.main.map.Zone> validZones = buildUnlawfulValidZones();
         if (validZones.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
+            City.ui.ThemedDialogs.showInfo(this, "Unlawful Acquisition",
                     "No zone qualifies — each must be noble-owned with at least one other claimant.");
             return;
         }
@@ -424,10 +431,6 @@ private java.util.List<City.main.map.Zone> buildUnlawfulValidZones() {
     }
 
 private void doStartSession(CouncilAction action) {
-        System.out.println("[UNLAWFUL-DEBUG] doStartSession entered, action=" + action
-                + " selectedZoneId=" + selectedZoneId
-                + " gameState.pending=" + gameState.getPendingUnlawfulAcquisitionZoneId()
-                + " on CouncilPanel instance=" + System.identityHashCode(this));
         if (gameState.getLegislationManager().isRealmCouncilUsedThisTurn()) {
             JOptionPane.showMessageDialog(this,
                     "The realm council has already been convened this turn.");
@@ -450,12 +453,12 @@ private void doStartSession(CouncilAction action) {
         gameState.setActiveCouncilSession(session);
         gameState.getLegislationManager().markRealmCouncilUsedThisTurn();
 
-        System.out.println("[UNLAWFUL-DEBUG] doStartSession about to call onBack.run(), "
-                + "selectedZoneId=" + selectedZoneId
-                + " gameState.pending=" + gameState.getPendingUnlawfulAcquisitionZoneId());
-
-        // Immediately rebuild this panel in voting mode and refresh
-        onBack.run();
+        // Immediately open the voting view rather than returning to the main screen.
+        if (onSessionStarted != null) {
+            onSessionStarted.run();
+        } else {
+            onBack.run();
+        }
     }
 
 // pickZoneForUnlawful replaced by openUnlawfulZonePicker — kept empty for safety
@@ -753,13 +756,6 @@ private void finalizeVote() {
                 ? selectedZoneId
                 : gameState.getPendingUnlawfulAcquisitionZoneId();
 
-        System.out.println("[UNLAWFUL-DEBUG] finalizeVote: selectedZoneId=" + selectedZoneId
-                + " gameState.pending=" + gameState.getPendingUnlawfulAcquisitionZoneId()
-                + " zoneIdForOutcome=" + zoneIdForOutcome
-                + " on CouncilPanel instance=" + System.identityHashCode(this)
-                + " gameState instance=" + System.identityHashCode(gameState)
-                + " passed=" + passed);
-
         if (passed) {
             java.util.List<String> effectLog = gameState.getCouncilSessionManager().applyOutcome(
                     session, session.getAction(), zoneIdForOutcome,
@@ -771,8 +767,8 @@ private void finalizeVote() {
                     gameState.getProtectionManager());
             handleOutcomeLog(session.getAction(), effectLog);
         } else {
-            JOptionPane.showMessageDialog(this, "✗ REALM COUNCIL DECREE REJECTED",
-                    "Realm Council Result", JOptionPane.INFORMATION_MESSAGE);
+            City.ui.ThemedDialogs.showInfo(this, "Realm Council Result",
+                    "✗ REALM COUNCIL DECREE REJECTED");
         }
 
         gameState.clearActiveCouncilSession();
@@ -792,13 +788,12 @@ private void handleOutcomeLog(City.main.nobles.council.CouncilAction action,
                     ? effectLog.get(2).replace("_", " ") : "the zone";
             showRefusalDialog(ownerName, zoneDisplay);
         } else {
-            JOptionPane.showMessageDialog(this,
-                    "✓ REALM COUNCIL DECREE PASSED\n\n" + String.join("\n", effectLog),
-                    "Realm Council Result", JOptionPane.INFORMATION_MESSAGE);
+            City.ui.ThemedDialogs.showInfo(this, "Realm Council Result",
+                    "✓ REALM COUNCIL DECREE PASSED\n\n" + String.join("\n", effectLog));
         }
     }
 
-    private void showRefusalDialog(String ownerName, String zoneDisplay) {
+private void showRefusalDialog(String ownerName, String zoneDisplay) {
         JDialog d = new JDialog(
                 SwingUtilities.getWindowAncestor(this) instanceof java.awt.Frame
                         ? (java.awt.Frame) SwingUtilities.getWindowAncestor(this) : null,

@@ -17,6 +17,13 @@ public class NobleArmyRenderer {
     private static final Color COLOR_LABEL_SHADOW  = new Color(10,  5,   0,  180);
     private static final Color COLOR_SELECTED_RING = new Color(255, 230, 100);
 
+    private static final Color COLOR_ATTACK_RING   = new Color(255, 60,  60,  200);
+    private static final Color COLOR_ATTACK_BG     = new Color(140, 20,  20,  220);
+    private static final Color COLOR_ATTACK_BLADE  = new Color(255, 230, 200, 255);
+    private static final Color COLOR_ATTACK_HILT   = new Color(220, 180, 90,  255);
+    private static final int   ATTACK_BADGE_OFFSET_X = 40;
+    private static final int   ATTACK_BADGE_OFFSET_Y = 50;
+
     private static final int  SLOT_WIDTH  = 34;
     private static final int  Y_OFFSET    = 14;
     private static final Font FONT_LABEL  = new Font("Serif", Font.BOLD, 9);
@@ -50,6 +57,13 @@ public void render(Graphics2D g2, NobleArmy selectedArmy) {
             for (int i = 0; i < count; i++) {
                 drawNobleArmy(g2, armies.get(i), startX + i * SLOT_WIDTH, anchorY,
                     armies.get(i) == selectedArmy);
+            }
+
+            // Layer C — attack alert badge if any army here has a pending ATTACK order
+            if (hasAttackingArmy(armies)) {
+                drawAttackBadge(g2,
+                    zone.getLabelX() + ATTACK_BADGE_OFFSET_X,
+                    zone.getLabelY() - ATTACK_BADGE_OFFSET_Y);
             }
         }
     }
@@ -194,6 +208,44 @@ private void drawGarrison(Graphics2D g2, City.main.nobles.NobleHouse house,
 
     private static Color fade(Color c, int alpha) {
         return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
+    }
+
+private boolean hasAttackingArmy(List<NobleArmy> armies) {
+        for (NobleArmy army : armies) {
+            if (army.hasPendingOrder() && army.getPendingOrder() == NobleArmy.OrderType.ATTACK) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void drawAttackBadge(Graphics2D g2, int cx, int cy) {
+        // Pulsing-style alert ring
+        g2.setColor(COLOR_ATTACK_RING);
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawOval(cx - 13, cy - 13, 26, 26);
+        g2.setStroke(new BasicStroke(1f));
+
+        // Badge backing
+        g2.setColor(COLOR_ATTACK_BG);
+        g2.fillOval(cx - 11, cy - 11, 22, 22);
+        g2.setColor(COLOR_ATTACK_RING);
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawOval(cx - 11, cy - 11, 22, 22);
+
+        // Crossed swords — two blades corner to corner
+        g2.setColor(COLOR_ATTACK_BLADE);
+        g2.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.drawLine(cx - 6, cy - 6, cx + 6, cy + 6);
+        g2.drawLine(cx - 6, cy + 6, cx + 6, cy - 6);
+        g2.setStroke(new BasicStroke(1f));
+
+        // Hilt guard accents at blade tips
+        g2.setColor(COLOR_ATTACK_HILT);
+        g2.fillOval(cx - 8,  cy - 8,  3, 3);
+        g2.fillOval(cx + 5,  cy + 5,  3, 3);
+        g2.fillOval(cx - 8,  cy + 5,  3, 3);
+        g2.fillOval(cx + 5,  cy - 8,  3, 3);
     }
 
 }

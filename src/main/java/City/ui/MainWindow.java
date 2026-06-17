@@ -528,7 +528,7 @@ private void swapCenter(JPanel panel) {
         swapCenter(panel);
     }
 
-    private void showCouncilView() {
+private void showCouncilView() {
         councilPanel = new City.ui.council.CouncilPanel(gameState, () -> {
             showMainView();
             updateEndTurnState();
@@ -536,6 +536,9 @@ private void swapCenter(JPanel panel) {
         // Wire the unlawful zone picker to open the map with zone selection
         // The callback receives a Consumer<String> that expects the chosen zone id (or null to cancel)
         councilPanel.setUnlawfulZonePickerCallback(callback -> showMapUnlawfulPicker(callback));
+        // Reopen this same view immediately after convening, so the voting
+        // session shows right away instead of returning to the main view.
+        councilPanel.setSessionStartedCallback(this::showCouncilView);
         if (gameState.hasActiveCouncilSession()) {
             councilPanel.refresh();
         }
@@ -575,9 +578,8 @@ private void showCityCouncilView() {
         }
 
         if (validZoneIds.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No zone qualifies for unlawful acquisition.",
-                    "No Valid Zones", JOptionPane.INFORMATION_MESSAGE);
+            ThemedDialogs.showInfo(this, "No Valid Zones",
+                    "No zone qualifies for unlawful acquisition.");
             onZonePicked.accept(null);
             return;
         }
@@ -1102,8 +1104,10 @@ private void endTurn() {
         // Refresh center panel if it's the council view or parties view
         if (centerPanel.getComponentCount() > 0) {
             Component center = centerPanel.getComponent(0);
-            if (center instanceof City.ui.council.CouncilPanel cp) {
-                cp.refresh();
+            if (center instanceof City.ui.council.CouncilPanel) {
+                // Rebuild fully so turn-based state (used-this-turn flag,
+                // trust bonus, oracle opinion, etc.) is reflected immediately.
+                showCouncilView();
             } else if (center instanceof City.ui.politics.PartiesOverviewPanel pop) {
                 pop.refresh();
             } else if (center instanceof City.ui.map.MapView mv) {
