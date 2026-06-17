@@ -29,6 +29,7 @@ public class NobleArmyManager {
     private       City.main.nobles.PlayerPrestige   playerPrestige;
     private       City.main.nobles.ProtectionManager protectionManager;
 
+
     public NobleArmyManager(ZoneManager zoneManager, RelationshipManager relationships) {
         this.zoneManager   = zoneManager;
         this.relationships = relationships;
@@ -312,21 +313,22 @@ public class NobleArmyManager {
                     log.add("Player army joins the attack on " + defender.getName() + ".");
                     addPlayerForcesToAttack(attackerForces, zoneId, log);
                     applyInterventionOpinions(choice, attacker, defender, allHouses, log);
-                    boolean justified = false;
-                    if (!justified && playerPrestige != null) {
-                        playerPrestige.addTrust(City.main.parameters.StartingParams.PLAYER_TRUST_JOIN_UNJUST);
-                        applyBystanderOpinionPenalty(defender, attacker, allHouses, log);
-                    }
+                boolean justified = isJoinAttackerJustified(attacker, this.zoneManager);
+                if (!justified && playerPrestige != null) {
+                    playerPrestige.addTrust(City.main.parameters.StartingParams.PLAYER_TRUST_JOIN_UNJUST);
+                    applyBystanderOpinionPenalty(defender, attacker, allHouses, log);
                 }
-                case JOIN_DEFENDER -> {
-                    log.add("Player army joins the defense of " + defender.getName() + ".");
-                    addPlayerForcesToDefense(defenderForces, zoneId, defFort, militarySkill(defender), log);
-                    applyInterventionOpinions(choice, attacker, defender, allHouses, log);
-                    boolean justified = defProtected;
-                    if (!justified && playerPrestige != null) {
-                        playerPrestige.addTrust(City.main.parameters.StartingParams.PLAYER_TRUST_JOIN_UNJUST);
-                        applyBystanderOpinionPenalty(attacker, defender, allHouses, log);
-                    }
+            }
+            case JOIN_DEFENDER -> {
+                log.add("Player army joins the defense of " + defender.getName() + ".");
+                addPlayerForcesToDefense(defenderForces, zoneId, defFort, militarySkill(defender), log);
+                applyInterventionOpinions(choice, attacker, defender, allHouses, log);
+                boolean justified = defProtected
+                        || isJoinDefenderSideJustifiedByUnlawful(zoneId, this.zoneManager);
+                if (!justified && playerPrestige != null) {
+                    playerPrestige.addTrust(City.main.parameters.StartingParams.PLAYER_TRUST_JOIN_UNJUST);
+                    applyBystanderOpinionPenalty(attacker, defender, allHouses, log);
+                }
                 }
                 case IGNORE -> {}
             }
@@ -352,7 +354,10 @@ public class NobleArmyManager {
 
         if (attackersWin) {
             ZoneState state = zoneManager.getState(zoneId);
-            if (state != null) state.markConquered();
+            if (state != null) {
+                state.markConquered();
+                state.clearUnlawfullyAcquired(); // ownership changed — mark clears (rule A)
+            }
             defender.resetGarrison(zoneId);
 
             if (isCoalition && coalitionManager != null) {
@@ -398,6 +403,29 @@ public class NobleArmyManager {
         attArmy.clearOrder();
         removeDeadArmies(allHouses);
         return log;
+    }
+
+    /**
+     * Returns true if joining against the given attacker is justified.
+     * Justified if attacker holds at least 1 unlawfully acquired zone (rule B).
+     */
+    /**
+     * Rule B: joining against the attacker is justified if they hold ≥1 unlawfully acquired zone.
+     */
+    public boolean isJoinAttackerJustified(NobleHouse attacker, ZoneManager zm) {
+        for (String zoneId : attacker.getZoneIds()) {
+            ZoneState state = zm.getState(zoneId);
+            if (state != null && state.isUnlawfullyAcquired()) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Rule C: joining the attacking side is justified if the contested zone is marked unlawful.
+     */
+    public boolean isJoinDefenderSideJustifiedByUnlawful(String zoneId, ZoneManager zm) {
+        ZoneState state = zm.getState(zoneId);
+        return state != null && state.isUnlawfullyAcquired();
     }
 
     private void addPlayerForcesToAttack(List<ArmyForce> attackerForces, String zoneId, List<String> log) {

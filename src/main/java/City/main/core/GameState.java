@@ -127,6 +127,7 @@ public class GameState {
         playerPrestige       = new City.main.nobles.PlayerPrestige();
         protectionManager    = new City.main.nobles.ProtectionManager();
         councilSessionManager= new City.main.nobles.council.CouncilSessionManager();
+        councilSessionManager.setZoneManager(zoneManager);
         // ActionRegistry depends on legislation+mercenary managers
         actionRegistry = new ActionRegistry(this);
 

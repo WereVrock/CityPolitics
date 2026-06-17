@@ -214,6 +214,7 @@ public class SaveData {
         public int     recentlyRaidedTurns;
         public int     conquestMalusPercent;
         public int     rebellionPower;
+        public boolean unlawfullyAcquired;
         public ZoneStateEntry() {}
     }
 

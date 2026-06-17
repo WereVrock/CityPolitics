@@ -37,7 +37,8 @@ public class CouncilPanel extends JPanel {
     private final JButton    boostBtn;
     private final JButton    finalizeBtn;
 
-    private String selectedZoneId = null;
+    private String  selectedZoneId     = null;
+    private boolean zonePickerActive   = false;
 
     public CouncilPanel(GameState gameState, Runnable onBack) {
         this.gameState = gameState;
@@ -234,22 +235,191 @@ public class CouncilPanel extends JPanel {
         }
 
         if (action == CouncilAction.UNLAWFUL_ACQUISITION) {
-            if (unlawfulZonePickerCallback != null) {
-                // Open map picker — callback receives the chosen zone id
-                unlawfulZonePickerCallback.accept(zoneId -> {
-                    if (zoneId == null) return;
-                    selectedZoneId = zoneId;
-                    doStartSession(action);
-                });
-            } else {
-                // Fallback
-                selectedZoneId = pickZoneForUnlawful();
-                if (selectedZoneId == null) return;
-                doStartSession(action);
-            }
+            openUnlawfulZonePicker(action);
         } else {
             doStartSession(action);
         }
+    }
+
+    private void openUnlawfulZonePicker(CouncilAction action) {
+        java.util.List<City.main.map.Zone> validZones = buildUnlawfulValidZones();
+        if (validZones.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No zone qualifies — each must be noble-owned with at least one other claimant.");
+            return;
+        }
+
+        // Build inline zone picker dialog with "Pick from Map" option
+        JDialog picker = new JDialog(
+                SwingUtilities.getWindowAncestor(this) instanceof java.awt.Frame
+                        ? (java.awt.Frame) SwingUtilities.getWindowAncestor(this) : null,
+                "Unlawful Acquisition — Select Zone", true);
+        picker.setSize(480, 520);
+        picker.setLocationRelativeTo(this);
+        picker.setResizable(true);
+        picker.getContentPane().setBackground(City.ui.UITheme.BG_PANEL);
+        picker.setLayout(new BorderLayout());
+
+        JLabel title = new JLabel("  Select zone to declare unlawfully acquired");
+        title.setFont(City.ui.UITheme.FONT_HEADER);
+        title.setForeground(City.ui.UITheme.TEXT_GOLD);
+        title.setBorder(new EmptyBorder(14, 14, 10, 14));
+        title.setBackground(City.ui.UITheme.BG_PANEL_LIGHT);
+        title.setOpaque(true);
+
+        JPanel listPanel = new JPanel();
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        listPanel.setBackground(City.ui.UITheme.BG_DARK);
+        listPanel.setBorder(new EmptyBorder(8, 10, 8, 10));
+
+        ButtonGroup group = new ButtonGroup();
+        final City.main.map.Zone[] selected = {validZones.get(0)};
+        selectedZoneId = selected[0].getId();
+
+        for (City.main.map.Zone z : validZones) {
+            City.main.nobles.NobleHouse owner =
+                    gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
+            java.util.List<String> claimants = new java.util.ArrayList<>();
+            for (City.main.nobles.NobleHouse h : gameState.getNobleHouseManager().getHouses()) {
+                if (h != owner && !h.isEliminated()
+                        && gameState.getNobleHouseManager().getClaimManager()
+                                .hasClaim(h.getId(), z.getId())) {
+                    claimants.add(h.getName().replace("House ", ""));
+                }
+            }
+
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setBackground(City.ui.UITheme.BG_PANEL);
+            row.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                    javax.swing.BorderFactory.createLineBorder(City.ui.UITheme.BORDER_COLOR, 1),
+                    new EmptyBorder(8, 10, 8, 10)));
+            row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 62));
+
+            JRadioButton rb = new JRadioButton();
+            rb.setBackground(City.ui.UITheme.BG_PANEL);
+            if (z == selected[0]) rb.setSelected(true);
+            group.add(rb);
+
+            JPanel info = new JPanel();
+            info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+            info.setBackground(City.ui.UITheme.BG_PANEL);
+
+            JLabel nameLabel = new JLabel(z.getDisplayName());
+            nameLabel.setFont(City.ui.UITheme.FONT_BUTTON);
+            nameLabel.setForeground(City.ui.UITheme.TEXT_GOLD);
+
+            String ownerText = owner != null ? owner.getName().replace("House ", "") : "?";
+            JLabel detailLabel = new JLabel("Owner: " + ownerText
+                    + "   Claimants: " + String.join(", ", claimants));
+            detailLabel.setFont(City.ui.UITheme.FONT_SMALL);
+            detailLabel.setForeground(City.ui.UITheme.TEXT_SECONDARY);
+
+            info.add(nameLabel);
+            info.add(detailLabel);
+            row.add(rb,   BorderLayout.WEST);
+            row.add(info, BorderLayout.CENTER);
+
+            final City.main.map.Zone capturedZone = z;
+            row.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override public void mouseClicked(java.awt.event.MouseEvent e) {
+                    rb.setSelected(true);
+                    selected[0]    = capturedZone;
+                    selectedZoneId = capturedZone.getId();
+                }
+            });
+            listPanel.add(row);
+            listPanel.add(Box.createVerticalStrut(6));
+        }
+
+        JScrollPane scroll = new JScrollPane(listPanel);
+        scroll.setBorder(null);
+        scroll.setBackground(City.ui.UITheme.BG_DARK);
+        scroll.getViewport().setBackground(City.ui.UITheme.BG_DARK);
+        scroll.getVerticalScrollBar().setUnitIncrement(24);
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        btnRow.setBackground(City.ui.UITheme.BG_PANEL);
+
+        // "Pick from Map" button — opens map picker overlay
+        if (unlawfulZonePickerCallback != null) {
+            JButton mapPickBtn = new JButton("🗺 Pick from Map");
+            mapPickBtn.setFont(City.ui.UITheme.FONT_BUTTON);
+            mapPickBtn.setForeground(City.ui.UITheme.ACCENT_FROST);
+            mapPickBtn.setBackground(City.ui.UITheme.BUTTON_BG);
+            mapPickBtn.setBorderPainted(false);
+            mapPickBtn.setFocusPainted(false);
+            mapPickBtn.addActionListener(e -> {
+                picker.dispose();
+                unlawfulZonePickerCallback.accept(zoneId -> {
+                    if (zoneId == null) return; // cancelled
+                    // Validate: must be a valid unlawful zone
+                    boolean valid = validZones.stream()
+                            .anyMatch(z -> z.getId().equals(zoneId));
+                    if (!valid) {
+                        JOptionPane.showMessageDialog(null,
+                                "That zone is not eligible for unlawful acquisition.",
+                                "Invalid Selection", JOptionPane.WARNING_MESSAGE);
+                        return;
+                    }
+                    selectedZoneId = zoneId;
+                    doStartSession(action);
+                });
+            });
+            btnRow.add(mapPickBtn);
+        }
+
+        JButton cancelBtn = new JButton("CANCEL");
+        cancelBtn.setFont(City.ui.UITheme.FONT_BUTTON);
+        cancelBtn.setForeground(City.ui.UITheme.TEXT_SECONDARY);
+        cancelBtn.setBackground(City.ui.UITheme.BUTTON_BG);
+        cancelBtn.setBorderPainted(false);
+        cancelBtn.setFocusPainted(false);
+        cancelBtn.addActionListener(e -> {
+            selectedZoneId = null;
+            picker.dispose();
+        });
+
+        JButton confirmBtn = new JButton("SELECT ZONE");
+        confirmBtn.setFont(City.ui.UITheme.FONT_BUTTON);
+        confirmBtn.setForeground(City.ui.UITheme.TEXT_GOLD);
+        confirmBtn.setBackground(City.ui.UITheme.BUTTON_BG);
+        confirmBtn.setBorderPainted(false);
+        confirmBtn.setFocusPainted(false);
+        confirmBtn.addActionListener(e -> {
+            selectedZoneId = selected[0].getId();
+            picker.dispose();
+            doStartSession(action);
+        });
+
+        btnRow.add(cancelBtn);
+        btnRow.add(confirmBtn);
+
+        picker.add(title,  BorderLayout.NORTH);
+        picker.add(scroll, BorderLayout.CENTER);
+        picker.add(btnRow, BorderLayout.SOUTH);
+        picker.setVisible(true);
+    }
+
+    private java.util.List<City.main.map.Zone> buildUnlawfulValidZones() {
+        java.util.List<City.main.map.Zone> result = new java.util.ArrayList<>();
+        for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
+            if (z.isDesolate()) continue;
+            City.main.nobles.NobleHouse owner =
+                    gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
+            if (owner == null) continue;
+            boolean hasClaimant = false;
+            for (City.main.nobles.NobleHouse h : gameState.getNobleHouseManager().getHouses()) {
+                if (h != owner && !h.isEliminated()
+                        && gameState.getNobleHouseManager().getClaimManager()
+                                .hasClaim(h.getId(), z.getId())) {
+                    hasClaimant = true;
+                    break;
+                }
+            }
+            if (hasClaimant) result.add(z);
+        }
+        result.sort(java.util.Comparator.comparing(City.main.map.Zone::getDisplayName));
+        return result;
     }
 
 private void doStartSession(CouncilAction action) {
@@ -279,44 +449,9 @@ private void doStartSession(CouncilAction action) {
         onBack.run();
     }
 
-private String pickZoneForUnlawful() {
-        java.util.List<City.main.map.Zone> ownedZones = new java.util.ArrayList<>();
-        for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
-            if (z.isDesolate()) continue;
-            City.main.nobles.NobleHouse owner =
-                    gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
-            if (owner == null) continue;
-            // Must have at least one claimant different from the owner
-            boolean hasClaimant = false;
-            for (City.main.nobles.NobleHouse h : gameState.getNobleHouseManager().getHouses()) {
-                if (h != owner && !h.isEliminated()
-                        && gameState.getNobleHouseManager().getClaimManager()
-                                .hasClaim(h.getId(), z.getId())) {
-                    hasClaimant = true;
-                    break;
-                }
-            }
-            if (hasClaimant) ownedZones.add(z);
-        }
-        if (ownedZones.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "No zone qualifies — each must be noble-owned with at least one other claimant.");
-            return null;
-        }
-        ownedZones.sort(java.util.Comparator.comparing(City.main.map.Zone::getDisplayName));
-        String[] options = ownedZones.stream().map(z -> {
-            City.main.nobles.NobleHouse o =
-                    gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
-            return z.getDisplayName() + " (owned by " + (o != null ? o.getName() : "?") + ")";
-        }).toArray(String[]::new);
-        int choice = JOptionPane.showOptionDialog(this,
-                "Select the zone to declare as unlawfully acquired:",
-                "Realm Council — Unlawful Acquisition",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
-                null, options, options[0]);
-        if (choice < 0) return null;
-        return ownedZones.get(choice).getId();
-    }
+    // pickZoneForUnlawful replaced by openUnlawfulZonePicker — kept empty for safety
+    @SuppressWarnings("unused")
+    private String pickZoneForUnlawful() { return null; }
 
     public void refresh() {
         CouncilSession session = gameState.getActiveCouncilSession();
@@ -604,7 +739,6 @@ private String pickZoneForUnlawful() {
         if (session == null) return;
 
         boolean passed = session.isPassingCurrently();
-        String result = passed ? "✓ REALM COUNCIL DECREE PASSED" : "✗ REALM COUNCIL DECREE REJECTED";
 
         if (passed) {
             java.util.List<String> effectLog = gameState.getCouncilSessionManager().applyOutcome(
@@ -615,16 +749,85 @@ private String pickZoneForUnlawful() {
                     gameState.getResources(),
                     gameState.getPlayerPrestige(),
                     gameState.getProtectionManager());
-            JOptionPane.showMessageDialog(this,
-                    result + "\n\n" + String.join("\n", effectLog),
-                    "Realm Council Result", JOptionPane.INFORMATION_MESSAGE);
+            handleOutcomeLog(session.getAction(), effectLog);
         } else {
-            JOptionPane.showMessageDialog(this, result, "Realm Council Result", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "✗ REALM COUNCIL DECREE REJECTED",
+                    "Realm Council Result", JOptionPane.INFORMATION_MESSAGE);
         }
 
         gameState.clearActiveCouncilSession();
         selectedZoneId = null;
         onBack.run();
+    }
+
+    private void handleOutcomeLog(City.main.nobles.council.CouncilAction action,
+                                   java.util.List<String> effectLog) {
+        if (action == City.main.nobles.council.CouncilAction.UNLAWFUL_ACQUISITION
+                && !effectLog.isEmpty()
+                && "REFUSED".equals(effectLog.get(0))) {
+            // Owner refused — show dedicated dialog
+            String ownerName = effectLog.size() > 1 ? effectLog.get(1) : "The owner";
+            String zoneDisplay = effectLog.size() > 2
+                    ? effectLog.get(2).replace("_", " ") : "the zone";
+            showRefusalDialog(ownerName, zoneDisplay);
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "✓ REALM COUNCIL DECREE PASSED\n\n" + String.join("\n", effectLog),
+                    "Realm Council Result", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private void showRefusalDialog(String ownerName, String zoneDisplay) {
+        JDialog d = new JDialog(
+                SwingUtilities.getWindowAncestor(this) instanceof java.awt.Frame
+                        ? (java.awt.Frame) SwingUtilities.getWindowAncestor(this) : null,
+                "Unlawful Acquisition — Refused", true);
+        d.setUndecorated(true);
+        d.setSize(500, 320);
+        d.setLocationRelativeTo(this);
+
+        JPanel root = new JPanel(new BorderLayout(0, 10));
+        root.setBackground(City.ui.UITheme.BG_PANEL);
+        root.setBorder(javax.swing.BorderFactory.createLineBorder(
+                City.ui.UITheme.BORDER_COLOR, 2));
+
+        JLabel title = new JLabel("  ⚑ Decree Passed — But Defied");
+        title.setFont(City.ui.UITheme.FONT_TITLE);
+        title.setForeground(new Color(220, 150, 40));
+        title.setBackground(City.ui.UITheme.BG_PANEL_LIGHT);
+        title.setOpaque(true);
+        title.setBorder(new EmptyBorder(12, 12, 10, 12));
+
+        JLabel body = new JLabel("<html><body style='width:380px; padding:8px'>"
+                + "<b>" + ownerName + "</b> refuses to cede <b>" + zoneDisplay
+                + "</b> — their forces are strong enough to resist the council's ruling.<br><br>"
+                + "The zone has been marked as <b>unlawfully acquired</b>. "
+                + "Each turn they hold it, you will lose prestige. "
+                + "After " + City.main.parameters.NobleCouncilParams.UNLAWFUL_RETURN_TURNS
+                + " turns the zone will be forcibly transferred.<br><br>"
+                + "While the zone is marked unlawful:<br>"
+                + "• Attacking " + ownerName + " in retaliation is <b>justified</b><br>"
+                + "• Defending " + zoneDisplay + " against them is <b>justified</b>"
+                + "</body></html>");
+        body.setFont(City.ui.UITheme.FONT_BODY);
+        body.setForeground(City.ui.UITheme.TEXT_PRIMARY);
+
+        JPanel btns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        btns.setBackground(City.ui.UITheme.BG_PANEL);
+        JButton ok = new JButton("UNDERSTOOD");
+        ok.setFont(City.ui.UITheme.FONT_BUTTON);
+        ok.setForeground(City.ui.UITheme.TEXT_GOLD);
+        ok.setBackground(City.ui.UITheme.BUTTON_BG);
+        ok.setBorderPainted(false);
+        ok.setFocusPainted(false);
+        ok.addActionListener(e -> d.dispose());
+        btns.add(ok);
+
+        root.add(title, BorderLayout.NORTH);
+        root.add(body,  BorderLayout.CENTER);
+        root.add(btns,  BorderLayout.SOUTH);
+        d.setContentPane(root);
+        d.setVisible(true);
     }
 
     private String stanceText(CouncilVoter.Stance s) {

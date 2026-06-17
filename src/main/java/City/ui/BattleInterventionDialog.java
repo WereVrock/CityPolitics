@@ -38,6 +38,19 @@ public static InterventionResult showDetailed(
             List<String> attackerAllies,
             List<String> defenderAllies,
             boolean defenderIsProtected) {
+    return showDetailed(parent, attackerName, defenderName, zoneId, playerSize, attackerSize,
+            attackerAllies, defenderAllies, defenderIsProtected, false, false);
+}
+
+public static InterventionResult showDetailed(
+            Window parent,
+            String attackerName, String defenderName,
+            String zoneId, int playerSize, int attackerSize,
+            List<String> attackerAllies,
+            List<String> defenderAllies,
+            boolean defenderIsProtected,
+            boolean attackerHasUnlawfulZone,
+            boolean zoneIsUnlawful) {
 
         JDialog dialog = new JDialog(
                 parent instanceof Frame ? (Frame) parent : null,
@@ -124,10 +137,14 @@ public static InterventionResult showDetailed(
         String atkShort = stripHouse(attackerName);
         String defShort = stripHouse(defenderName);
 
-        String joinAtkJust = "No special justification. Costs 1 Trust and lowers bystander opinions.";
+        String joinAtkJust = attackerHasUnlawfulZone
+                ? "Justified — attacker holds an unlawfully acquired zone. No Trust penalty."
+                : "No special justification. Costs 1 Trust and lowers bystander opinions.";
         String joinDefJust = defenderIsProtected
                 ? "Justified — defender is under your protection. No Trust penalty."
-                : "No special justification. Costs 1 Trust and lowers bystander opinions.";
+                : (zoneIsUnlawful
+                    ? "Justified — this zone is marked as unlawfully acquired. No Trust penalty."
+                    : "No special justification. Costs 1 Trust and lowers bystander opinions.");
         String stopJust = "Stopping a fight between nobles. Costs some attacker opinion, gains small defender opinion.";
         String ignoreJust = "You do nothing. No penalties.";
 

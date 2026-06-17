@@ -436,6 +436,20 @@ private int computeHouseFood(NobleHouse house) {
     }
 
     /**
+     * Transfer a zone from one owner to another, clearing the unlawful mark (rule A).
+     */
+    public void transferZoneOwnership(String zoneId, NobleHouse from, NobleHouse to) {
+        if (from != null) from.removeZone(zoneId);
+        if (to   != null) to.addZone(zoneId);
+        // Rule A: mark clears when ownership changes
+        City.main.map.ZoneState state = zoneManager.getState(zoneId);
+        if (state != null) state.clearUnlawfullyAcquired();
+        City.debug.Debug.log("noble", "zone-transfer",
+                zoneId + " → " + (to != null ? to.getName() : "ungoverned")
+                + " (unlawful mark cleared)");
+    }
+
+    /**
      * Called by BarbInvasionProcessor after a noble wins against a barbarian garrison.
      * Awards the zone to the noble and clears the barbarian garrison entry.
      */

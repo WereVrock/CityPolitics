@@ -534,9 +534,8 @@ private void swapCenter(JPanel panel) {
             updateEndTurnState();
         });
         // Wire the unlawful zone picker to open the map with zone selection
-        councilPanel.setUnlawfulZonePickerCallback(callback -> {
-            showUnlawfulZonePicker(callback);
-        });
+        // The callback receives a Consumer<String> that expects the chosen zone id (or null to cancel)
+        councilPanel.setUnlawfulZonePickerCallback(callback -> showMapUnlawfulPicker(callback));
         if (gameState.hasActiveCouncilSession()) {
             councilPanel.refresh();
         }
@@ -550,7 +549,118 @@ private void showCityCouncilView() {
         swapCenter(panel);
     }
 
-private void showUnlawfulZonePicker(java.util.function.Consumer<String> onZonePicked) {
+    /**
+     * Opens the map view in unlawful-zone-picking mode.
+     * Invalid zones are greyed out. Player clicks a valid zone to select it.
+     * A cancel button closes without selecting.
+     */
+    private void showMapUnlawfulPicker(java.util.function.Consumer<String> onZonePicked) {
+        // Build valid zone set
+        java.util.Set<String> validZoneIds = new java.util.LinkedHashSet<>();
+        for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
+            if (z.isDesolate()) continue;
+            City.main.nobles.NobleHouse owner =
+                    gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
+            if (owner == null) continue;
+            for (City.main.nobles.NobleHouse h : gameState.getNobleHouseManager().getHouses()) {
+                if (h != owner && !h.isEliminated()
+                        && gameState.getNobleHouseManager().getClaimManager()
+                                .hasClaim(h.getId(), z.getId())) {
+                    validZoneIds.add(z.getId());
+                    break;
+                }
+            }
+        }
+
+        if (validZoneIds.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No zone qualifies for unlawful acquisition.",
+                    "No Valid Zones", JOptionPane.INFORMATION_MESSAGE);
+            onZonePicked.accept(null);
+            return;
+        }
+
+        // Build an overlay panel: map + instruction bar + cancel
+        JPanel overlay = new JPanel(new BorderLayout());
+        overlay.setBackground(City.ui.UITheme.BG_DARK);
+
+        JPanel instrBar = new JPanel(new BorderLayout(8, 0));
+        instrBar.setBackground(new Color(55, 40, 10));
+        instrBar.setBorder(new EmptyBorder(8, 14, 8, 14));
+
+        JLabel instrLabel = new JLabel("⚑ Click a zone to select it for Unlawful Acquisition. "
+                + "Greyed-out zones are ineligible.");
+        instrLabel.setFont(City.ui.UITheme.FONT_BUTTON);
+        instrLabel.setForeground(new Color(220, 185, 80));
+
+        JButton cancelPickBtn = new JButton("CANCEL");
+        cancelPickBtn.setFont(City.ui.UITheme.FONT_BUTTON);
+        cancelPickBtn.setForeground(City.ui.UITheme.TEXT_SECONDARY);
+        cancelPickBtn.setBackground(City.ui.UITheme.BUTTON_BG);
+        cancelPickBtn.setBorderPainted(false);
+        cancelPickBtn.setFocusPainted(false);
+        cancelPickBtn.addActionListener(e -> {
+            onZonePicked.accept(null);
+            showCouncilView();
+        });
+
+        instrBar.add(instrLabel,   BorderLayout.CENTER);
+        instrBar.add(cancelPickBtn, BorderLayout.EAST);
+
+        // Reuse MapView but intercept zone clicks
+        City.ui.map.MapView pickerMap = new City.ui.map.MapView(gameState, () -> {
+            onZonePicked.accept(null);
+            showCouncilView();
+        });
+        pickerMap.getInfoPanel().setGrantClaimFromMapCallback(null);
+
+        // Overlay intercepts zone selection — replace via a wrapper
+        JPanel mapWrapper = new JPanel(new BorderLayout()) {
+            {
+                add(pickerMap, BorderLayout.CENTER);
+                // Transparent click-capture layer to intercept zone picks
+                // We repurpose zone selection from MapView's info panel
+            }
+        };
+        mapWrapper.setBackground(City.ui.UITheme.BG_DARK);
+
+        // Intercept zone selection: wire info panel to handle pick
+        pickerMap.getInfoPanel().setOpenMilitaryCallback(null);
+
+        // We hook into the MapView by adding a zone-click listener via a custom approach:
+        // Replace the MapView's zone handler by subclassing is complex, so we show the
+        // zone picker dialog built from the map info panel's zone display.
+        // Instead, use the simpler approach: add a glass pane over the map that intercepts
+        // clicks and maps them to zone hit-tests.
+        final java.util.Set<String> validIds = java.util.Collections.unmodifiableSet(validZoneIds);
+        pickerMap.addPropertyChangeListener("zoneSelected", evt -> {
+            String zoneId = (String) evt.getNewValue();
+            if (zoneId != null && validIds.contains(zoneId)) {
+                onZonePicked.accept(zoneId);
+                showCouncilView();
+            }
+        });
+
+        // Since MapView doesn't fire property changes, we use the info panel approach:
+        // Override the info panel's showZone to intercept clicks on valid zones.
+        City.ui.map.MapInfoPanel infoPanel = pickerMap.getInfoPanel();
+        infoPanel.setUnlawfulPickerMode(validIds, zoneId -> {
+            onZonePicked.accept(zoneId);
+            showCouncilView();
+        });
+
+        overlay.add(instrBar, BorderLayout.NORTH);
+        overlay.add(pickerMap, BorderLayout.CENTER);
+        swapCenter(overlay);
+    }
+
+    /** Legacy method — kept for compatibility */
+    private void showUnlawfulZonePicker(java.util.function.Consumer<String> onZonePicked) {
+        showMapUnlawfulPicker(onZonePicked);
+    }
+
+    @SuppressWarnings("unused")
+    private void showUnlawfulZonePickerLegacy(java.util.function.Consumer<String> onZonePicked) {
         // Build list of valid zones: noble-owned, with at least 1 other claimant
         java.util.List<City.main.map.Zone> validZones = new java.util.ArrayList<>();
         for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
@@ -1343,16 +1453,34 @@ private City.main.nobles.NobleHouse showZoneAwardDialog(
          atkAllies, defAllies, defProtected) -> {
             final City.main.army.PlayerBattleInterventionProcessor.PlayerChoice[] result =
                 { City.main.army.PlayerBattleInterventionProcessor.PlayerChoice.IGNORE };
+            // Compute justification flags
+            City.main.nobles.NobleHouseManager nhm = gameState.getNobleHouseManager();
+            City.main.map.ZoneManager zm = gameState.getZoneManager();
+            // Find attacker house by name
+            boolean atkHasUnlawful = false;
+            for (City.main.nobles.NobleHouse h : nhm.getHouses()) {
+                if (h.getName().equals(attackerName) || h.getName().replace("House ","").equals(attackerName)) {
+                    atkHasUnlawful = gameState.getNobleArmyManager()
+                            .isJoinAttackerJustified(h, zm);
+                    break;
+                }
+            }
+            City.main.map.ZoneState zoneState = zm.getState(zoneId);
+            boolean zoneUnlawful = zoneState != null && zoneState.isUnlawfullyAcquired();
+            final boolean finalAtkHasUnlawful = atkHasUnlawful;
+            final boolean finalZoneUnlawful   = zoneUnlawful;
             if (javax.swing.SwingUtilities.isEventDispatchThread()) {
                 result[0] = City.ui.BattleInterventionDialog.showDetailed(
                         this, attackerName, defenderName, zoneId, playerSize, attackerSize,
-                        atkAllies, defAllies, defProtected).choice();
+                        atkAllies, defAllies, defProtected,
+                        finalAtkHasUnlawful, finalZoneUnlawful).choice();
             } else {
                 try {
                     javax.swing.SwingUtilities.invokeAndWait(() ->
                         result[0] = City.ui.BattleInterventionDialog.showDetailed(
                                 this, attackerName, defenderName, zoneId, playerSize, attackerSize,
-                                atkAllies, defAllies, defProtected).choice());
+                                atkAllies, defAllies, defProtected,
+                                finalAtkHasUnlawful, finalZoneUnlawful).choice());
                 } catch (Exception ignored) {}
             }
             return result[0];

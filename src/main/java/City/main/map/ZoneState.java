@@ -9,35 +9,37 @@ import City.main.parameters.DiplomacyParams;
  */
 public class ZoneState {
 
-    private int    damage;
-    private int    supplyLevel;
-    private int    recentlyRaidedTurns;  // >0 = unraidable, production malus active
-    private int    conquestMalusPercent; // 0-100, decays each turn
-    private int    rebellionPower;
+    private int     damage;
+    private int     supplyLevel;
+    private int     recentlyRaidedTurns;  // >0 = unraidable, production malus active
+    private int     conquestMalusPercent; // 0-100, decays each turn
+    private int     rebellionPower;
+    private boolean unlawfullyAcquired;   // declared unlawful by realm council
 
     public ZoneState() {
         reset();
     }
 
-    public void reset() {
-        this.damage               = 0;
-        this.supplyLevel          = 100;
-        this.recentlyRaidedTurns  = 0;
-        this.conquestMalusPercent = 0;
-        this.rebellionPower      = 0;
+public void reset() {
+    this.damage               = 0;
+    this.supplyLevel          = 100;
+    this.recentlyRaidedTurns  = 0;
+    this.conquestMalusPercent = 0;
+    this.rebellionPower       = 0;
+    this.unlawfullyAcquired   = false;
+}
+
+// ─── Turn tick ───────────────────────────────────────────────────────────
+
+public void tick() {
+    if (recentlyRaidedTurns > 0) recentlyRaidedTurns--;
+    if (conquestMalusPercent > 0) {
+        conquestMalusPercent = Math.max(0,
+            conquestMalusPercent - DiplomacyParams.CONQUEST_MALUS_DECAY_PER_TURN);
     }
+}
 
-    // ─── Turn tick ───────────────────────────────────────────────────────────
-
-    public void tick() {
-        if (recentlyRaidedTurns > 0) recentlyRaidedTurns--;
-        if (conquestMalusPercent > 0) {
-            conquestMalusPercent = Math.max(0,
-                conquestMalusPercent - DiplomacyParams.CONQUEST_MALUS_DECAY_PER_TURN);
-        }
-    }
-
-    // ─── Raid ────────────────────────────────────────────────────────────────
+// ─── Raid ────────────────────────────────────────────────────────────────
 
     public boolean isRecentlyRaided()  { return recentlyRaidedTurns > 0; }
     public void    markRaided()        { recentlyRaidedTurns = DiplomacyParams.RAID_COOLDOWN_TURNS; }
@@ -84,4 +86,11 @@ public int  getConquestMalus()     { return conquestMalusPercent; }
     public void addDamage(int amount)     { setDamage(damage + amount); }
     public int  getSupplyLevel()          { return supplyLevel; }
     public void setSupplyLevel(int v)     { supplyLevel = Math.max(0, Math.min(100, v)); }
+
+// ─── Unlawful acquisition ──────────────────────────────────────────────────
+
+public boolean isUnlawfullyAcquired()       { return unlawfullyAcquired; }
+public void    markUnlawfullyAcquired()     { this.unlawfullyAcquired = true; }
+public void    clearUnlawfullyAcquired()    { this.unlawfullyAcquired = false; }
+
 }

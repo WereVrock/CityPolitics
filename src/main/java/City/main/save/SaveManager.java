@@ -380,6 +380,7 @@ public class SaveManager {
             e.recentlyRaidedTurns = state.getRaidedTurns();
             e.conquestMalusPercent = state.getConquestMalus();
             e.rebellionPower      = state.getRebellionPower();
+            e.unlawfullyAcquired  = state.isUnlawfullyAcquired();
             list.add(e);
         }
         return list;
@@ -745,6 +746,7 @@ public class SaveManager {
             state.setRecentlyRaidedTurns(entry.recentlyRaidedTurns);
             state.setConquestMalusPercent(entry.conquestMalusPercent);
             state.setRebellionPower(entry.rebellionPower);
+            if (entry.unlawfullyAcquired) state.markUnlawfullyAcquired();
         }
     }
 

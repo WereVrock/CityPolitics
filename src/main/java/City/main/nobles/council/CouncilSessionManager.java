@@ -22,13 +22,18 @@ public class CouncilSessionManager {
     private final Random rng = new Random();
 
     // Active fortification support state
+    private City.main.map.ZoneManager zoneManager;
+
+    public void setZoneManager(City.main.map.ZoneManager zm) { this.zoneManager = zm; }
+
     private int fortificationSupportTurnsRemaining = 0;
 
     // Pending unlawful acquisition (zone must be returned)
     private String pendingUnlawfulZoneId   = null;
     private String pendingUnlawfulOwnerId  = null;
     private int    pendingUnlawfulTurns    = 0;
-    private static final int UNLAWFUL_RETURN_TURNS = 4;
+    private static final int UNLAWFUL_RETURN_TURNS =
+            City.main.parameters.NobleCouncilParams.UNLAWFUL_RETURN_TURNS;
 
     // ── Session creation ──────────────────────────────────────────────────────
 
@@ -251,13 +256,18 @@ private List<String> applyUnlawfulAcquisition(String zoneId,
 
     double ratio = playerArmy > 0 ? (double) ownerArmy / playerArmy : 0;
     if (ratio >= NobleCouncilParams.COUNCIL_UNLAWFUL_REFUSE_THRESHOLD) {
-        log.add("⚑ " + owner.getName()
-                + " refuses to cede " + zoneId.replace("_", " ")
-                + " — their forces are strong enough to resist.");
+        // Owner refuses — mark the zone as unlawfully acquired and start pressure
         pendingUnlawfulZoneId  = zoneId;
         pendingUnlawfulOwnerId = owner.getId();
         pendingUnlawfulTurns   = UNLAWFUL_RETURN_TURNS;
-        log.add("  Player prestige will suffer each turn until the zone is returned.");
+        // Mark the zone so battle-justification rules apply
+        if (zoneManager != null) {
+            City.main.map.ZoneState state = zoneManager.getState(zoneId);
+            if (state != null) state.markUnlawfullyAcquired();
+        }
+        log.add("REFUSED");          // sentinel — UI reads this to show refusal dialog
+        log.add(owner.getName());    // line 1: owner name
+        log.add(zoneId);             // line 2: zone id
         return log;
     }
 
