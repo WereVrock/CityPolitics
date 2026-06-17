@@ -426,7 +426,7 @@ public void drop(DropTargetDropEvent dtde) {
         }
     }
 
-    // ─── DragSourceListener ──────────────────────────────────────────────────
+    // ─── DragSourceListener ────────────────────────────────────────────────── 
 
     @Override
 
