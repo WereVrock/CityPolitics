@@ -116,6 +116,8 @@ public void clearSelection() {
         renderer.setSelectedNobleArmy(null);
         BarbArmyRenderer br = renderer.getBarbArmyRenderer();
         if (br != null) br.setSelectedArmy(null);
+        City.ui.map.MercenaryArmyRenderer mr = renderer.getMercenaryArmyRenderer();
+        if (mr != null) mr.setSelectedArmy(null);
         repaint();
     }
 
@@ -127,7 +129,17 @@ public Zone     getSelectedZone()     { return selectedZone; }
         repaint();
     }
 
-    public MapViewMode getViewMode() { return renderer.getViewMode(); }
+public void setPickerValidZoneIds(java.util.Set<String> validIds) {
+        renderer.setPickerValidZoneIds(validIds);
+        repaint();
+    }
+
+    public void clearPickerValidZoneIds() {
+        renderer.clearPickerValidZoneIds();
+        repaint();
+    }
+
+public MapViewMode getViewMode() { return renderer.getViewMode(); }
 
     // ─── Mouse handlers ──────────────────────────────────────────────────────
 
@@ -182,8 +194,10 @@ public Zone     getSelectedZone()     { return selectedZone; }
 private void handleLeftClick(Point screenPt) {
         Point world = camera.screenToWorld(screenPt);
 
-        // 1. Barbarian armies (rendered on top)
         BarbArmyRenderer barbRenderer = renderer.getBarbArmyRenderer();
+        City.ui.map.MercenaryArmyRenderer mercRenderer = renderer.getMercenaryArmyRenderer();
+
+        // 1. Barbarian armies (rendered on top)
         if (barbRenderer != null) {
             BarbArmy barbHit = barbRenderer.hitTest(world);
             if (barbHit != null) {
@@ -194,6 +208,7 @@ private void handleLeftClick(Point screenPt) {
                 selectedZone      = null;
                 renderer.setSelectedNobleArmy(null);
                 barbRenderer.setSelectedArmy(selectedBarbArmy);
+                if (mercRenderer != null) mercRenderer.setSelectedArmy(null);
                 repaint();
                 if (onBarbArmySelected != null) onBarbArmySelected.accept(selectedBarbArmy);
                 return;
@@ -201,7 +216,6 @@ private void handleLeftClick(Point screenPt) {
         }
 
         // 2. Mercenary armies
-        City.ui.map.MercenaryArmyRenderer mercRenderer = renderer.getMercenaryArmyRenderer();
         if (mercRenderer != null) {
             City.main.mercenaries.MercenaryArmy mercHit = mercRenderer.hitTest(world);
             if (mercHit != null) {
@@ -212,6 +226,7 @@ private void handleLeftClick(Point screenPt) {
                 selectedZone      = null;
                 renderer.setSelectedNobleArmy(null);
                 if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
+                mercRenderer.setSelectedArmy(selectedMercArmy);
                 repaint();
                 if (onMercArmySelected != null) onMercArmySelected.accept(selectedMercArmy);
                 return;
@@ -228,6 +243,7 @@ private void handleLeftClick(Point screenPt) {
             selectedZone      = null;
             renderer.setSelectedNobleArmy(null);
             if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
+            if (mercRenderer != null) mercRenderer.setSelectedArmy(null);
             repaint();
             onArmySelected.accept(selectedArmy);
             return;
@@ -245,6 +261,7 @@ private void handleLeftClick(Point screenPt) {
                 selectedZone      = null;
                 renderer.setSelectedNobleArmy(selectedNobleArmy);
                 if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
+                if (mercRenderer != null) mercRenderer.setSelectedArmy(null);
                 repaint();
                 onArmySelected.accept(null);
                 if (onNobleArmySelected != null) onNobleArmySelected.accept(selectedNobleArmy);
@@ -261,12 +278,33 @@ private void handleLeftClick(Point screenPt) {
         selectedMercArmy  = null;
         renderer.setSelectedNobleArmy(null);
         if (barbRenderer != null) barbRenderer.setSelectedArmy(null);
+        if (mercRenderer != null) mercRenderer.setSelectedArmy(null);
         repaint();
         onZoneSelected.accept(hit);
     }
 
 private void handleRightClick(Point screenPt) {
-        Point world  = camera.screenToWorld(screenPt);
+        Point world = camera.screenToWorld(screenPt);
+
+        // Mercenary armies recall to heartland on right-click, same as player armies.
+        City.ui.map.MercenaryArmyRenderer mercRenderer = renderer.getMercenaryArmyRenderer();
+        if (mercRenderer != null) {
+            City.main.mercenaries.MercenaryArmy mercHit = mercRenderer.hitTest(world);
+            if (mercHit != null) {
+                if (!City.main.army.Army.HEARTLAND_ID.equals(mercHit.getZoneId())) {
+                    mercHit.setZoneId(City.main.army.Army.HEARTLAND_ID);
+                    if (selectedMercArmy == mercHit) {
+                        selectedMercArmy = null;
+                        mercRenderer.setSelectedArmy(null);
+                        if (onMercArmySelected != null) onMercArmySelected.accept(null);
+                    }
+                    armyListPanel.refresh();
+                    repaint();
+                }
+                return;
+            }
+        }
+
         Army armyHit = armyRenderer.hitTest(world, zoneManager);
         if (armyHit == null || armyHit.isInCity()) return;
         armyHit.recallToCity();
@@ -278,7 +316,7 @@ private void handleRightClick(Point screenPt) {
         repaint();
     }
 
-    private Zone zoneAt(Point screenPt) {
+private Zone zoneAt(Point screenPt) {
         return renderer.hitTest(camera.screenToWorld(screenPt));
     }
 
@@ -340,44 +378,77 @@ public void drop(DropTargetDropEvent dtde) {
     // ─── DragGestureListener ─────────────────────────────────────────────────
 
     private Army draggedFromMap = null;
+    private City.main.mercenaries.MercenaryArmy draggedMercFromMap = null;
 
     @Override
     public void dragGestureRecognized(DragGestureEvent dge) {
-        Point world  = camera.screenToWorld(dge.getDragOrigin());
+        Point world = camera.screenToWorld(dge.getDragOrigin());
+
         Army armyHit = armyRenderer.hitTest(world, zoneManager);
-        if (armyHit == null) return;
-        draggedFromMap = armyHit;
-        armyHit.startDrag();
-        armyListPanel.refresh();
-        repaint();
-        Transferable t = new Transferable() {
-            @Override public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() {
-                return new java.awt.datatransfer.DataFlavor[]{ArmyListPanel.ARMY_FLAVOR};
+        if (armyHit != null) {
+            draggedFromMap = armyHit;
+            armyHit.startDrag();
+            armyListPanel.refresh();
+            repaint();
+            Transferable t = new Transferable() {
+                @Override public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() {
+                    return new java.awt.datatransfer.DataFlavor[]{ArmyListPanel.ARMY_FLAVOR};
+                }
+                @Override public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor f) {
+                    return f.equals(ArmyListPanel.ARMY_FLAVOR);
+                }
+                @Override public Object getTransferData(java.awt.datatransfer.DataFlavor f) {
+                    return armyHit;
+                }
+            };
+            dge.startDrag(DragSource.DefaultMoveDrop, t, this);
+            return;
+        }
+
+        City.ui.map.MercenaryArmyRenderer mercRenderer = renderer.getMercenaryArmyRenderer();
+        if (mercRenderer != null) {
+            City.main.mercenaries.MercenaryArmy mercHit = mercRenderer.hitTest(world);
+            if (mercHit != null) {
+                draggedMercFromMap = mercHit;
+                Transferable t = new Transferable() {
+                    @Override public java.awt.datatransfer.DataFlavor[] getTransferDataFlavors() {
+                        return new java.awt.datatransfer.DataFlavor[]{ArmyListPanel.MERC_FLAVOR};
+                    }
+                    @Override public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor f) {
+                        return f.equals(ArmyListPanel.MERC_FLAVOR);
+                    }
+                    @Override public Object getTransferData(java.awt.datatransfer.DataFlavor f) {
+                        return mercHit;
+                    }
+                };
+                dge.startDrag(DragSource.DefaultMoveDrop, t, this);
             }
-            @Override public boolean isDataFlavorSupported(java.awt.datatransfer.DataFlavor f) {
-                return f.equals(ArmyListPanel.ARMY_FLAVOR);
-            }
-            @Override public Object getTransferData(java.awt.datatransfer.DataFlavor f) {
-                return armyHit;
-            }
-        };
-        dge.startDrag(DragSource.DefaultMoveDrop, t, this);
+        }
     }
 
     // ─── DragSourceListener ──────────────────────────────────────────────────
 
     @Override
+
+
     public void dragDropEnd(DragSourceDropEvent dsde) {
-        if (draggedFromMap == null) return;
-        if (!dsde.getDropSuccess()) {
-            draggedFromMap.cancelDrag();
+        if (draggedFromMap != null) {
+            if (!dsde.getDropSuccess()) {
+                draggedFromMap.cancelDrag();
+                armyListPanel.refresh();
+                repaint();
+            }
+            draggedFromMap = null;
+            return;
+        }
+        if (draggedMercFromMap != null) {
             armyListPanel.refresh();
             repaint();
+            draggedMercFromMap = null;
         }
-        draggedFromMap = null;
     }
 
-    @Override public void dragEnter(DragSourceDragEvent e)         {}
+@Override public void dragEnter(DragSourceDragEvent e)         {}
     @Override public void dragOver(DragSourceDragEvent e)          {}
     @Override public void dropActionChanged(DragSourceDragEvent e) {}
     @Override public void dragExit(DragSourceEvent e)              {}

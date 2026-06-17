@@ -215,6 +215,7 @@ public class SaveData {
         public int     conquestMalusPercent;
         public int     rebellionPower;
         public boolean unlawfullyAcquired;
+        public boolean lawfullyAcquired;
         public ZoneStateEntry() {}
     }
 

@@ -365,14 +365,15 @@ public class SaveManager {
         } catch (Exception ex) { return 0; }
     }
 
-    private static List<SaveData.ZoneStateEntry> serializeZoneStates(GameState gs) {
+private static List<SaveData.ZoneStateEntry> serializeZoneStates(GameState gs) {
         List<SaveData.ZoneStateEntry> list = new ArrayList<>();
         for (City.main.map.Zone z : gs.getZoneManager().getZones()) {
             ZoneState state = gs.getZoneManager().getState(z.getId());
             if (state == null) continue;
             if (state.getDamage() == 0 && state.getSupplyLevel() == 100
                     && state.getRaidedTurns() == 0 && state.getConquestMalus() == 0
-                    && state.getRebellionPower() == 0) continue;
+                    && state.getRebellionPower() == 0
+                    && !state.isUnlawfullyAcquired() && !state.isLawfullyAcquired()) continue;
             SaveData.ZoneStateEntry e = new SaveData.ZoneStateEntry();
             e.zoneId              = z.getId();
             e.damage              = state.getDamage();
@@ -381,12 +382,13 @@ public class SaveManager {
             e.conquestMalusPercent = state.getConquestMalus();
             e.rebellionPower      = state.getRebellionPower();
             e.unlawfullyAcquired  = state.isUnlawfullyAcquired();
+            e.lawfullyAcquired    = state.isLawfullyAcquired();
             list.add(e);
         }
         return list;
     }
 
-    private static SaveData.VoteSessionEntry serializeSession(VotingSession session) {
+private static SaveData.VoteSessionEntry serializeSession(VotingSession session) {
         SaveData.VoteSessionEntry entry = new SaveData.VoteSessionEntry();
         entry.actionName   = session.getAction().getName();
         entry.playerIntent = session.getPlayerIntent().name();
@@ -736,7 +738,7 @@ public class SaveManager {
         } catch (Exception ex) {}
     }
 
-    private static void applyZoneStates(SaveData data, GameState gs) {
+private static void applyZoneStates(SaveData data, GameState gs) {
         if (data.zoneStates == null) return;
         for (SaveData.ZoneStateEntry entry : data.zoneStates) {
             ZoneState state = gs.getZoneManager().getState(entry.zoneId);
@@ -747,10 +749,11 @@ public class SaveManager {
             state.setConquestMalusPercent(entry.conquestMalusPercent);
             state.setRebellionPower(entry.rebellionPower);
             if (entry.unlawfullyAcquired) state.markUnlawfullyAcquired();
+            if (entry.lawfullyAcquired)   state.markLawfullyAcquired();
         }
     }
 
-    private static void applyLegislation(SaveData data, GameState gs) {
+private static void applyLegislation(SaveData data, GameState gs) {
         if (data.legislation == null) return;
         LegislationManager lm = gs.getLegislationManager();
         lm.reset();

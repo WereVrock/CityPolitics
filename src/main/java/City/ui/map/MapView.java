@@ -142,6 +142,21 @@ public void refresh() {
         if (zone != null) infoPanel.showZone(zone);
     }
 
+/**
+     * Activates zone-picker mode across both the map canvas (grey-out) and the
+     * info panel (eligibility text + select button).
+     */
+    public void enterZonePickerMode(java.util.Set<String> validIds,
+                                     java.util.function.Consumer<String> onPick) {
+        mapPanel.setPickerValidZoneIds(validIds);
+        infoPanel.setUnlawfulPickerMode(validIds, onPick);
+    }
+
+    public void exitZonePickerMode() {
+        mapPanel.clearPickerValidZoneIds();
+        infoPanel.clearUnlawfulPickerMode();
+    }
+
 public void reinitialize(GameState gameState) {
     mapPanel.reinitialize(gameState);
     infoPanel.reinitialize(gameState);

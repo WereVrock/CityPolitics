@@ -559,6 +559,8 @@ private void showCityCouncilView() {
         java.util.Set<String> validZoneIds = new java.util.LinkedHashSet<>();
         for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
             if (z.isDesolate()) continue;
+            City.main.map.ZoneState zs = gameState.getZoneManager().getState(z.getId());
+            if (zs != null && zs.isLawfullyAcquired()) continue;
             City.main.nobles.NobleHouse owner =
                     gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
             if (owner == null) continue;
@@ -641,10 +643,9 @@ private void showCityCouncilView() {
             }
         });
 
-        // Since MapView doesn't fire property changes, we use the info panel approach:
-        // Override the info panel's showZone to intercept clicks on valid zones.
-        City.ui.map.MapInfoPanel infoPanel = pickerMap.getInfoPanel();
-        infoPanel.setUnlawfulPickerMode(validIds, zoneId -> {
+        // Grey out ineligible zones on the canvas and wire eligibility/select in the info panel.
+        pickerMap.enterZonePickerMode(validIds, zoneId -> {
+            pickerMap.exitZonePickerMode();
             onZonePicked.accept(zoneId);
             showCouncilView();
         });

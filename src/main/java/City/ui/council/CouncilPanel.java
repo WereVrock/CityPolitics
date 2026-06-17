@@ -399,10 +399,12 @@ public class CouncilPanel extends JPanel {
         picker.setVisible(true);
     }
 
-    private java.util.List<City.main.map.Zone> buildUnlawfulValidZones() {
+private java.util.List<City.main.map.Zone> buildUnlawfulValidZones() {
         java.util.List<City.main.map.Zone> result = new java.util.ArrayList<>();
         for (City.main.map.Zone z : gameState.getZoneManager().getZones()) {
             if (z.isDesolate()) continue;
+            City.main.map.ZoneState state = gameState.getZoneManager().getState(z.getId());
+            if (state != null && state.isLawfullyAcquired()) continue;
             City.main.nobles.NobleHouse owner =
                     gameState.getNobleHouseManager().getOwnerOfZone(z.getId());
             if (owner == null) continue;

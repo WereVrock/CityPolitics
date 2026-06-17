@@ -42,6 +42,7 @@ public class MapInfoPanel extends JPanel {
     private final JLabel   popsLabel;
     private final JLabel   supplyLabel;
     private final JLabel   damageLabel;
+    private final JLabel   acquisitionMarkLabel;
     private final JTextArea adjacentArea;
     private JPanel claimsPanel;
     private java.util.function.BiConsumer<String, City.main.nobles.NobleHouseManager> grantClaimFromMapCallback;
@@ -87,6 +88,7 @@ public class MapInfoPanel extends JPanel {
         popsLabel      = makeLabel("", UITheme.TEXT_PRIMARY,     UITheme.FONT_BODY);
         supplyLabel    = makeLabel("", UITheme.ACCENT_FROST,     UITheme.FONT_BODY);
         damageLabel    = makeLabel("", UITheme.TEXT_RED,         UITheme.FONT_BODY);
+        acquisitionMarkLabel = makeLabel("", UITheme.TEXT_SECONDARY, UITheme.FONT_BODY);
 
         ownerButton = new JButton("");
         ownerButton.setFont(UITheme.FONT_SMALL);
@@ -131,11 +133,12 @@ public class MapInfoPanel extends JPanel {
         zc.gridy = 8;  zoneCard.add(supplyLabel,    zc);
         zc.gridy = 9;  zoneCard.add(damageLabel,    zc);
         zc.gridy = 10; zoneCard.add(sep(),          zc);
-        zc.gridy = 11; zoneCard.add(makeLabel("Claims:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
-        zc.gridy = 12; zoneCard.add(claimsPanel,    zc);
-        zc.gridy = 13; zoneCard.add(sep(),          zc);
-        zc.gridy = 14; zoneCard.add(makeLabel("Adjacent:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
-        zc.gridy   = 15;
+        zc.gridy = 11; zoneCard.add(acquisitionMarkLabel, zc);
+        zc.gridy = 12; zoneCard.add(makeLabel("Claims:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
+        zc.gridy = 13; zoneCard.add(claimsPanel,    zc);
+        zc.gridy = 14; zoneCard.add(sep(),          zc);
+        zc.gridy = 15; zoneCard.add(makeLabel("Adjacent:", UITheme.TEXT_SECONDARY, UITheme.FONT_SMALL), zc);
+        zc.gridy   = 16;
         zc.weighty = 1.0;
         zc.fill    = GridBagConstraints.BOTH;
         zoneCard.add(adjacentArea, zc);
@@ -287,6 +290,17 @@ public class MapInfoPanel extends JPanel {
             }
         }
 
+        // Lawful/unlawful acquisition status — dedicated label shown above the claims list.
+        if (state.isUnlawfullyAcquired()) {
+            acquisitionMarkLabel.setText("⚠ UNLAWFULLY ACQUIRED");
+            acquisitionMarkLabel.setForeground(new Color(220, 60, 40));
+        } else if (state.isLawfullyAcquired()) {
+            acquisitionMarkLabel.setText("✓ LAWFULLY ACQUIRED");
+            acquisitionMarkLabel.setForeground(new Color(120, 200, 100));
+        } else {
+            acquisitionMarkLabel.setText("");
+        }
+
         // Claims panel
         updateClaimsPanel(zone.getId());
 
@@ -313,6 +327,7 @@ public class MapInfoPanel extends JPanel {
         popsLabel.setText("Pops:       —");
         supplyLabel.setText("");
         damageLabel.setText("");
+        acquisitionMarkLabel.setText("");
 
         // Build adjacent zones list
         StringBuilder sbAdj = new StringBuilder();
@@ -550,10 +565,15 @@ public class MapInfoPanel extends JPanel {
     private void showZoneInPickerMode(Zone zone) {
         zoneTitleLabel.setText(zone.getDisplayName());
         boolean valid = unlawfulPickerValidIds.contains(zone.getId());
+        ZoneState state = zoneManager.getState(zone.getId());
+        boolean isLawfullyProtected = state != null && state.isLawfullyAcquired();
 
         if (valid) {
             zoneTypeLabel.setText("✓ Eligible for Unlawful Acquisition");
             zoneTypeLabel.setForeground(new java.awt.Color(120, 200, 100));
+        } else if (isLawfullyProtected) {
+            zoneTypeLabel.setText("✗ Protected — recently ceded lawfully via council ruling");
+            zoneTypeLabel.setForeground(UITheme.TEXT_RED);
         } else {
             zoneTypeLabel.setText("✗ Not eligible (must be noble-owned with a claimant)");
             zoneTypeLabel.setForeground(UITheme.TEXT_RED);
@@ -570,6 +590,7 @@ public class MapInfoPanel extends JPanel {
         popsLabel.setText("");
         supplyLabel.setText("");
         damageLabel.setText("");
+        acquisitionMarkLabel.setText("");
 
         // Claims
         claimsPanel.removeAll();
@@ -815,6 +836,7 @@ public class MapInfoPanel extends JPanel {
         popsLabel.setFont(UITheme.FONT_MAP_BODY);
         supplyLabel.setFont(UITheme.FONT_MAP_BODY);
         damageLabel.setFont(UITheme.FONT_MAP_BODY);
+        acquisitionMarkLabel.setFont(UITheme.FONT_MAP_BODY);
         adjacentArea.setFont(UITheme.FONT_MAP_SMALL);
 
         armyTitleLabel.setFont(UITheme.FONT_MAP_HEADER);

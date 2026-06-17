@@ -358,6 +358,7 @@ public class NobleArmyManager {
             if (state != null) {
                 state.markConquered();
                 state.clearUnlawfullyAcquired(); // ownership changed — mark clears (rule A)
+                state.clearLawfullyAcquired();   // ownership changed — mark clears (rule A)
             }
             defender.resetGarrison(zoneId);
 

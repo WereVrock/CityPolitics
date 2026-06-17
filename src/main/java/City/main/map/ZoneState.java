@@ -15,6 +15,7 @@ public class ZoneState {
     private int     conquestMalusPercent; // 0-100, decays each turn
     private int     rebellionPower;
     private boolean unlawfullyAcquired;   // declared unlawful by realm council
+    private boolean lawfullyAcquired;      // ceded peacefully via realm council ruling
 
     public ZoneState() {
         reset();
@@ -27,6 +28,7 @@ public void reset() {
     this.conquestMalusPercent = 0;
     this.rebellionPower       = 0;
     this.unlawfullyAcquired   = false;
+    this.lawfullyAcquired     = false;
 }
 
 // ─── Turn tick ───────────────────────────────────────────────────────────
@@ -92,5 +94,11 @@ public int  getConquestMalus()     { return conquestMalusPercent; }
 public boolean isUnlawfullyAcquired()       { return unlawfullyAcquired; }
 public void    markUnlawfullyAcquired()     { this.unlawfullyAcquired = true; }
 public void    clearUnlawfullyAcquired()    { this.unlawfullyAcquired = false; }
+
+// ─── Lawful acquisition ──────────────────────────────────────────────────
+
+public boolean isLawfullyAcquired()       { return lawfullyAcquired; }
+public void    markLawfullyAcquired()     { this.lawfullyAcquired = true; }
+public void    clearLawfullyAcquired()    { this.lawfullyAcquired = false; }
 
 }

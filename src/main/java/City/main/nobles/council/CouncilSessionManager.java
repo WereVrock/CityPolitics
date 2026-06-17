@@ -236,7 +236,6 @@ private List<String> applyUnlawfulAcquisition(String zoneId,
                                                NobleHouseManager houseManager,
                                                ArmyManager playerArmyManager,
                                                City.main.nobles.PlayerPrestige playerPrestige) {
-    System.out.println("[UNLAWFUL-DEBUG] applyUnlawfulAcquisition received zoneId=" + zoneId);
     List<String> log = new ArrayList<>();
     if (zoneId == null || zoneId.isBlank()) {
         log.add("⚠ No zone selected for unlawful acquisition.");
@@ -295,6 +294,13 @@ private List<String> applyUnlawfulAcquisition(String zoneId,
                 + owner.getName() + " — no claimant found, zone is ungoverned.");
     }
     owner.adjustPlayerOpinion(NobleCouncilParams.COUNCIL_UNLAWFUL_OWNER_OPINION);
+
+    // Owner ceded peacefully under council ruling — mark zone as lawfully acquired.
+    if (zoneManager != null) {
+        City.main.map.ZoneState state = zoneManager.getState(zoneId);
+        if (state != null) state.markLawfullyAcquired();
+    }
+
     return log;
 }
 
