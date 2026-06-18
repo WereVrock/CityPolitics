@@ -44,6 +44,7 @@ public class NobleHouseManager {
         this.armyManager.setCoalitionManager(coalitionManager);
         buildZoneMaps();
         buildHouses();
+        buildLandlessHouses();
     }
 
     public void setRavagedZoneManager(City.main.barbarians.RavagedZoneManager rzm) {
@@ -475,6 +476,7 @@ public void transferZoneOwnership(String zoneId, NobleHouse from, NobleHouse to)
         claimManager.reset();
         armyManager.reset();
         buildHouses();
+        buildLandlessHouses();
     }
 
     public CoalitionManager getCoalitionManager() { return coalitionManager; }
@@ -624,6 +626,241 @@ public void transferZoneOwnership(String zoneId, NobleHouse from, NobleHouse to)
             ), 130, 45);
         emberveil.addFortification("ashenveil", 1);
         houses.add(emberveil);
+    }
+
+/**
+     * Landless noble houses — no zones, but each holds claims on territory
+     * owned by the seated houses. They register as MINOR_NOBLE voters in
+     * the Realm Council (see CouncilSessionManager) and are eligible to
+     * reclaim land via rebellion flips or coalition victories.
+     */
+    private void buildLandlessHouses() {
+        addLandlessHouse("house_varlow", "House Varlow", NobleHouse.Race.HUMAN, 8, 25,
+            List.of(
+                new NobleCharacter("Factor Yannick Varlow",
+                    "Smooth-talking ledger-keeper who never forgot a debt owed to his family.",
+                    Motivation.WEALTH, Motivation.PRESTIGE, 0.7, 0.3, 2, 0, 2),
+                new NobleCharacter("Heiress Sable Varlow",
+                    "Raised on stories of the counting-houses her family lost.",
+                    Motivation.WEALTH, Motivation.EXPANSION, 0.65, 0.35, 1, 1, 2),
+                new NobleCharacter("Old Tobus Varlow",
+                    "The last to remember the family's wharf before it was seized.",
+                    Motivation.SECURITY, Motivation.WEALTH, 0.75, 0.25, 1, 0, 1)
+            ),
+            "trade_coast", "port_reach");
+
+        addLandlessHouse("house_korrath", "House Korrath", NobleHouse.Race.ORC, 5, 20,
+            List.of(
+                new NobleCharacter("Warbroken Ghazna Korrath",
+                    "Once led a thousand spears; now leads a memory.",
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.7, 0.3, 1, 2, 1),
+                new NobleCharacter("Shaman Vrok Korrath",
+                    "Reads omens in the bones of old battles.",
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3, 1, 1, 2),
+                new NobleCharacter("Pup-Chief Dazh Korrath",
+                    "Young, hungry, and tired of being landless.",
+                    Motivation.EXPANSION, Motivation.SECURITY, 0.75, 0.25, 0, 3, 0)
+            ),
+            "eastern_plains", "frostpeak_pass");
+
+        addLandlessHouse("house_wrenfeld", "House Wrenfeld", NobleHouse.Race.HUMAN, 10, 15,
+            List.of(
+                new NobleCharacter("Banker Idris Wrenfeld",
+                    "Meticulous and obsessed with restoring the family vault.",
+                    Motivation.WEALTH, Motivation.PRESTIGE, 0.75, 0.25, 2, 0, 2),
+                new NobleCharacter("Clerk Pell Wrenfeld",
+                    "A nervous accountant who dreams of solvency.",
+                    Motivation.WEALTH, Motivation.SECURITY, 0.7, 0.3, 1, 0, 1),
+                new NobleCharacter("Heir Tamsin Wrenfeld",
+                    "A reckless gambler hoping one bold move fixes everything.",
+                    Motivation.WEALTH, Motivation.EXPANSION, 0.6, 0.4, 1, 1, 1)
+            ),
+            "westgate");
+
+        addLandlessHouse("house_stillwater", "House Stillwater", NobleHouse.Race.ELF, 6, 20,
+            List.of(
+                new NobleCharacter("Matron Ilyenne Stillwater",
+                    "Speaks of the river as a living ancestor owed its due.",
+                    Motivation.SECURITY, Motivation.PRESTIGE, 0.7, 0.3, 2, 0, 2),
+                new NobleCharacter("Wavekeeper Toren Stillwater",
+                    "Believes the marshes will rise again for his line.",
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.65, 0.35, 1, 1, 2),
+                new NobleCharacter("Drifter Sael Stillwater",
+                    "Wanders the banks collecting old grievances.",
+                    Motivation.EXPANSION, Motivation.WEALTH, 0.7, 0.3, 0, 1, 2)
+            ),
+            "river_bend", "wetmarsh");
+
+        addLandlessHouse("house_ashgrave", "House Ashgrave", NobleHouse.Race.DWARF, 4, 18,
+            List.of(
+                new NobleCharacter("Ashlord Borin Ashgrave",
+                    "Believes the family's fortune rose from fire and will rise again.",
+                    Motivation.SECURITY, Motivation.PRESTIGE, 0.7, 0.3, 1, 1, 2),
+                new NobleCharacter("Cinder-Priestess Maela Ashgrave",
+                    "Tends sacred coals in a shrine that isn't legally hers.",
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.75, 0.25, 2, 0, 2),
+                new NobleCharacter("Stoker Hagen Ashgrave",
+                    "Blunt and impatient — wants results, not rituals.",
+                    Motivation.EXPANSION, Motivation.SECURITY, 0.7, 0.3, 0, 2, 1)
+            ),
+            "ashfield", "ashenveil");
+
+        addLandlessHouse("house_mournhollow", "House Mournhollow", NobleHouse.Race.HUMAN, 7, 22,
+            List.of(
+                new NobleCharacter("Lady Selwyn Mournhollow",
+                    "Widowed twice over by feuds that were never hers to begin with.",
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.7, 0.3, 2, 0, 1),
+                new NobleCharacter("Mourner Aldous Mournhollow",
+                    "Keeps a ledger of every wrong done to the family.",
+                    Motivation.SECURITY, Motivation.WEALTH, 0.75, 0.25, 1, 0, 2),
+                new NobleCharacter("Young Wren Mournhollow",
+                    "Doesn't remember a time when the family had land.",
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.65, 0.35, 0, 2, 1)
+            ),
+            "duskfall");
+
+        addLandlessHouse("house_brackenwood", "House Brackenwood", NobleHouse.Race.ELF, 5, 20,
+            List.of(
+                new NobleCharacter("Warden Lyriel Brackenwood",
+                    "Speaks for trees that no longer answer to her family.",
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3, 1, 1, 1),
+                new NobleCharacter("Pathfinder Orin Brackenwood",
+                    "Knows every deer-trail in woods he can't legally enter.",
+                    Motivation.EXPANSION, Motivation.SECURITY, 0.7, 0.3, 0, 2, 1),
+                new NobleCharacter("Elder Fennir Brackenwood",
+                    "Patient as old growth, certain the woods remember.",
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.75, 0.25, 1, 0, 2)
+            ),
+            "bramblewood", "thornwood");
+
+        addLandlessHouse("house_tallowmere", "House Tallowmere", NobleHouse.Race.HUMAN, 9, 12,
+            List.of(
+                new NobleCharacter("Keeper Joran Tallowmere",
+                    "Has kept a lamp lit for a coast he no longer owns.",
+                    Motivation.SECURITY, Motivation.WEALTH, 0.7, 0.3, 1, 0, 1),
+                new NobleCharacter("Net-Mother Yelena Tallowmere",
+                    "Organizes fisherfolk still loyal to the old name.",
+                    Motivation.WEALTH, Motivation.SECURITY, 0.7, 0.3, 2, 0, 1),
+                new NobleCharacter("Drowned-Eyed Cass Tallowmere",
+                    "Claims to hear the tide arguing the family's case.",
+                    Motivation.PRESTIGE, Motivation.WEALTH, 0.65, 0.35, 1, 0, 2)
+            ),
+            "saltmere");
+
+        addLandlessHouse("house_greyfen", "House Greyfen", NobleHouse.Race.ORC, 4, 15,
+            List.of(
+                new NobleCharacter("Mudreaver Skarn Greyfen",
+                    "Led raids through bogs others called impassable.",
+                    Motivation.EXPANSION, Motivation.WEALTH, 0.7, 0.3, 0, 2, 1),
+                new NobleCharacter("Bog-Witch Yara Greyfen",
+                    "Trades secrets for old debts owed to her line.",
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3, 1, 0, 2),
+                new NobleCharacter("Iron-Tooth Rask Greyfen",
+                    "Wants Ironhaven's forges back by any means necessary.",
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.75, 0.25, 0, 3, 0)
+            ),
+            "wetmarsh", "ironhaven");
+
+        addLandlessHouse("house_quickstone", "House Quickstone", NobleHouse.Race.DWARF, 6, 18,
+            List.of(
+                new NobleCharacter("Prospector Dunna Quickstone",
+                    "Swears the best veins were stolen from her grandsire.",
+                    Motivation.WEALTH, Motivation.EXPANSION, 0.7, 0.3, 1, 0, 2),
+                new NobleCharacter("Foreman Bram Quickstone",
+                    "Organizes idle miners who remember better days.",
+                    Motivation.WEALTH, Motivation.SECURITY, 0.7, 0.3, 1, 1, 1),
+                new NobleCharacter("Assayer Tilda Quickstone",
+                    "Keeps samples proving claims others dismiss.",
+                    Motivation.WEALTH, Motivation.PRESTIGE, 0.75, 0.25, 1, 0, 2)
+            ),
+            "stonepass", "far_east");
+
+        addLandlessHouse("house_larkspur", "House Larkspur", NobleHouse.Race.HUMAN, 8, 16,
+            List.of(
+                new NobleCharacter("Botanist Rosalind Larkspur",
+                    "Cultivates rare blooms in borrowed soil, dreaming of her own.",
+                    Motivation.PRESTIGE, Motivation.WEALTH, 0.7, 0.3, 2, 0, 1),
+                new NobleCharacter("Gardener Wystan Larkspur",
+                    "Patient and methodical — certain seeds outlast injustice.",
+                    Motivation.SECURITY, Motivation.WEALTH, 0.7, 0.3, 1, 0, 1),
+                new NobleCharacter("Wildling Faye Larkspur",
+                    "Young and reckless, wants to seize back the family plots.",
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.7, 0.3, 0, 2, 1)
+            ),
+            "greenvale", "southern_march");
+
+        addLandlessHouse("house_emberlight", "House Emberlight", NobleHouse.Race.ELF, 6, 28,
+            List.of(
+                new NobleCharacter("Cousin Ilara Emberlight",
+                    "Insists the Emberveil name was split unfairly two generations back.",
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.75, 0.25, 2, 0, 2),
+                new NobleCharacter("Flamekeeper Soren Emberlight",
+                    "Tends a single ember as proof of an unbroken lineage.",
+                    Motivation.PRESTIGE, Motivation.EXPANSION, 0.7, 0.3, 1, 0, 2),
+                new NobleCharacter("Quiet Vex Emberlight",
+                    "Says little, plots much.",
+                    Motivation.SECURITY, Motivation.EXPANSION, 0.7, 0.3, 0, 1, 3)
+            ),
+            "ashenveil");
+
+        addLandlessHouse("house_marrow", "House Marrow", NobleHouse.Race.HUMAN, 5, 14,
+            List.of(
+                new NobleCharacter("Captain Hewett Marrow",
+                    "Sold his sword so often he forgot which side he started on.",
+                    Motivation.EXPANSION, Motivation.WEALTH, 0.7, 0.3, 0, 2, 1),
+                new NobleCharacter("Quartermaster Brynn Marrow",
+                    "Counts every coin owed for old contracts never paid.",
+                    Motivation.WEALTH, Motivation.SECURITY, 0.7, 0.3, 1, 0, 1),
+                new NobleCharacter("Recruit-Sergeant Owyn Marrow",
+                    "Drills a company that exists mostly on paper.",
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.7, 0.3, 0, 2, 0)
+            ),
+            "northern_vale", "far_north");
+
+        addLandlessHouse("house_hollowmere", "House Hollowmere", NobleHouse.Race.DWARF, 5, 17,
+            List.of(
+                new NobleCharacter("Delver Otric Hollowmere",
+                    "Mapped tunnels under lands his family no longer holds.",
+                    Motivation.SECURITY, Motivation.WEALTH, 0.7, 0.3, 1, 0, 2),
+                new NobleCharacter("Hearth-Mother Greta Hollowmere",
+                    "Keeps the old house traditions alive in exile.",
+                    Motivation.SECURITY, Motivation.PRESTIGE, 0.75, 0.25, 1, 0, 1),
+                new NobleCharacter("Tunnel-Runner Pim Hollowmere",
+                    "Young and restless, knows every smuggler's route home.",
+                    Motivation.WEALTH, Motivation.EXPANSION, 0.65, 0.35, 0, 1, 2)
+            ),
+            "highland_gap", "duskfall");
+
+        addLandlessHouse("house_corvane", "House Corvane", NobleHouse.Race.ORC, 4, 19,
+            List.of(
+                new NobleCharacter("Skull-Counter Mag Corvane",
+                    "Tallies enemies the way others tally coin.",
+                    Motivation.EXPANSION, Motivation.PRESTIGE, 0.75, 0.25, 0, 3, 0),
+                new NobleCharacter("Frost-Singer Yelka Corvane",
+                    "Sings war-songs about a hall the family no longer holds.",
+                    Motivation.PRESTIGE, Motivation.SECURITY, 0.7, 0.3, 1, 0, 1),
+                new NobleCharacter("Cub-Lord Drez Corvane",
+                    "The youngest ever to claim the title, eager to prove it means something.",
+                    Motivation.EXPANSION, Motivation.SECURITY, 0.7, 0.3, 0, 2, 1)
+            ),
+            "snowmarch");
+    }
+
+    /**
+     * Helper for landless houses: adds the house with no zones, then registers
+     * its starting claims directly (bypassing the fabrication roll — these are
+     * claims the house already held before it lost its land).
+     */
+    private void addLandlessHouse(String id, String name, NobleHouse.Race race,
+                                   int startingGold, int startingPrestige,
+                                   List<NobleCharacter> characters,
+                                   String... claimedZoneIds) {
+        NobleHouse house = new NobleHouse(id, name, race,
+                List.of(), characters, startingGold, startingPrestige);
+        houses.add(house);
+        for (String zoneId : claimedZoneIds) {
+            claimManager.addClaim(id, zoneId);
+        }
     }
 
 private double getPlayerShareFraction(int opinion) {
