@@ -1,6 +1,7 @@
 package City.main.politics;
 
 import City.main.actions.FormalAction;
+import City.main.nobles.NobleHouse;
 import City.main.parameters.ActionParams;
 import java.util.*;
  
@@ -47,25 +48,40 @@ public class VotingSession {
         }
     }
 
-    public NoblePartyVoteManager.NoblePartyVoteResult getNoblePartyVoteResult() {
-        return noblePartyVoteResult;
+public NoblePartyVoteManager.NoblePartyVoteResult getNoblePartyVoteResult() {
+        if (noblePartyVoteResult == null) return null;
+
+        // Recompute live from the same voting houses, using their CURRENT
+        // opinion of the player — opinion can shift mid-session (deals,
+        // protection, council outcomes, etc.) and both the displayed
+        // breakdown and the vote tally should track that, not a stale
+        // snapshot taken when the session started.
+        List<NobleHouse> voterHouses = new ArrayList<>();
+        for (NoblePartyVoteManager.NobleVoterEntry entry : noblePartyVoteResult.voters) {
+            voterHouses.add(entry.house);
+        }
+        NoblePartyVoteManager.NoblePartyVoteResult live =
+                NoblePartyVoteManager.computeVoteFor(voterHouses);
+        applyNoblePartyIntent(live);
+        return live;
     }
 
-    public void setNoblePartyVoteResult(NoblePartyVoteManager.NoblePartyVoteResult result) {
+public void setNoblePartyVoteResult(NoblePartyVoteManager.NoblePartyVoteResult result) {
         this.noblePartyVoteResult = result;
-        if (result != null) {
-            // Wire the noble party intent based on internal vote
-            for (PoliticalParty p : parties) {
-                if (p.getName().equals(NoblePartyVoteManager.NOBLE_PARTY_NAME)) {
-                    NoblePartyVoteManager.NobleVoteStance stance = result.unifiedStance;
-                    intents.put(p, NoblePartyVoteManager.toIntent(stance));
-                    break;
-                }
+        applyNoblePartyIntent(result);
+    }
+
+private void applyNoblePartyIntent(NoblePartyVoteManager.NoblePartyVoteResult result) {
+        if (result == null) return;
+        for (PoliticalParty p : parties) {
+            if (p.getName().equals(NoblePartyVoteManager.NOBLE_PARTY_NAME)) {
+                intents.put(p, NoblePartyVoteManager.toIntent(result.unifiedStance));
+                break;
             }
         }
     }
 
-    /** Restore constructor */
+/** Restore constructor */
     public VotingSession(FormalAction action,
                          List<PoliticalParty> parties,
                          Map<PoliticalParty, Double> scores,
@@ -201,8 +217,18 @@ public boolean hasSideDealt(PoliticalParty party) {
     public FormalAction            getAction()                        { return action; }
     public List<PoliticalParty>    getParties()                       { return Collections.unmodifiableList(parties); }
     public double                  getScore(PoliticalParty p)         { return scores.getOrDefault(p, 0.0); }
-    public PartyVoteIntent         getIntent(PoliticalParty p)        { return intents.getOrDefault(p, PartyVoteIntent.UNKNOWN); }
-    public void                    setIntent(PoliticalParty p, PartyVoteIntent i) { intents.put(p, i); }
+
+public PartyVoteIntent getIntent(PoliticalParty p) {
+        if (noblePartyVoteResult != null
+                && p.getName().equals(NoblePartyVoteManager.NOBLE_PARTY_NAME)) {
+            // Recompute live so the noble party's stance reflects current
+            // house opinions rather than a stale snapshot from session start.
+            getNoblePartyVoteResult();
+        }
+        return intents.getOrDefault(p, PartyVoteIntent.UNKNOWN);
+    }
+
+public void                    setIntent(PoliticalParty p, PartyVoteIntent i) { intents.put(p, i); }
     public PartyVoteIntent         getPlayerIntent()                  { return playerIntent; }
     public void                    setPlayerIntent(PartyVoteIntent i) { playerIntent = i; }
     public int                     getFavourOwed(PoliticalParty p)    { return favour.getOrDefault(p, 0); }

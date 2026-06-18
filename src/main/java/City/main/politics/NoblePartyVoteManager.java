@@ -77,14 +77,26 @@ public static NoblePartyVoteResult computeVote(NobleHouseManager nobleHouseManag
         all.removeIf(NobleHouse::isEliminated);
         // Sort by prestige descending, take top 5
         all.sort(Comparator.comparingInt(NobleHouse::getPrestige).reversed());
-        List<NobleHouse> voters = all.subList(0, Math.min(TOP_N_NOBLES, all.size()));
+        List<NobleHouse> voters = new ArrayList<>(all.subList(0, Math.min(TOP_N_NOBLES, all.size())));
+        return computeVoteFor(voters);
+    }
 
+/**
+     * Recompute the vote result for an already-selected set of voting houses,
+     * using their CURRENT opinion of the player. Used both for the initial
+     * vote computation and for live re-evaluation while a vote session is
+     * pending, since opinion can shift mid-session (deals, protection,
+     * council outcomes, etc.) and the displayed stance should track that
+     * instead of a stale snapshot from when the session was created.
+     */
+    public static NoblePartyVoteResult computeVoteFor(List<NobleHouse> voterHouses) {
         List<NobleVoterEntry> entries = new ArrayList<>();
         int yesWeight     = 0;
         int noWeight      = 0;
         int abstainWeight = 0;
 
-        for (NobleHouse house : voters) {
+        for (NobleHouse house : voterHouses) {
+            if (house.isEliminated()) continue;
             int opinion = house.getPlayerOpinion();
             NobleVoteStance stance;
             if (opinion >= ABSTAIN_LOWER && opinion <= ABSTAIN_UPPER) {
@@ -109,9 +121,6 @@ public static NoblePartyVoteResult computeVote(NobleHouseManager nobleHouseManag
             unified = NobleVoteStance.YES;
         } else if (noWeight > yesWeight) {
             unified = NobleVoteStance.NO;
-        } else if (yesWeight == 0 && noWeight == 0) {
-            unified   = NobleVoteStance.ABSTAIN;
-            isUnknown = true;
         } else {
             unified   = NobleVoteStance.ABSTAIN;
             isUnknown = true;

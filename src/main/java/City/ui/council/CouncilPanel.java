@@ -444,12 +444,19 @@ private void doStartSession(CouncilAction action) {
 
         int trustBonus = gameState.getPlayerPrestige().getTrustCouncilBonus();
 
+        String unlawfulZoneId = action == CouncilAction.UNLAWFUL_ACQUISITION
+                ? gameState.getPendingUnlawfulAcquisitionZoneId()
+                : null;
+
         CouncilSession session = gameState.getCouncilSessionManager().createSession(
                 action,
                 gameState.getPlayerPrestige().getPrestige(),
                 oracleOpinion,
                 trustBonus,
-                new java.util.ArrayList<>(gameState.getNobleHouseManager().getHouses()));
+                new java.util.ArrayList<>(gameState.getNobleHouseManager().getHouses()),
+                unlawfulZoneId,
+                gameState.getNobleHouseManager().getClaimManager(),
+                gameState.getNobleHouseManager().getRelationships());
         gameState.setActiveCouncilSession(session);
         gameState.getLegislationManager().markRealmCouncilUsedThisTurn();
 

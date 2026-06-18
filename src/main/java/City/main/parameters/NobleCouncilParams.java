@@ -15,6 +15,8 @@ public final class NobleCouncilParams {
     public static final int    COUNCIL_UNLAWFUL_RECIPIENT_OPINION  = 15;
     public static final int    COUNCIL_UNLAWFUL_OWNER_OPINION      = -20;
     public static final int    COUNCIL_UNLAWFUL_PRESTIGE_LOSS_PER_TURN = -5;
+    public static final int    COUNCIL_UNDECIDED_AGREE_OPINION_THRESHOLD    = 75;
+    public static final int    COUNCIL_UNDECIDED_DISAGREE_OPINION_THRESHOLD = 20;
     
     
      // =========================================================

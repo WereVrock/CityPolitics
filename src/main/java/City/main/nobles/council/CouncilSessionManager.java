@@ -43,11 +43,15 @@ public class CouncilSessionManager {
      * @param oracleOpinion     oracle party's opinion of player
      * @param allHouses         all noble houses
      */
-    public CouncilSession createSession(CouncilAction action,
+
+public CouncilSession createSession(CouncilAction action,
                                          int playerPrestige,
                                          int oracleOpinion,
                                          int trustBonus,
-                                         List<NobleHouse> allHouses) {
+                                         List<NobleHouse> allHouses,
+                                         String unlawfulZoneId,
+                                         City.main.nobles.ClaimManager claimManager,
+                                         City.main.nobles.RelationshipManager relationships) {
         List<CouncilVoter> voters = new ArrayList<>();
 
         // Player voter — prestige + trust council bonus
@@ -62,6 +66,21 @@ public class CouncilSessionManager {
         oracleVoter.setStance(oracleOpinion >= 50
                 ? CouncilVoter.Stance.YES : CouncilVoter.Stance.NO);
         voters.add(oracleVoter);
+
+        // Resolve Unlawful Acquisition context once (owner + claimants), if applicable
+        NobleHouse unlawfulOwner = null;
+        List<NobleHouse> unlawfulClaimants = new ArrayList<>();
+        if (action == CouncilAction.UNLAWFUL_ACQUISITION && unlawfulZoneId != null) {
+            for (NobleHouse h : allHouses) {
+                if (h.getZoneIds().contains(unlawfulZoneId)) { unlawfulOwner = h; break; }
+            }
+            if (unlawfulOwner != null && claimManager != null) {
+                for (NobleHouse h : allHouses) {
+                    if (h == unlawfulOwner || h.isEliminated()) continue;
+                    if (claimManager.hasClaim(h.getId(), unlawfulZoneId)) unlawfulClaimants.add(h);
+                }
+            }
+        }
 
         // Prestigious noble houses
         int totalPrestige         = CouncilPrestigeEvaluator.getTotalPrestige(allHouses);
@@ -79,7 +98,10 @@ public class CouncilSessionManager {
             CouncilVoter voter = new CouncilVoter(house.getId(),
                     City.ui.GrantZoneClaimDialog.stripHousePrefix(house.getName()),
                     CouncilVoter.VoterType.PRESTIGIOUS_NOBLE, house, impression);
-            voter.setStance(resolveNaturalStance(house, action, allHouses));
+            CouncilVoter.Stance stance = resolveNaturalStance(house, action, allHouses,
+                    unlawfulZoneId, unlawfulOwner, unlawfulClaimants, claimManager, relationships);
+            stance = applyPlayerOpinionFallback(house, stance);
+            voter.setStance(stance);
             voters.add(voter);
             Debug.log("council", "voter-prestigious",
                     house.getName() + " impression=" + impression
@@ -94,7 +116,10 @@ public class CouncilSessionManager {
                 CouncilVoter voter = new CouncilVoter(house.getId(),
                         City.ui.GrantZoneClaimDialog.stripHousePrefix(house.getName()),
                         CouncilVoter.VoterType.MINOR_NOBLE, house, impression);
-                voter.setStance(CouncilVoter.Stance.UNDECIDED);
+                CouncilVoter.Stance stance = resolveNaturalStance(house, action, allHouses,
+                        unlawfulZoneId, unlawfulOwner, unlawfulClaimants, claimManager, relationships);
+                stance = applyPlayerOpinionFallback(house, stance);
+                voter.setStance(stance);
                 voters.add(voter);
             } else if (!house.isEliminated()
                     && !CouncilPrestigeEvaluator.isPrestigious(house, totalPrestige)) {
@@ -102,7 +127,10 @@ public class CouncilSessionManager {
                 CouncilVoter voter = new CouncilVoter(house.getId(),
                         City.ui.GrantZoneClaimDialog.stripHousePrefix(house.getName()),
                         CouncilVoter.VoterType.MINOR_NOBLE, house, impression);
-                voter.setStance(CouncilVoter.Stance.UNDECIDED);
+                CouncilVoter.Stance stance = resolveNaturalStance(house, action, allHouses,
+                        unlawfulZoneId, unlawfulOwner, unlawfulClaimants, claimManager, relationships);
+                stance = applyPlayerOpinionFallback(house, stance);
+                voter.setStance(stance);
                 voters.add(voter);
             }
         }
@@ -114,19 +142,31 @@ public class CouncilSessionManager {
         return session;
     }
 
-    // ── Natural stance resolution ─────────────────────────────────────────────
+// ── Natural stance resolution ─────────────────────────────────────────────
 
-    private CouncilVoter.Stance resolveNaturalStance(NobleHouse house,
+private CouncilVoter.Stance resolveNaturalStance(NobleHouse house,
                                                        CouncilAction action,
-                                                       List<NobleHouse> allHouses) {
-        return switch (action) {
+                                                       List<NobleHouse> allHouses,
+                                                       String unlawfulZoneId,
+                                                       NobleHouse unlawfulOwner,
+                                                       List<NobleHouse> unlawfulClaimants,
+                                                       City.main.nobles.ClaimManager claimManager,
+                                                       City.main.nobles.RelationshipManager relationships) {
+        CouncilVoter.Stance stance = switch (action) {
             case FORTIFICATION_SUPPORT  -> fortificationSupportStance(house);
             case BORDER_FORTIFICATION   -> borderFortificationStance(house, allHouses);
-            case UNLAWFUL_ACQUISITION   -> CouncilVoter.Stance.UNDECIDED;
+            case UNLAWFUL_ACQUISITION   -> unlawfulAcquisitionStance(house, unlawfulZoneId,
+                    unlawfulOwner, unlawfulClaimants, claimManager, relationships);
         };
+        if (stance == CouncilVoter.Stance.UNDECIDED
+                && action == CouncilAction.UNLAWFUL_ACQUISITION
+                && isProtectionMotivated(house)) {
+            stance = CouncilVoter.Stance.YES;
+        }
+        return stance;
     }
 
-    private CouncilVoter.Stance fortificationSupportStance(NobleHouse house) {
+private CouncilVoter.Stance fortificationSupportStance(NobleHouse house) {
         City.main.nobles.NobleCharacter ch = house.getActiveCharacter();
         if (ch == null) return CouncilVoter.Stance.UNDECIDED;
         // Expansionists in strong positions disagree
@@ -410,4 +450,118 @@ private List<String> forceTransfer(String zoneId, NobleHouse owner,
         pendingUnlawfulOwnerId = null;
         pendingUnlawfulTurns   = 0;
     }
+
+/**
+     * Voting logic for Unlawful Acquisition:
+     * - Claim holders on the zone always agree.
+     * - The owner always disagrees.
+     * - Allies of the owner disagree.
+     * - Rivals/hostiles toward the owner, or houses threatened by the owner, agree.
+     * - If neutral toward the owner: allied to >=1 claimant -> agree;
+     *   hostile/rival/threatened-by toward >=1 claimant -> disagree;
+     *   both at once (conflicting claimants) -> stays undecided;
+     *   neither -> stays undecided.
+     * - Any other disposition toward the owner (e.g. friendly) has no direct
+     *   rule and falls through to undecided, to be resolved by the protection
+     *   motivation check and the universal opinion fallback.
+     */
+    private CouncilVoter.Stance unlawfulAcquisitionStance(NobleHouse house,
+                                                            String zoneId,
+                                                            NobleHouse owner,
+                                                            List<NobleHouse> claimants,
+                                                            City.main.nobles.ClaimManager claimManager,
+                                                            City.main.nobles.RelationshipManager relationships) {
+        if (zoneId == null || owner == null || claimManager == null || relationships == null) {
+            return CouncilVoter.Stance.UNDECIDED;
+        }
+        if (house.getId().equals(owner.getId())) {
+            return CouncilVoter.Stance.NO;
+        }
+        if (claimManager.hasClaim(house.getId(), zoneId)) {
+            return CouncilVoter.Stance.YES;
+        }
+
+        City.main.nobles.Relationship relToOwner = relationships.get(house.getId(), owner.getId());
+        boolean threatenedByOwner = house.isThreatenedBy(owner.getId());
+
+        if (relToOwner == City.main.nobles.Relationship.ALLIED) {
+            return CouncilVoter.Stance.NO;
+        }
+        if (relToOwner == City.main.nobles.Relationship.RIVAL
+                || relToOwner == City.main.nobles.Relationship.HOSTILE
+                || threatenedByOwner) {
+            return CouncilVoter.Stance.YES;
+        }
+        if (relToOwner == City.main.nobles.Relationship.NEUTRAL) {
+            boolean alliedToClaimant  = false;
+            boolean opposedToClaimant = false;
+            for (NobleHouse claimant : claimants) {
+                if (claimant.getId().equals(house.getId())) continue;
+                City.main.nobles.Relationship relToClaimant =
+                        relationships.get(house.getId(), claimant.getId());
+                boolean threatenedByClaimant = house.isThreatenedBy(claimant.getId());
+                if (relToClaimant == City.main.nobles.Relationship.ALLIED) {
+                    alliedToClaimant = true;
+                }
+                if (relToClaimant == City.main.nobles.Relationship.HOSTILE
+                        || relToClaimant == City.main.nobles.Relationship.RIVAL
+                        || threatenedByClaimant) {
+                    opposedToClaimant = true;
+                }
+            }
+            if (alliedToClaimant && opposedToClaimant) {
+                return CouncilVoter.Stance.UNDECIDED;
+            }
+            if (alliedToClaimant) {
+                return CouncilVoter.Stance.YES;
+            }
+            if (opposedToClaimant) {
+                return CouncilVoter.Stance.NO;
+            }
+            return CouncilVoter.Stance.UNDECIDED;
+        }
+
+        return CouncilVoter.Stance.UNDECIDED;
+    }
+
+    /**
+     * TODO: "even minor motivation" implies a secondary/non-dominant motivation
+     * check that isn't visible in the code provided so far — this currently only
+     * checks the dominant motivation. Share NobleCharacter.java / the Motivation
+     * enum to wire up the full check.
+     */
+
+/**
+     * ASSUMPTION: there's no Motivation.PROTECTION value in the Motivation enum
+     * (only EXPANSION, SECURITY, WEALTH, PRESTIGE exist). "Protection motivated"
+     * is mapped to Motivation.SECURITY here, matching its existing use for
+     * protective/defensive behavior elsewhere (see fortificationSupportStance).
+     * Checks both dominant and secondary motivation, per "even minor motivation".
+     * Confirm this mapping is correct, or tell me what you actually meant.
+     */
+    private boolean isProtectionMotivated(NobleHouse house) {
+        City.main.nobles.NobleCharacter ch = house.getActiveCharacter();
+        if (ch == null) return false;
+        return ch.getDominantMotivation() == City.main.nobles.Motivation.SECURITY
+                || ch.getSecondaryMotivation() == City.main.nobles.Motivation.SECURITY;
+    }
+
+/**
+     * Universal tiebreaker applied to ANY council action: a still-undecided
+     * voter agrees if their opinion of the player is high enough, and disagrees
+     * if it's low enough. Otherwise remains undecided.
+     */
+    private CouncilVoter.Stance applyPlayerOpinionFallback(NobleHouse house,
+                                                             CouncilVoter.Stance stance) {
+        if (stance != CouncilVoter.Stance.UNDECIDED) return stance;
+        int opinion = house.getPlayerOpinion();
+        if (opinion >= NobleCouncilParams.COUNCIL_UNDECIDED_AGREE_OPINION_THRESHOLD) {
+            return CouncilVoter.Stance.YES;
+        }
+        if (opinion <= NobleCouncilParams.COUNCIL_UNDECIDED_DISAGREE_OPINION_THRESHOLD) {
+            return CouncilVoter.Stance.NO;
+        }
+        return CouncilVoter.Stance.UNDECIDED;
+    }
+
 }
