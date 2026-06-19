@@ -3,12 +3,16 @@ package City.ui.nobles;
 
 import City.main.core.GameState;
 import City.main.nobles.NobleHouse;
+import City.main.nobles.NobleHouseColors;
 import City.main.nobles.NobleHouseManager;
+import City.main.bank.BankManager;
 import City.ui.UITheme;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 /**
  * Overview panel for all noble houses.
@@ -16,9 +20,14 @@ import java.awt.*;
  */
 public class NobleHousesPanel extends JPanel {
 
+    private enum HouseFilter { ALL, LANDED, LANDLESS }
+
     private final GameState gameState;
     private final Runnable  onBack;
     private final JPanel    listPanel;
+
+    private HouseFilter currentFilter = HouseFilter.ALL;
+    private JButton      filterButton;
 
     public NobleHousesPanel(GameState gameState, Runnable onBack) {
         this.gameState = gameState;
@@ -41,7 +50,7 @@ public class NobleHousesPanel extends JPanel {
         add(scroll, BorderLayout.CENTER);
     }
 
-    private JPanel buildHeader() {
+private JPanel buildHeader() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(UITheme.BG_DARK);
         panel.setBorder(new EmptyBorder(0, 0, 12, 0));
@@ -49,6 +58,18 @@ public class NobleHousesPanel extends JPanel {
         JLabel title = new JLabel("NOBLE HOUSES");
         title.setFont(UITheme.FONT_TITLE);
         title.setForeground(UITheme.TEXT_GOLD);
+
+        filterButton = new JButton(filterLabel());
+        filterButton.setFont(UITheme.FONT_BUTTON);
+        filterButton.setForeground(UITheme.TEXT_SECONDARY);
+        filterButton.setBackground(UITheme.BUTTON_BG);
+        filterButton.setBorderPainted(false);
+        filterButton.setFocusPainted(false);
+        filterButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        filterButton.addActionListener(e -> {
+            cycleFilter();
+            refresh();
+        });
 
         JButton back = new JButton("← BACK");
         back.setFont(UITheme.FONT_BUTTON);
@@ -59,8 +80,13 @@ public class NobleHousesPanel extends JPanel {
         back.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         back.addActionListener(e -> onBack.run());
 
-        panel.add(title, BorderLayout.WEST);
-        panel.add(back,  BorderLayout.EAST);
+        JPanel rightControls = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        rightControls.setBackground(UITheme.BG_DARK);
+        rightControls.add(filterButton);
+        rightControls.add(back);
+
+        panel.add(title,         BorderLayout.WEST);
+        panel.add(rightControls, BorderLayout.EAST);
         return panel;
     }
 
@@ -75,6 +101,7 @@ public void refresh() {
 
     int row = 0;
     for (NobleHouse house : manager.getHouses()) {
+        if (!matchesFilter(house)) continue;
         gbc.gridy = row++;
         gbc.weighty = 0;
         listPanel.add(buildHouseCard(house), gbc);
@@ -93,12 +120,26 @@ private JPanel buildHouseCard(NobleHouse house) {
     JPanel card = new JPanel(new BorderLayout(12, 0));
     card.setBackground(UITheme.BG_PANEL);
     card.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(UITheme.BORDER_COLOR, 1),
+        BorderFactory.createLineBorder(NobleHouseColors.getPrimary(house.getId()), 2),
         new EmptyBorder(10, 12, 10, 12)
     ));
-    card.add(buildPortrait(house),  BorderLayout.WEST);
-    card.add(buildInfo(house),      BorderLayout.CENTER);
-    card.add(buildStats(house),     BorderLayout.EAST);
+
+    JPanel west = new JPanel(new BorderLayout(6, 0));
+    west.setBackground(UITheme.BG_PANEL);
+    west.add(buildColorAccent(house), BorderLayout.WEST);
+    west.add(buildPortrait(house),    BorderLayout.CENTER);
+
+    card.add(west,               BorderLayout.WEST);
+    card.add(buildInfo(house),   BorderLayout.CENTER);
+    card.add(buildStats(house),  BorderLayout.EAST);
+
+    card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+    card.addMouseListener(new MouseAdapter() {
+        @Override public void mouseClicked(MouseEvent e) {
+            openHouseDetail(house);
+        }
+    });
+
     return card;
 }
 
@@ -118,7 +159,7 @@ private JPanel buildPortrait(NobleHouse house) {
                 g2.fillRoundRect(cx - 18, 42, 36, 30, 6, 6);
                 g2.setColor(raceColor(house.getRace()));
                 g2.setFont(UITheme.FONT_SMALL);
-                String init = house.getName().substring(6, 7).toUpperCase(); // first letter after "House "
+                String init = houseInitial(house);
                 FontMetrics fm = g2.getFontMetrics();
                 g2.drawString(init, cx - fm.stringWidth(init)/2, 30);
                 // race label
@@ -205,53 +246,42 @@ private JPanel buildPortrait(NobleHouse house) {
         return panel;
     }
 
-    private JPanel buildStats(NobleHouse house) {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+private JPanel buildStats(NobleHouse house) {
+        JPanel panel = new JPanel(new GridLayout(6, 1, 0, 4));
         panel.setBackground(UITheme.BG_PANEL);
-        panel.setPreferredSize(new Dimension(120, 0));
+        panel.setPreferredSize(new Dimension(150, 0));
 
         panel.add(makeStatLabel("Opinion", house.getPlayerOpinion() + " / 100",
             opinionColor(house.getPlayerOpinion())));
-        panel.add(Box.createVerticalStrut(6));
         panel.add(makeStatLabel("Gold",      String.valueOf(house.getGold()),
             new Color(210, 170, 80)));
-        panel.add(Box.createVerticalStrut(6));
         panel.add(makeStatLabel("Food",      String.valueOf(house.getFood()),
             new Color(120, 200, 100)));
-        panel.add(Box.createVerticalStrut(6));
         panel.add(makeStatLabel("Manpower",  String.valueOf(house.getManpower()),
             UITheme.TEXT_PRIMARY));
-        panel.add(Box.createVerticalStrut(6));
         panel.add(makeStatLabel("Influence", String.valueOf(house.getInfluence()),
             UITheme.ACCENT_FROST));
-        panel.add(Box.createVerticalStrut(6));
         panel.add(makeStatLabel("MP/turn",
             "+" + house.getManpowerPerTurn(),
             UITheme.TEXT_SECONDARY));
         return panel;
     }
 
-    private JPanel makeStatLabel(String key, String value, Color valueColor) {
-        JPanel row = new JPanel();
-        row.setLayout(new BoxLayout(row, BoxLayout.Y_AXIS));
-        row.setBackground(UITheme.BG_PANEL);
-        row.setAlignmentX(LEFT_ALIGNMENT);
+private JLabel makeStatLabel(String key, String value, Color valueColor) {
+        String hexValue = String.format("#%02x%02x%02x",
+            valueColor.getRed(), valueColor.getGreen(), valueColor.getBlue());
+        Color keyColor = UITheme.TEXT_SECONDARY;
+        String hexKey = String.format("#%02x%02x%02x",
+            keyColor.getRed(), keyColor.getGreen(), keyColor.getBlue());
 
-        JLabel keyLabel = new JLabel(key);
-        keyLabel.setFont(UITheme.FONT_SMALL);
-        keyLabel.setForeground(UITheme.TEXT_SECONDARY);
-
-        JLabel valLabel = new JLabel(value);
-        valLabel.setFont(UITheme.FONT_BODY);
-        valLabel.setForeground(valueColor);
-
-        row.add(keyLabel);
-        row.add(valLabel);
-        return row;
+        JLabel label = new JLabel("<html><span style='color:" + hexKey + "'>" + key
+            + ":</span> <b><span style='color:" + hexValue + "'>" + value + "</span></b></html>");
+        label.setFont(UITheme.FONT_SMALL);
+        label.setHorizontalAlignment(SwingConstants.RIGHT);
+        return label;
     }
 
-    private Color opinionColor(int v) {
+private Color opinionColor(int v) {
         if (v >= 70) return UITheme.TEXT_GREEN;
         if (v <= 30) return UITheme.TEXT_RED;
         return UITheme.TEXT_PRIMARY;
@@ -265,4 +295,71 @@ private JPanel buildPortrait(NobleHouse house) {
             case ORC   -> new Color(120, 160, 80);
         };
     }
+
+private void cycleFilter() {
+        if (currentFilter == HouseFilter.ALL) {
+            currentFilter = HouseFilter.LANDED;
+        } else if (currentFilter == HouseFilter.LANDED) {
+            currentFilter = HouseFilter.LANDLESS;
+        } else {
+            currentFilter = HouseFilter.ALL;
+        }
+        filterButton.setText(filterLabel());
+    }
+
+    private String filterLabel() {
+        if (currentFilter == HouseFilter.LANDED)   return "SHOWING: LANDED";
+        if (currentFilter == HouseFilter.LANDLESS) return "SHOWING: LANDLESS";
+        return "SHOWING: ALL";
+    }
+
+    private boolean matchesFilter(NobleHouse house) {
+        if (currentFilter == HouseFilter.LANDED)   return !house.getZoneIds().isEmpty();
+        if (currentFilter == HouseFilter.LANDLESS) return house.getZoneIds().isEmpty();
+        return true;
+    }
+
+    private JPanel buildColorAccent(NobleHouse house) {
+        JPanel accent = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                int h = getHeight();
+                g.setColor(NobleHouseColors.getPrimary(house.getId()));
+                g.fillRect(0, 0, getWidth(), h * 2 / 3);
+                g.setColor(NobleHouseColors.getSecondary(house.getId()));
+                g.fillRect(0, h * 2 / 3, getWidth(), h - (h * 2 / 3));
+            }
+        };
+        accent.setPreferredSize(new Dimension(6, 95));
+        accent.setOpaque(false);
+        return accent;
+    }
+
+    private void openHouseDetail(NobleHouse house) {
+        NobleHouseManager manager = gameState.getNobleHouseManager();
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        BankManager bankManager = manager.getBankManager();
+        NobleHouseDetailDialog dialog = new NobleHouseDetailDialog(
+            owner, house, manager.getClaimManager(), manager.getZoneManager(), bankManager);
+        City.debug.Debug.log("ui", "noble-house-detail",
+            "Opened detail view for " + house.getName());
+        dialog.setVisible(true);
+    }
+
+private String houseInitial(NobleHouse house) {
+        String name = house.getName();
+        String[] words = name.split("\\s+");
+        for (String word : words) {
+            if (word.isEmpty()) continue;
+            if (word.equalsIgnoreCase("the")
+                || word.equalsIgnoreCase("house")
+                || word.equalsIgnoreCase("a")
+                || word.equalsIgnoreCase("an")) {
+                continue;
+            }
+            return word.substring(0, 1).toUpperCase();
+        }
+        return name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase();
+    }
+
 }

@@ -42,7 +42,7 @@ public final class NobleBankingAI {
         return house.getGold() < BankParams.BANK_MIN_DEPOSIT_FLAT_GOLD * 4;
     }
 
-    private static void borrowIfNeeded(NobleHouse house, int warChestTarget,
+private static void borrowIfNeeded(NobleHouse house, int warChestTarget,
                                         BankManager bankManager, List<String> log) {
         if (bankManager.hasActiveLoan(house.getId())) return;
         int shortfall = warChestTarget - house.getGold();
@@ -57,4 +57,31 @@ public final class NobleBankingAI {
         int amount = Math.min(shortfall, maxLoan);
         if (amount > 0) bankManager.requestLoan(house, amount, null, log);
     }
+@@REPLACE:
+    private static void borrowIfNeeded(NobleHouse house, int warChestTarget,
+                                        BankManager bankManager, List<String> log) {
+        if (bankManager.hasActiveLoan(house.getId())) return;
+        int shortfall = warChestTarget - house.getGold();
+        if (shortfall <= 0) return;
+
+        // Try to withdraw from deposit first – no point paying loan interest
+        // while sitting on idle deposited gold.
+        BankAccount acc = bankManager.getOrCreateAccount(house.getId());
+        int withdrawable = Math.min(shortfall, acc.getDeposit());
+        if (withdrawable > 0) {
+            if (bankManager.withdraw(house, withdrawable, log)) {
+                shortfall = warChestTarget - house.getGold();
+            }
+        }
+        if (shortfall <= 0) return;
+
+        // Only borrow what's still needed
+        if (acc.getCreditRating() < 25) return;
+        int maxLoan = bankManager.getMaxLoanAmount(house);
+        if (maxLoan <= 0) return;
+
+        int amount = Math.min(shortfall, maxLoan);
+        if (amount > 0) bankManager.requestLoan(house, amount, null, log);
+    }
+
 }

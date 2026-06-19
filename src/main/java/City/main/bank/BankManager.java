@@ -204,15 +204,38 @@ private void collectInstallments(List<NobleHouse> allHouses, List<String> log) {
             int due = loan.getNextInstallmentDue();
             if (due <= 0) { loans.remove(house.getId()); continue; }
 
-            if (house.getGold() >= due) {
-                house.addGold(-due);
-                if (bankHouse != null) bankHouse.addGold(due);
-                loan.applyPayment(due);
-                Debug.log("bank", "installment-paid", house.getName() + " paid " + due + " gold installment (owing " + loan.getPrincipalRemaining() + ")");
+            // First try to draw from deposit (gold already held by Bank)
+            int fromDeposit = 0;
+            BankAccount acc = accounts.get(house.getId());
+            if (acc != null && acc.getDeposit() > 0) {
+                fromDeposit = Math.min(due, acc.getDeposit());
+                acc.removeDeposit(fromDeposit);
+                // No gold transfer needed: deposit is a liability of the Bank;
+                // reducing it effectively repays the loan with funds already in the Bank.
+                loan.applyPayment(fromDeposit);
+                Debug.log("bank", "installment-from-deposit", house.getName() + " paid " + fromDeposit + " gold from deposit (owing " + loan.getPrincipalRemaining() + ")");
+            }
+
+            int remaining = due - fromDeposit;
+            if (remaining <= 0) {
                 if (loan.isPaidOff()) {
                     loans.remove(house.getId());
-                    getOrCreateAccount(house.getId())
-                            .adjustCredit(BankParams.BANK_CREDIT_BONUS_PER_REPAYMENT);
+                    getOrCreateAccount(house.getId()).adjustCredit(BankParams.BANK_CREDIT_BONUS_PER_REPAYMENT);
+                    if (log != null) log.add(house.getName() + " repays its loan to the Bank in full.");
+                    Debug.log("bank", "loan-repaid", house.getName() + " fully repaid loan");
+                }
+                continue;
+            }
+
+            // Fallback: use house gold
+            if (house.getGold() >= remaining) {
+                house.addGold(-remaining);
+                if (bankHouse != null) bankHouse.addGold(remaining);
+                loan.applyPayment(remaining);
+                Debug.log("bank", "installment-paid", house.getName() + " paid " + remaining + " gold installment (owing " + loan.getPrincipalRemaining() + ")");
+                if (loan.isPaidOff()) {
+                    loans.remove(house.getId());
+                    getOrCreateAccount(house.getId()).adjustCredit(BankParams.BANK_CREDIT_BONUS_PER_REPAYMENT);
                     if (log != null) log.add(house.getName() + " repays its loan to the Bank in full.");
                     Debug.log("bank", "loan-repaid", house.getName() + " fully repaid loan");
                 }
@@ -271,25 +294,26 @@ private void defaultLoan(NobleHouse house, BankLoan loan, List<String> log) {
 
     // ─── Interest accrual ────────────────────────────────────────────────
 
+
     private void accrueInterest(List<NobleHouse> allHouses, List<String> log) {
         if (bankHouse == null) return;
         double rate = BankParams.BANK_BASE_INTEREST_RATE_PER_TURN;
         if (isBankThreatened(allHouses)) rate += BankParams.BANK_THREATENED_INTEREST_BONUS;
 
-        int totalPaidOut = 0;
+        int totalAccrued = 0;
         for (BankAccount acc : accounts.values()) {
             if (acc.getDeposit() <= 0) continue;
             int interest = (int) Math.ceil(acc.getDeposit() * rate);
             acc.addDeposit(interest);
-            totalPaidOut += interest;
+            totalAccrued += interest;
         }
-        if (totalPaidOut > 0) {
-            bankHouse.addGold(-Math.min(totalPaidOut, bankHouse.getGold()));
-            Debug.log("bank", "interest", "Paid out " + totalPaidOut + " gold in deposit interest @ " + rate);
+        if (totalAccrued > 0) {
+            // Interest is a book entry only; gold does not leave the vault until withdrawal.
+            Debug.log("bank", "interest", "Accrued " + totalAccrued + " gold in deposit interest @ " + rate);
         }
     }
 
-    // ─── Threat / stakeholder defense ───────────────────────────────────
+// ─── Threat / stakeholder defense ───────────────────────────────────
 
     public boolean isBankThreatened(List<NobleHouse> allHouses) {
         if (bankHouse == null) return false;

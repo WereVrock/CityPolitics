@@ -437,7 +437,10 @@ private int computeHouseFood(NobleHouse house) {
     public java.util.List<NobleHouse> getHouses() { return Collections.unmodifiableList(houses); }
     public RelationshipManager getRelationships() { return relationships; }
     public ClaimManager        getClaimManager()  { return claimManager; }
-    public NobleArmyManager    getArmyManager()   { return armyManager; }
+
+public ZoneManager getZoneManager() { return zoneManager; }
+
+public NobleArmyManager    getArmyManager()   { return armyManager; }
 
     public NobleHouse getHouseById(String id) {
         for (NobleHouse h : houses) if (h.getId().equals(id)) return h;
