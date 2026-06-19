@@ -189,8 +189,12 @@ private JPanel buildBottomBar() {
     openVoteBtn.setVisible(false);
     openVoteBtn.addActionListener(e -> showVoteSession());
 
-    JButton ledgerBtn = makeBottomBarButton("LEDGER");
-    ledgerBtn.addActionListener(e -> showLedger());
+        JButton ledgerBtn = makeBottomBarButton("LEDGER");
+        ledgerBtn.addActionListener(e -> showLedger());
+
+        JButton bankBtn = makeBottomBarButton("🏦 BANK");
+        bankBtn.setForeground(UITheme.TEXT_GOLD);
+        bankBtn.addActionListener(e -> showBankView());
 
         JButton militaryBtn = makeBottomBarButton("MILITARY");
         militaryBtn.addActionListener(e -> showMilitaryView());
@@ -216,6 +220,7 @@ private JPanel buildBottomBar() {
         leftBtns.add(mapBtn);
         leftBtns.add(openVoteBtn);
         leftBtns.add(ledgerBtn);
+        leftBtns.add(bankBtn);
         leftBtns.add(militaryBtn);
         leftBtns.add(councilBtn);
         leftBtns.add(cityCouncilBtn);
@@ -1515,5 +1520,10 @@ private void wireMapViewCallbacks() {
     });
     mapView.getInfoPanel().setOpenMilitaryCallback(armyName -> showMilitaryViewWithHighlight(armyName));
 }
+
+private void showBankView() {
+        City.ui.bank.BankPanel panel = new City.ui.bank.BankPanel(gameState, this::showMainView);
+        swapCenter(panel);
+    }
 
 }

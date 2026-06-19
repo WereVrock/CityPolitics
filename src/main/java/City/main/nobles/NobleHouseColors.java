@@ -25,6 +25,8 @@ public final class NobleHouseColors {
         Map.entry("house_duskmantle", new Color[]{ new Color(60,  60,  130), new Color(180, 180, 255) }),
         Map.entry("house_saltborn",   new Color[]{ new Color(180, 120, 40),  new Color(100, 180, 220) }),
         Map.entry("house_emberveil",  new Color[]{ new Color(200, 80,  20),  new Color(255, 200, 100) })
+     
+            
     );
 
     public static Color getPrimary(String houseId) {

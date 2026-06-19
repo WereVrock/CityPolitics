@@ -16,7 +16,11 @@ import java.util.List;
 /** Estimates combat and economic power for noble houses. */
 public final class NobleAIPower {
 
+    private static City.main.bank.BankManager bankManager;
+
     private NobleAIPower() {}
+
+    public static void setBankManager(City.main.bank.BankManager bm) { bankManager = bm; }
 
     public static int exactPotentialFieldArmy(NobleHouse house, NobleArmyManager armyManager) {
         int manpower = house.getNobleManpower();
@@ -58,7 +62,7 @@ public final class NobleAIPower {
         return estimateAttackPower(member, armyManager);
     }
 
-    public static int estimateDefenderCombatPower(NobleHouse attacker, NobleHouse defender,
+public static int estimateDefenderCombatPower(NobleHouse attacker, NobleHouse defender,
                                                    String zoneId,
                                                    List<NobleHouse> allHouses,
                                                    NobleArmyManager armyManager,
@@ -86,10 +90,23 @@ public final class NobleAIPower {
                 }
             }
         }
-        return baseDefPower + fieldArmyEstimate + allyHelp;
+
+        int stakeholderHelp = 0;
+        if (defender.isBank() && bankManager != null) {
+            for (String stakeholderId : bankManager.getStakeholderIds()) {
+                if (stakeholderId.equals(attacker.getId()) || stakeholderId.equals(defender.getId())) continue;
+                NobleHouse stakeholder = NobleAIUtils.findById(stakeholderId, allHouses);
+                if (stakeholder != null && !stakeholder.isEliminated()) {
+                    stakeholderHelp += estimatedPower(attacker, stakeholder, armyManager);
+                }
+            }
+            stakeholderHelp += bankManager.getMercenaryManpower();
+        }
+
+        return baseDefPower + fieldArmyEstimate + allyHelp + stakeholderHelp;
     }
 
-    /** Maximum soldiers this house can recruit right now. */
+/** Maximum soldiers this house can recruit right now. */
     static int maxRecruitableSize(NobleHouse house) {
         int manpower = house.getNobleManpower();
         int gold     = house.getGold();

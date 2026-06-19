@@ -32,6 +32,8 @@ public class NobleHouse {
     private int     influence;
     private int     playerOpinion;
     private int     prestige;
+    private boolean bank = false;
+    private double  manpowerGainMultiplier = 1.0;
     private final Set<String> threatenedBy = new HashSet<>();
 
     // Per-zone fortification level (0–100), garrison size, and garrison cap bonus from fortifying
@@ -207,11 +209,13 @@ public class NobleHouse {
      * Manpower generated per turn from all zones (goes to noble pool).
      * Player receives a fraction based on opinion — handled in NobleHouseManager.
      */
-    public int getManpowerPerTurn() {
-        return zoneIds.size() * NobleHouseParams.NOBLE_ZONE_MANPOWER_PER_TURN;
+
+public int getManpowerPerTurn() {
+        return (int) Math.floor(zoneIds.size() * NobleHouseParams.NOBLE_ZONE_MANPOWER_PER_TURN
+                * manpowerGainMultiplier);
     }
 
-    public double getManpowerSendFraction() {
+public double getManpowerSendFraction() {
         if (playerOpinion <= NobleHouseParams.NOBLE_HOSTILE_OPINION_THRESHOLD) return 0.0;
         return (playerOpinion / 100.0) * NobleHouseParams.NOBLE_MAX_MANPOWER_SEND_FRACTION;
     }
@@ -375,5 +379,13 @@ public void removeZone(String zoneId) {
     public int getManpower()         { return nobleManpower; }
     public int getDefense()          { return getFortificationFor(capitalZoneId != null ? capitalZoneId : ""); }
     public void addDefense(int delta){ if (capitalZoneId != null) addFortification(capitalZoneId, delta); }
+
+// ─── Banking House flag ──────────────────────────────────────────────
+
+    public boolean isBank()                            { return bank; }
+    public void    setBank(boolean v)                   { bank = v; }
+    public double  getManpowerGainMultiplier()          { return manpowerGainMultiplier; }
+    public void    setManpowerGainMultiplier(double v)  { manpowerGainMultiplier = Math.max(0, v); }
+
 }
 

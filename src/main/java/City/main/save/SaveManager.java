@@ -142,6 +142,7 @@ public class SaveManager {
         data.election         = serializeElection(gs);
         data.propaganda       = serializePropaganda(gs);
         data.popElectoral     = serializePopElectoral(gs);
+        data.bank             = serializeBank(gs);
 
         return data;
     }
@@ -252,6 +253,7 @@ public class SaveManager {
             e.isCoalitionAttack   = a.isCoalitionAttack();
             e.coalitionMemberIds  = a.isCoalitionAttack()
                     ? new ArrayList<>(a.getCoalitionMemberIds()) : null;
+            e.mercenary           = a.isMercenary();
             list.add(e);
         }
         return list;
@@ -457,6 +459,7 @@ private static SaveData.VoteSessionEntry serializeSession(VotingSession session)
         applyElection(data, gs);
         applyPropaganda(data, gs);
         applyPopElectoral(data, gs);
+        applyBank(data, gs);
     }
 
     private static void applyCalendar(SaveData data, GameCalendar cal) {
@@ -589,6 +592,7 @@ private static SaveData.VoteSessionEntry serializeSession(VotingSession session)
         for (SaveData.NobleArmyEntry entry : data.nobleArmies) {
             NobleArmy army = new NobleArmy(entry.id, entry.houseId, entry.size, entry.zoneId);
             army.setSkipNextUpkeep(entry.skipNextUpkeep);
+            army.setMercenary(entry.mercenary);
             NobleArmy.OrderType order = NobleArmy.OrderType.valueOf(entry.pendingOrder);
             if (order != NobleArmy.OrderType.NONE) {
                 if (entry.isCoalitionAttack && entry.coalitionMemberIds != null) {
@@ -882,4 +886,72 @@ private static void applyLegislation(SaveData data, GameState gs) {
         }
         return null;
     }
+
+private static SaveData.BankEntry serializeBank(GameState gs) {
+        City.main.bank.BankManager bm = gs.getNobleHouseManager().getBankManager();
+        if (bm == null) return null;
+        SaveData.BankEntry entry = new SaveData.BankEntry();
+        entry.accounts = new ArrayList<>();
+        for (City.main.bank.BankAccount acc : bm.getAccountsRaw().values()) {
+            SaveData.BankAccountEntry ae = new SaveData.BankAccountEntry();
+            ae.houseId      = acc.getHouseId();
+            ae.deposit      = acc.getDeposit();
+            ae.creditRating = acc.getCreditRating();
+            ae.stakeholder  = acc.isStakeholder();
+            entry.accounts.add(ae);
+        }
+        entry.loans = new ArrayList<>();
+        for (City.main.bank.BankLoan loan : bm.getLoansRaw().values()) {
+            SaveData.BankLoanEntry le = new SaveData.BankLoanEntry();
+            le.borrowerHouseId       = loan.getBorrowerHouseId();
+            le.principalRemaining    = loan.getPrincipalRemaining();
+            le.interestRate          = loan.getInterestRate();
+            le.installmentAmount     = loan.getInstallmentAmount();
+            le.installmentsRemaining = loan.getInstallmentsRemaining();
+            le.collateralZoneId      = loan.getCollateralZoneId();
+            le.defaulted             = loan.isDefaulted();
+            entry.loans.add(le);
+        }
+        entry.bankRobberIds               = new ArrayList<>(bm.getBankRobbersRaw());
+        entry.protectorIds                = new ArrayList<>(bm.getProtectorsRaw());
+        entry.mercenaryManpower           = bm.getMercenaryManpower();
+        entry.withdrawDelayTurnsRemaining = bm.getWithdrawDelayTurnsRemaining();
+        entry.lastEndTurnGold             = bm.getLastEndTurnGold();
+        return entry;
+    }
+
+    private static void applyBank(SaveData data, GameState gs) {
+        if (data.bank == null) return;
+        City.main.bank.BankManager bm = gs.getNobleHouseManager().getBankManager();
+        if (bm == null) return;
+        bm.reset();
+        bm.setBankHouse(gs.getNobleHouseManager()
+                .getHouseById(City.main.parameters.BankParams.BANK_HOUSE_ID));
+
+        if (data.bank.accounts != null) {
+            for (SaveData.BankAccountEntry ae : data.bank.accounts) {
+                City.main.bank.BankAccount acc = bm.getOrCreateAccount(ae.houseId);
+                acc.setDeposit(ae.deposit);
+                acc.adjustCredit(ae.creditRating - acc.getCreditRating());
+                if (!ae.stakeholder) acc.clearStakeholderStatus();
+            }
+        }
+        if (data.bank.loans != null) {
+            for (SaveData.BankLoanEntry le : data.bank.loans) {
+                City.main.bank.BankLoan loan = new City.main.bank.BankLoan(
+                        le.borrowerHouseId, 0, le.interestRate,
+                        Math.max(1, le.installmentsRemaining), le.collateralZoneId);
+                loan.setAmountOwed(le.principalRemaining);
+                loan.setInstallmentAmount(le.installmentAmount);
+                loan.setInstallmentsRemaining(le.installmentsRemaining);
+                bm.getLoansRaw().put(le.borrowerHouseId, loan);
+            }
+        }
+        if (data.bank.bankRobberIds != null) bm.getBankRobbersRaw().addAll(data.bank.bankRobberIds);
+        if (data.bank.protectorIds  != null) bm.getProtectorsRaw().addAll(data.bank.protectorIds);
+        bm.setMercenaryManpower(data.bank.mercenaryManpower);
+        bm.setWithdrawDelayTurnsRemaining(data.bank.withdrawDelayTurnsRemaining);
+        bm.setLastEndTurnGoldRaw(data.bank.lastEndTurnGold);
+    }
+
 }

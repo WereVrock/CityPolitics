@@ -125,4 +125,11 @@ public class NobleAI {
         return NobleAIActions.evaluateDemand(
                 requester, target, relationships, allIds, requesterDiplomacy, armyManager);
     }
+
+public static int getWarChestTarget(NobleHouse actor, List<NobleHouse> allHouses,
+                                         RelationshipManager relationships,
+                                         NobleArmyManager armyManager) {
+        return NobleAIRelations.getWarChestTarget(actor, allHouses, relationships, armyManager);
+    }
+
 }

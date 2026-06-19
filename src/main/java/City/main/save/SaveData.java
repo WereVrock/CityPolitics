@@ -145,6 +145,7 @@ public class SaveData {
         public boolean orderReadyToResolve;
         public boolean skipNextUpkeep;
         public boolean isCoalitionAttack;
+        public boolean mercenary;
         public List<String> coalitionMemberIds;
         public NobleArmyEntry() {}
     }
@@ -263,5 +264,38 @@ public class SaveData {
         public int    size;
         public String zoneId;
         public MercenaryArmyEntry() {}
+    }
+
+    // ── Bank ──────────────────────────────────────────────────────────────────
+    public BankEntry bank;
+
+    public static class BankEntry {
+        public List<BankAccountEntry> accounts;
+        public List<BankLoanEntry>    loans;
+        public List<String>           bankRobberIds;
+        public List<String>           protectorIds;
+        public int                    mercenaryManpower;
+        public int                    withdrawDelayTurnsRemaining;
+        public int                    lastEndTurnGold;
+        public BankEntry() {}
+    }
+
+    public static class BankAccountEntry {
+        public String  houseId;
+        public int     deposit;
+        public int     creditRating;
+        public boolean stakeholder;
+        public BankAccountEntry() {}
+    }
+
+    public static class BankLoanEntry {
+        public String  borrowerHouseId;
+        public int     principalRemaining;
+        public double  interestRate;
+        public int     installmentAmount;
+        public int     installmentsRemaining;
+        public String  collateralZoneId;
+        public boolean defaulted;
+        public BankLoanEntry() {}
     }
 }

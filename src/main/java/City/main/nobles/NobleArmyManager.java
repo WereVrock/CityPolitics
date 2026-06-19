@@ -28,6 +28,7 @@ public class NobleArmyManager {
     private       City.main.army.ArmyManager        playerArmyManager;
     private       City.main.nobles.PlayerPrestige   playerPrestige;
     private       City.main.nobles.ProtectionManager protectionManager;
+    private       City.main.bank.BankManager        bankManager;
 
 
     public NobleArmyManager(ZoneManager zoneManager, RelationshipManager relationships) {
@@ -99,16 +100,19 @@ public class NobleArmyManager {
 
     // ─── Upkeep ──────────────────────────────────────────────────────────────
 
-    public void payUpkeep(NobleHouse house) {
+public void payUpkeep(NobleHouse house) {
         for (NobleArmy army : new ArrayList<>(getArmiesForHouse(house.getId()))) {
             if (army.getSkipNextUpkeep()) { army.setSkipNextUpkeep(false); continue; }
             boolean isDefending = isArmyDefending(army, house);
-            int upkeepPerSoldier = NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
+            double upkeepPerSoldier = NobleHouseParams.NOBLE_UPKEEP_COST_PER_SOLDIER;
             if (isDefending) {
-                upkeepPerSoldier = (int)(upkeepPerSoldier * (1.0 - NobleHouseParams.NOBLE_UPKEEP_DEFENSE_DISCOUNT));
+                upkeepPerSoldier = upkeepPerSoldier * (1.0 - NobleHouseParams.NOBLE_UPKEEP_DEFENSE_DISCOUNT);
                 if (upkeepPerSoldier < 1) upkeepPerSoldier = 1;
             }
-            int cost = army.getSize() * upkeepPerSoldier;
+            if (army.isMercenary()) {
+                upkeepPerSoldier *= City.main.parameters.BankParams.BANK_MERC_UPKEEP_COST_MULTIPLIER;
+            }
+            int cost = (int) Math.ceil(army.getSize() * upkeepPerSoldier);
             if (house.getGold() >= cost) {
                 house.addGold(-cost);
             } else {
@@ -119,7 +123,7 @@ public class NobleArmyManager {
         }
     }
 
-    private boolean isArmyDefending(NobleArmy army, NobleHouse house) {
+private boolean isArmyDefending(NobleArmy army, NobleHouse house) {
         return house.getZoneIds().contains(army.getZoneId())
                 && army.getPendingOrder() == NobleArmy.OrderType.NONE;
     }
@@ -277,6 +281,16 @@ public class NobleArmyManager {
             defenderForces.add(new ArmyForce(a.getHouseId(), a.getSize(), defFort, militarySkill(h)));
         }
 
+        if (defender.isBank() && bankManager != null) {
+            bankManager.onAttackAgainstBank(attacker, defender, allHouses, log);
+            for (String defenderId : bankManager.getLastBattleDefenders()) {
+                NobleHouse stakeholderHouse = findHouse(defenderId, allHouses);
+                if (stakeholderHouse == null || stakeholderHouse == attacker || stakeholderHouse.isEliminated()) continue;
+                int contribution = City.main.nobles.ai.NobleAIPower.estimateAttackPower(stakeholderHouse, this);
+                defenderForces.add(new ArmyForce(stakeholderHouse.getId(), contribution, defFort, militarySkill(stakeholderHouse)));
+            }
+        }
+
         // Player intervention
         if (interventionProcessor != null && playerArmyManager != null) {
             int totalAtkSz = attackerForces.stream().mapToInt(ArmyForce::getRawSize).sum();
@@ -361,6 +375,10 @@ public class NobleArmyManager {
                 state.clearLawfullyAcquired();   // ownership changed — mark clears (rule A)
             }
             defender.resetGarrison(zoneId);
+            boolean wasCapital = defender.isCapital(zoneId);
+            if (bankManager != null) {
+                bankManager.applyConquestGoldTheft(defender, attacker, wasCapital, log);
+            }
 
             if (isCoalition && coalitionManager != null) {
                 coalitionManager.awardConqueredZone(zoneId, attacker,
@@ -667,4 +685,7 @@ public class NobleArmyManager {
         NobleCharacter c = house.getActiveCharacter();
         return c != null ? c.getMilitary() : 0;
     }
+
+public void setBankManager(City.main.bank.BankManager bm) { this.bankManager = bm; }
+
 }

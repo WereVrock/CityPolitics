@@ -6,7 +6,11 @@ import City.main.map.Zone;
 import City.main.map.ZoneManager;
 import City.main.map.ZoneState;
 import City.main.nobles.ai.NobleAI;
+import City.main.nobles.ai.NobleBankingAI;
 import City.main.nobles.NobleArmyManager;
+import City.main.bank.BankAI;
+import City.main.bank.BankManager;
+import City.main.parameters.BankParams;
 import City.main.parameters.DiplomacyParams;
  
 import City.main.parameters.NobleAIParams;
@@ -32,12 +36,13 @@ public class NobleHouseManager {
     private       City.main.barbarians.BarbArmyManager    barbArmyManager;
     private       int lastPlayerGoldSent = 0;
     private       int lastPlayerFoodSent = 0;
+    private       BankManager bankManager;
 
     // Prebuilt zone gold/food maps for capital tiebreaker
     private Map<String, Integer> zoneGoldMap = new HashMap<>();
     private Map<String, Integer> zoneFoodMap = new HashMap<>();
 
-    public NobleHouseManager(ZoneManager zoneManager) {
+public NobleHouseManager(ZoneManager zoneManager) {
         this.zoneManager      = zoneManager;
         this.armyManager      = new NobleArmyManager(zoneManager, relationships);
         this.coalitionManager = new CoalitionManager(zoneManager, relationships, claimManager, armyManager);
@@ -45,9 +50,12 @@ public class NobleHouseManager {
         buildZoneMaps();
         buildHouses();
         buildLandlessHouses();
+        this.bankManager = new BankManager(relationships, armyManager, getHouseById(BankParams.BANK_HOUSE_ID));
+        this.armyManager.setBankManager(bankManager);
+        City.main.nobles.ai.NobleAIPower.setBankManager(bankManager);
     }
 
-    public void setRavagedZoneManager(City.main.barbarians.RavagedZoneManager rzm) {
+public void setRavagedZoneManager(City.main.barbarians.RavagedZoneManager rzm) {
         this.ravagedZoneManager = rzm;
     }
 
@@ -98,11 +106,23 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
             // Disband idle armies — manpower returns, gold drain stops
             armyManager.disbandIdleArmies(house);
 
-            // AI tick — may recruit and issue new orders (ATTACK, RAID, JOIN_BATTLE)
-            List<String> aiLog = NobleAI.tick(
-                house, new ArrayList<>(houses), relationships,
-                claimManager, zoneManager, armyManager);
-            log.addAll(aiLog);
+            if (house.isBank()) {
+                // The Bank never attacks and runs its own survival/economy logic.
+                List<String> bankAiLog = BankAI.tick(house, new ArrayList<>(houses),
+                        relationships, armyManager, bankManager, new ArrayList<>());
+                log.addAll(bankAiLog);
+                log.addAll(bankManager.processTurn(new ArrayList<>(houses), playerResources.getManpower(), playerResources));
+            } else {
+                // AI tick — may recruit and issue new orders (ATTACK, RAID, JOIN_BATTLE)
+                List<String> aiLog = NobleAI.tick(
+                    house, new ArrayList<>(houses), relationships,
+                    claimManager, zoneManager, armyManager);
+                log.addAll(aiLog);
+
+                int warChestTarget = NobleAI.getWarChestTarget(
+                        house, new ArrayList<>(houses), relationships, armyManager);
+                NobleBankingAI.tick(house, warChestTarget, bankManager, log);
+            }
 
             // Upkeep — newly recruited armies have skipNextUpkeep set
             armyManager.payUpkeep(house);
@@ -470,16 +490,20 @@ public void transferZoneOwnership(String zoneId, NobleHouse from, NobleHouse to)
         noble.recalculateCapital(zoneGoldMap, zoneFoodMap);
     }
 
-    public void reset() {
+public void reset() {
         houses.clear();
         relationships.reset();
         claimManager.reset();
         armyManager.reset();
         buildHouses();
         buildLandlessHouses();
+        if (bankManager != null) {
+            bankManager.reset();
+            bankManager.setBankHouse(getHouseById(BankParams.BANK_HOUSE_ID));
+        }
     }
 
-    public CoalitionManager getCoalitionManager() { return coalitionManager; }
+public CoalitionManager getCoalitionManager() { return coalitionManager; }
 
     /** Convenience accessor used by NobleBarbHunter. */
     public NobleHouseManager getSelf() { return this; }
@@ -507,7 +531,7 @@ public void transferZoneOwnership(String zoneId, NobleHouse from, NobleHouse to)
 
         houses.add(new NobleHouse("house_thornmere", "House Thornmere",
             NobleHouse.Race.ELF,
-            List.of("iceveil_tundra", "far_north", "snowmarch", "frostpeak_pass"),
+            List.of("iceveil_tundra", "far_north", "snowmarch"),
             List.of(
                 new NobleCharacter("Lady Serafin Thornmere",
                     "Cold pragmatist. Commands loyalty through fear dressed as respect.",
@@ -626,6 +650,8 @@ public void transferZoneOwnership(String zoneId, NobleHouse from, NobleHouse to)
             ), 130, 45);
         emberveil.addFortification("ashenveil", 1);
         houses.add(emberveil);
+
+        houses.add(buildBankHouse());
     }
 
 /**
@@ -868,6 +894,30 @@ private double getPlayerShareFraction(int opinion) {
         if (opinion > 50) return 0.50;
         return 0.35;
     }
+
+private NobleHouse buildBankHouse() {
+        NobleHouse bank = new NobleHouse(BankParams.BANK_HOUSE_ID, "The Frostpeak Bank",
+            NobleHouse.Race.DWARF,
+            List.of(BankParams.BANK_ZONE_ID),
+            List.of(
+                new NobleCharacter("Master Ledger-Keeper Voril GoldStone",
+                    "Counts every coin twice and trusts no one's word over a contract.",
+                    Motivation.WEALTH, Motivation.SECURITY, 0.7, 0.3, 2, 0, 2),
+                new NobleCharacter("Comptroller Minli Blackhammer",
+                    "Calm under pressure — has talked down three bank runs already.",
+                    Motivation.WEALTH, Motivation.SECURITY, 0.75, 0.25, 2, 0, 1),
+                new NobleCharacter("Vault-Warden Branduin Mondrill",
+                    "Former soldier turned banker. Believes a strong vault needs no apology.",
+                    Motivation.SECURITY, Motivation.WEALTH, 0.65, 0.35, 1, 1, 1)
+            ),
+            BankParams.BANK_STARTING_GOLD, BankParams.BANK_STARTING_PRESTIGE);
+        bank.setBank(true);
+        bank.setManpowerGainMultiplier(BankParams.BANK_MANPOWER_GAIN_MULTIPLIER);
+        bank.addFortification(BankParams.BANK_ZONE_ID, BankParams.BANK_STARTING_FORTIFICATION);
+        return bank;
+    }
+
+    public BankManager getBankManager() { return bankManager; }
 
 }
 

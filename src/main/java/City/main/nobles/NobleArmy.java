@@ -10,9 +10,12 @@ import java.util.Set;
 public class NobleArmy {
 
     private boolean skipNextUpkeep = false;
+    private boolean mercenary      = false;
 
     public boolean getSkipNextUpkeep() { return skipNextUpkeep; }
     public void setSkipNextUpkeep(boolean v) { skipNextUpkeep = v; }
+    public boolean isMercenary()       { return mercenary; }
+    public void    setMercenary(boolean v) { mercenary = v; }
 
     public enum OrderType { NONE, ATTACK, RAID, JOIN_BATTLE }
 
