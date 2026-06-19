@@ -42,22 +42,7 @@ public final class NobleBankingAI {
         return house.getGold() < BankParams.BANK_MIN_DEPOSIT_FLAT_GOLD * 4;
     }
 
-private static void borrowIfNeeded(NobleHouse house, int warChestTarget,
-                                        BankManager bankManager, List<String> log) {
-        if (bankManager.hasActiveLoan(house.getId())) return;
-        int shortfall = warChestTarget - house.getGold();
-        if (shortfall <= 0) return;
 
-        BankAccount acc = bankManager.getOrCreateAccount(house.getId());
-        if (acc.getCreditRating() < 25) return;
-
-        int maxLoan = bankManager.getMaxLoanAmount(house);
-        if (maxLoan <= 0) return;
-
-        int amount = Math.min(shortfall, maxLoan);
-        if (amount > 0) bankManager.requestLoan(house, amount, null, log);
-    }
-@@REPLACE:
     private static void borrowIfNeeded(NobleHouse house, int warChestTarget,
                                         BankManager bankManager, List<String> log) {
         if (bankManager.hasActiveLoan(house.getId())) return;
