@@ -12,13 +12,13 @@ public final class BarbarianParams {
     public static final double BARB_DEFENDER_BONUS = 0.3;
     public static final int BARB_WARBOSS_RAIDER_MIN = 30;
     public static final int BARB_WAVE_RAVAGER_COUNT = 1;
-    public static final int BARB_DISMISS_GOLD_PER_MAN = 6;
-    public static final int BARB_PAYOFF_FOOD_PER_MAN = 1;
+    public static final int BARB_DISMISS_GOLD_PER_MAN = City.main.parameters.levels.GoldLevels.LOW / 5;
+    public static final int BARB_PAYOFF_FOOD_PER_MAN = City.main.parameters.levels.FoodLevels.LOW / 40;
     // =========================================================
     // ── BARBARIAN INVASION (BarbarianParams) ──────────────
     // =========================================================
     public static final double BARB_EARLY_WAVE_SIZE_FRACTION = 0.4;
-    public static final int BARB_PAYOFF_GOLD_PER_MAN = 2;
+    public static final int BARB_PAYOFF_GOLD_PER_MAN = City.main.parameters.levels.GoldLevels.VERY_LOW / 5;
     public static final int BARB_EARLY_WAVE_COUNT = 2;
     public static final double BARB_WARBOSS_DETOUR_CHANCE = 0.5;
     public static final int BARB_WAVE_RAVAGER_SIZE = 120;

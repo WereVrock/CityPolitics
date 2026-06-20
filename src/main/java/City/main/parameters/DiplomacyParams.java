@@ -9,7 +9,7 @@ public final class DiplomacyParams {
     public static final double SUPERIORITY_BASE_ACCEPT_CHANCE = 0.6;
     public static final double DEMAND_DIPLOMACY_BONUS_PER_POINT = 5.0;
     // gift
-    public static final int GIFT_MONEY_AMOUNT = 30;
+    public static final int GIFT_MONEY_AMOUNT = City.main.parameters.levels.GoldLevels.LOW;
     // scheme
     public static final double SCHEME_BASE_SUCCESS_CHANCE = 0.4;
     public static final double THREATENED_DECAY_CHANCE = 0.05;
@@ -18,7 +18,7 @@ public final class DiplomacyParams {
     public static final double COALITION_CUNNING_WEIGHT = 0.4;
     public static final double GIFT_WEIGHT_SECURITY = 0.6;
     public static final double ALLY_DEFENSE_MIN_STRENGTH_FRACTION = 0.35;
-    public static final int DEMAND_PRESTIGE_AMOUNT = 8;
+    public static final int DEMAND_PRESTIGE_AMOUNT = City.main.parameters.levels.PrestigeLevels.LOW;
     public static final double CLAIM_OWNER_CUNNING_PENALTY_PER_POINT = 0.1;
     // raid
     public static final int RAID_COOLDOWN_TURNS = 3;
@@ -50,10 +50,10 @@ public final class DiplomacyParams {
     public static final int ALLIANCE_MAX_PER_HOUSE = 2;
     public static final double THREATENED_CLAIMLESS_MULTIPLIER = 2.0;
     public static final double DEMAND_ARMY_WEIGHT = 0.1;
-    public static final double RAID_GOLD_PER_SOLDIER = 1.0;
+    public static final double RAID_GOLD_PER_SOLDIER = City.main.parameters.levels.GoldLevels.VERY_LOW * 0.1;
     public static final double DEMAND_SHARED_RIVAL_BONUS = 20.0;
     public static final double DEMAND_RIVAL_PENALTY = -40.0;
-    public static final int CLAIM_DECAY_INFLUENCE_COST = 3;
+    public static final int CLAIM_DECAY_INFLUENCE_COST = City.main.parameters.levels.InfluenceLevels.LOW;
     public static final double COALITION_PRESTIGE_WEIGHT = 0.02;
     public static final double SUPERIORITY_RANDOM_RANGE = 0.2;
     public static final double SCHEME_CUNNING_BONUS_PER_POINT = 0.15;

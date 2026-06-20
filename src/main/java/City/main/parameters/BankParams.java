@@ -33,10 +33,10 @@ public final class BankParams {
     public static final double BANK_MAX_LOAN_PER_CREDIT_POINT      = 4.0;
 
     public static final double BANK_ABANDON_DEPOSIT_LOSS_FRACTION = 0.8;
-    public static final int    BANK_ABANDON_PRESTIGE_PENALTY      = -10;
+    public static final int    BANK_ABANDON_PRESTIGE_PENALTY      = -City.main.parameters.levels.PrestigeLevels.HIGH;
     public static final int    BANK_DEFEND_GOODWILL_CREDIT_BONUS  = 10;
     public static final int    BANK_ROBBER_CREDIT_CAP             = 5;
-    public static final int    BANK_PROTECTOR_PRESTIGE_BONUS      = 8;
+    public static final int    BANK_PROTECTOR_PRESTIGE_BONUS      = City.main.parameters.levels.PrestigeLevels.HIGH;
 
     public static final double BANK_MERC_MANPOWER_GROWTH_FRACTION_OF_TOTAL = 0.01;
     public static final double BANK_MERC_UPKEEP_GOLD_PER_MANPOWER         = 1.0 / 3.0;

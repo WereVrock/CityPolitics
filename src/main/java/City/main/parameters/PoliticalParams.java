@@ -9,7 +9,7 @@ public final class PoliticalParams {
     public static final double PROPAGANDA_VOTE_BONUS_PER_UNIT = 0.02;
     public static final int ELECTION_CAMPAIGN_WARNING_TURNS = 2;
     public static final int POWER_DRIFT_SEAT_MULTIPLIER = 12;
-    public static final int ELECTION_SUPPORT_PRESTIGE_PENALTY = -20;
+    public static final int ELECTION_SUPPORT_PRESTIGE_PENALTY = -City.main.parameters.levels.PrestigeLevels.VERY_HIGH;
     public static final int ELECTION_OVERRIDE_LOSS_THRESHOLD = 3;
     public static final double ELECTION_PRESTIGE_WEIGHT = 0.01;
     public static final double PROPAGANDA_SPREAD_THRESHOLD = 5.0;

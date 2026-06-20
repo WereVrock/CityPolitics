@@ -30,7 +30,7 @@ public final class DragonBankParams {
 
     // ─── Default penalty ─────────────────────────────────────────────────
     /** Prestige lost by a noble house that defaults on a Dragon loan. */
-    public static final int    DEFAULT_PRESTIGE_PENALTY  = 5;
+    public static final int    DEFAULT_PRESTIGE_PENALTY  = City.main.parameters.levels.PrestigeLevels.HIGH;
 
     /** Turns a defaulter is refused further Dragon Bank loans. */
     public static final int    DEFAULT_BAN_TURNS         = 8;
