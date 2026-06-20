@@ -159,7 +159,9 @@ public class MapRenderer {
         this.pickerValidZoneIds = null;
     }
 
-    public void render(Graphics2D g2, Zone selected, Zone hovered, Army selectedArmy) {
+public void render(Graphics2D g2, Zone selected, Zone hovered, Army selectedArmy) {
+        Shape baseClip = g2.getClip();
+
         drawBackground(g2);
 
         // Layer 1 — sea
@@ -169,6 +171,12 @@ public class MapRenderer {
         for (Zone zone : zoneManager.getZones()) {
             drawZoneFill(g2, zone, selected, hovered);
         }
+
+        // Restore the full panel clip before continuing — drawZoneFill's
+        // political-mode inner glow temporarily narrows the clip to each
+        // zone's polygon and must not be allowed to leak a narrowed clip
+        // into subsequent layers.
+        g2.setClip(baseClip);
 
         // Layer 3 — mountain edges (on top of zone fills, before labels)
         for (Zone zone : zoneManager.getZones()) {
@@ -190,6 +198,7 @@ public class MapRenderer {
         }
 
         // Layer 7 — zone borders (drawn last so they're crisp on top)
+        g2.setClip(baseClip);
         for (Zone zone : zoneManager.getZones()) {
             drawZoneBorder(g2, zone, selected);
         }
@@ -213,25 +222,38 @@ public class MapRenderer {
         if (mercenaryArmyRenderer != null) {
             mercenaryArmyRenderer.render(g2);
         }
+
+        g2.setClip(baseClip);
     }
 
-    private void drawInnerGlow(Graphics2D g2, Polygon poly, Color color) {
+private void drawInnerGlow(Graphics2D g2, Polygon poly, Color color) {
         Shape old = g2.getClip();
-        g2.setClip(poly);
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        for (int i = 0; i < INNER_GLOW_LAYERS; i++) {
-            float t = (float) i / INNER_GLOW_LAYERS;
-            int alpha = (int) (INNER_GLOW_ALPHA_CAP * (1f - t));
-            float width = INNER_GLOW_MAX_WIDTH * (1f - t);
-            g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
-            g2.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.drawPolygon(poly);
+        try {
+            Shape intersected = poly;
+            if (old != null) {
+                java.awt.geom.Area area = new java.awt.geom.Area(old);
+                area.intersect(new java.awt.geom.Area(poly));
+                intersected = area;
+            }
+            g2.setClip(intersected);
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            for (int i = 0; i < INNER_GLOW_LAYERS; i++) {
+                float t = (float) i / INNER_GLOW_LAYERS;
+                int alpha = (int) (INNER_GLOW_ALPHA_CAP * (1f - t));
+                float width = INNER_GLOW_MAX_WIDTH * (1f - t);
+                g2.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
+                g2.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawPolygon(poly);
+            }
+        } finally {
+            g2.setStroke(new BasicStroke(1f));
+            if (old != null) {
+                g2.setClip(old);
+            }
         }
-        g2.setStroke(new BasicStroke(1f));
-        g2.setClip(old);
     }
 
-    public Zone hitTest(Point world) {
+public Zone hitTest(Point world) {
         for (Zone zone : zoneManager.getZones()) {
             Polygon p = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
             if (p.contains(world)) {
@@ -388,8 +410,11 @@ public class MapRenderer {
         }
     }
 
-    private void drawZoneBorder(Graphics2D g2, Zone zone, Zone selected) {
+private void drawZoneBorder(Graphics2D g2, Zone zone, Zone selected) {
         Polygon poly = new Polygon(zone.getPolyX(), zone.getPolyY(), zone.getPolyX().length);
+
+
+
         if (zone.isDesolate()) {
             g2.setColor(zone == selected ? COLOR_DESOLATE_BORDER.brighter() : COLOR_DESOLATE_BORDER);
             g2.setStroke(new BasicStroke(1.5f));
@@ -401,7 +426,7 @@ public class MapRenderer {
         g2.setStroke(new BasicStroke(1f));
     }
 
-    private void drawZoneLabels(Graphics2D g2, Zone zone) {
+private void drawZoneLabels(Graphics2D g2, Zone zone) {
         if (zone.isDesolate()) {
             // Minimal italic label, muted colour
             g2.setFont(new Font("Serif", Font.ITALIC, 11));

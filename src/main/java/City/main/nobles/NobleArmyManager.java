@@ -289,6 +289,10 @@ private boolean isArmyDefending(NobleArmy army, NobleHouse house) {
                 int contribution = City.main.nobles.ai.NobleAIPower.estimateAttackPower(stakeholderHouse, this);
                 defenderForces.add(new ArmyForce(stakeholderHouse.getId(), contribution, defFort, militarySkill(stakeholderHouse)));
             }
+            int emergencyContribution = bankManager.getLastEmergencyMercenaryContribution();
+            if (emergencyContribution > 0) {
+                defenderForces.add(new ArmyForce(defender.getId(), emergencyContribution, defFort, militarySkill(defender)));
+            }
         }
 
         // Player intervention
@@ -376,24 +380,32 @@ private boolean isArmyDefending(NobleArmy army, NobleHouse house) {
             }
             defender.resetGarrison(zoneId);
             boolean wasCapital = defender.isCapital(zoneId);
-            if (bankManager != null) {
-                bankManager.applyConquestGoldTheft(defender, attacker, wasCapital, log);
-            }
 
-            if (isCoalition && coalitionManager != null) {
-                coalitionManager.awardConqueredZone(zoneId, attacker,
-                        attackerParticipants, allHouses, defFort, log);
+            if (defender.isBank() && wasCapital && bankManager != null) {
+                bankManager.dissolve(attacker, allHouses, claimManager, zoneManager, log);
+                relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
+                for (NobleHouse p : attackerParticipants) p.clearThreats();
+                if (coalitionManager != null) coalitionManager.onHouseLostZone(defender.getId());
             } else {
-                defender.removeZone(zoneId);
-                attacker.conquerZone(zoneId, defFort);
-                claimManager.addClaim(defender.getId(), zoneId);
-                attacker.resetGarrison(zoneId);
-                log.add(attacker.getName() + " captures " + zoneId + " from " + defender.getName() + ".");
-                if (defender.isEliminated()) log.add(defender.getName() + " has been eliminated.");
+                if (bankManager != null) {
+                    bankManager.applyConquestGoldTheft(defender, attacker, wasCapital, log);
+                }
+
+                if (isCoalition && coalitionManager != null) {
+                    coalitionManager.awardConqueredZone(zoneId, attacker,
+                            attackerParticipants, allHouses, defFort, log);
+                } else {
+                    defender.removeZone(zoneId);
+                    attacker.conquerZone(zoneId, defFort);
+                    claimManager.addClaim(defender.getId(), zoneId);
+                    attacker.resetGarrison(zoneId);
+                    log.add(attacker.getName() + " captures " + zoneId + " from " + defender.getName() + ".");
+                    if (defender.isEliminated()) log.add(defender.getName() + " has been eliminated.");
+                }
+                relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
+                for (NobleHouse p : attackerParticipants) p.clearThreats();
+                if (coalitionManager != null) coalitionManager.onHouseLostZone(defender.getId());
             }
-            relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);
-            for (NobleHouse p : attackerParticipants) p.clearThreats();
-            if (coalitionManager != null) coalitionManager.onHouseLostZone(defender.getId());
         } else {
             log.add(defender.getName() + " repels the attack on " + zoneId + ".");
             relationships.set(attacker.getId(), defender.getId(), Relationship.RIVAL);

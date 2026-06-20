@@ -196,6 +196,10 @@ private JPanel buildBottomBar() {
         bankBtn.setForeground(UITheme.TEXT_GOLD);
         bankBtn.addActionListener(e -> showBankView());
 
+        JButton dragonBankBtn = makeBottomBarButton("🐉 DRAGON BANK");
+        dragonBankBtn.setForeground(new Color(200, 120, 255));
+        dragonBankBtn.addActionListener(e -> showDragonBankView());
+
         JButton militaryBtn = makeBottomBarButton("MILITARY");
         militaryBtn.addActionListener(e -> showMilitaryView());
 
@@ -221,6 +225,7 @@ private JPanel buildBottomBar() {
         leftBtns.add(openVoteBtn);
         leftBtns.add(ledgerBtn);
         leftBtns.add(bankBtn);
+        leftBtns.add(dragonBankBtn);
         leftBtns.add(militaryBtn);
         leftBtns.add(councilBtn);
         leftBtns.add(cityCouncilBtn);
@@ -1117,6 +1122,7 @@ private void endTurn() {
                 pop.refresh();
             } else if (center instanceof City.ui.map.MapView mv) {
                 mv.refreshSelectedZone();
+                mv.revalidate();
                 mv.repaint();
             }
         }
@@ -1523,6 +1529,11 @@ private void wireMapViewCallbacks() {
 
 private void showBankView() {
         City.ui.bank.BankPanel panel = new City.ui.bank.BankPanel(gameState, this::showMainView);
+        swapCenter(panel);
+    }
+
+private void showDragonBankView() {
+        City.ui.bank.DragonBankPanel panel = new City.ui.bank.DragonBankPanel(gameState, this::showMainView);
         swapCenter(panel);
     }
 

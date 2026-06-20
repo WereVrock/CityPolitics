@@ -10,6 +10,7 @@ import City.main.nobles.ai.NobleBankingAI;
 import City.main.nobles.NobleArmyManager;
 import City.main.bank.BankAI;
 import City.main.bank.BankManager;
+import City.main.bank.DragonBankManager;
 import City.main.parameters.BankParams;
 import City.main.parameters.DiplomacyParams;
  
@@ -37,6 +38,7 @@ public class NobleHouseManager {
     private       int lastPlayerGoldSent = 0;
     private       int lastPlayerFoodSent = 0;
     private       BankManager bankManager;
+    private final DragonBankManager dragonBankManager;
 
     // Prebuilt zone gold/food maps for capital tiebreaker
     private Map<String, Integer> zoneGoldMap = new HashMap<>();
@@ -53,6 +55,7 @@ public NobleHouseManager(ZoneManager zoneManager) {
         this.bankManager = new BankManager(relationships, armyManager, getHouseById(BankParams.BANK_HOUSE_ID));
         this.armyManager.setBankManager(bankManager);
         City.main.nobles.ai.NobleAIPower.setBankManager(bankManager);
+        this.dragonBankManager = new DragonBankManager(armyManager);
     }
 
 public void setRavagedZoneManager(City.main.barbarians.RavagedZoneManager rzm) {
@@ -109,7 +112,7 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
             if (house.isBank()) {
                 // The Bank never attacks and runs its own survival/economy logic.
                 List<String> bankAiLog = BankAI.tick(house, new ArrayList<>(houses),
-                        relationships, armyManager, bankManager, new ArrayList<>());
+                        relationships, armyManager, bankManager, zoneManager, barbArmyManager, new ArrayList<>());
                 log.addAll(bankAiLog);
                 log.addAll(bankManager.processTurn(new ArrayList<>(houses), playerResources.getManpower(), playerResources));
             } else {
@@ -121,7 +124,8 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
 
                 int warChestTarget = NobleAI.getWarChestTarget(
                         house, new ArrayList<>(houses), relationships, armyManager);
-                NobleBankingAI.tick(house, warChestTarget, bankManager, log);
+                NobleBankingAI.tick(house, warChestTarget, bankManager, dragonBankManager,
+                        new ArrayList<>(houses), relationships, log);
             }
 
             // Upkeep — newly recruited armies have skipNextUpkeep set
@@ -130,6 +134,10 @@ public List<String> processTurn(ResourcePool playerResources, City.main.ledger.L
 
         // 4. Tick orders so this turn's orders resolve next turn
         armyManager.tickOrders();
+
+        // Dragon Bank — abstract, distant lender; processed once per turn,
+        // independent of any single house's loop iteration.
+        log.addAll(dragonBankManager.processTurn(new ArrayList<>(houses), playerResources));
 
         NobleAI.tickThreatenedDecay(houses);
         NobleAI.tickClaimDecay(new ArrayList<>(houses), relationships, claimManager, log);
@@ -504,6 +512,7 @@ public void reset() {
             bankManager.reset();
             bankManager.setBankHouse(getHouseById(BankParams.BANK_HOUSE_ID));
         }
+        dragonBankManager.reset();
     }
 
 public CoalitionManager getCoalitionManager() { return coalitionManager; }
@@ -921,6 +930,8 @@ private NobleHouse buildBankHouse() {
     }
 
     public BankManager getBankManager() { return bankManager; }
+
+    public DragonBankManager getDragonBankManager() { return dragonBankManager; }
 
 }
 

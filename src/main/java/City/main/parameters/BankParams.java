@@ -32,13 +32,14 @@ public final class BankParams {
     public static final double BANK_LOW_RESERVE_CALL_THRESHOLD     = 0.20;
     public static final double BANK_MAX_LOAN_PER_CREDIT_POINT      = 4.0;
 
-    public static final double BANK_ABANDON_DEPOSIT_LOSS_FRACTION = 0.7;
+    public static final double BANK_ABANDON_DEPOSIT_LOSS_FRACTION = 0.8;
     public static final int    BANK_ABANDON_PRESTIGE_PENALTY      = -10;
     public static final int    BANK_DEFEND_GOODWILL_CREDIT_BONUS  = 10;
     public static final int    BANK_ROBBER_CREDIT_CAP             = 5;
+    public static final int    BANK_PROTECTOR_PRESTIGE_BONUS      = 8;
 
     public static final double BANK_MERC_MANPOWER_GROWTH_FRACTION_OF_TOTAL = 0.01;
-    public static final double BANK_MERC_UPKEEP_GOLD_PER_MANPOWER         = 0.3;
+    public static final double BANK_MERC_UPKEEP_GOLD_PER_MANPOWER         = 1.0 / 3.0;
     public static final double BANK_MERC_RECRUIT_COST_MULTIPLIER          = 2.0;
     public static final double BANK_MERC_UPKEEP_COST_MULTIPLIER           = 2.0;
 
@@ -46,4 +47,8 @@ public final class BankParams {
     public static final double CONQUEST_STEAL_FRACTION_CAPITAL = 0.20;
 
     public static final double BANK_THREAT_RATIO_TRIGGER = 1.2;
+
+    public static final double BANK_EMERGENCY_FUND_DEPOSIT_FRACTION  = 0.4;
+    public static final double BANK_AI_THREAT_COVERAGE_RATIO         = 0.8;
+    public static final double BANK_DISSOLVE_CONQUEROR_GOLD_FRACTION = 0.2;
 }

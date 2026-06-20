@@ -49,6 +49,7 @@ List<String> log = new ArrayList<>();
 // Snapshot to avoid modification during iteration
 for (NobleHouse threat : new ArrayList<>(allHouses)) {
 if (threat.isEliminated()) continue;
+if (threat.isBank()) continue; // the Bank is never targeted by a coalition
 if (threat.getZoneIds().size() < DiplomacyParams.COALITION_ZONE_THRESHOLD) continue;
 log.addAll(tryFormCoalition(threat, allHouses));
 }
@@ -137,6 +138,7 @@ private List<NobleHouse> gatherMembers(NobleHouse threat, List<NobleHouse> allHo
 List<NobleHouse> members = new ArrayList<>();
 for (NobleHouse h : allHouses) {
 if (h == threat || h.isEliminated()) continue;
+if (h.isBank()) continue; // the Bank never joins a coalition
 if (isEligible(h, threat)) members.add(h);
 }
 return members;

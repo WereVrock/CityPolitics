@@ -897,6 +897,8 @@ public class MapInfoPanel extends JPanel {
 
         claimsPanel.revalidate();
         claimsPanel.repaint();
+        revalidate();
+        repaint();
     }
 
     public void setGrantClaimFromMapCallback(

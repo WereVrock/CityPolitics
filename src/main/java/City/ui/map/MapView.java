@@ -137,9 +137,12 @@ public void refresh() {
     }
 
     /** Re-shows the currently selected zone (if any) after data changes like end turn. */
-    public void refreshSelectedZone() {
+
+public void refreshSelectedZone() {
         Zone zone = mapPanel.getSelectedZone();
         if (zone != null) infoPanel.showZone(zone);
+        revalidate();
+        repaint();
     }
 
 /**
